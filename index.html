@@ -106,7 +106,11 @@ h3{font-size:15px;margin:0 0 8px}
 .stage{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 
 /* board */
-.board{display:grid;grid-template-columns:minmax(250px,1fr) minmax(0,1.7fr) minmax(250px,1fr);gap:14px;align-items:start}
+.board{display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,2.3fr);gap:14px;align-items:start}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:12px}
+.stage-h{position:sticky;top:0;z-index:1;background:var(--sunk);padding:4px 12px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.cand-h{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 2px;padding-bottom:4px;border-bottom:2px solid var(--line);font-weight:600}
+.cand-h span{font-size:12px;color:var(--muted);font-weight:400}
 .col{min-width:0;display:flex;flex-direction:column;max-height:calc(100vh - 150px);position:sticky;top:120px}
 .board>.col-mentors{order:1}.board>.center{order:2}.board>.col-mentees{order:3}
 .col-head{padding:12px 12px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
@@ -142,6 +146,8 @@ h3{font-size:15px;margin:0 0 8px}
 .toggle-chips button[aria-pressed=true]{background:var(--hard-soft);border-color:var(--hard);color:var(--hard);font-weight:600}
 .block{margin-top:14px;padding:14px 16px}
 .sugg{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.cand-h+.sugg{border-top:0}
+.block .sugg .why{gap:3px}
 .sugg:first-of-type{border-top:0}
 .score{width:44px;text-align:center;font-family:var(--f-mono);font-size:15px;font-weight:500;border-radius:6px;padding:4px 0;background:var(--accent-soft);color:var(--accent)}
 .score.bad{background:var(--hard-soft);color:var(--hard)}
@@ -237,10 +243,10 @@ tbody tr:hover{background:var(--sunk)}
 #toast div{background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.18);max-width:360px}
 #toast div.err{background:var(--hard);color:#fff}
 
-@media (max-width:1100px){
-  .board{grid-template-columns:1fr 1fr}
-  .board>.center{grid-column:1/-1;order:-1}
-  .col{position:static;max-height:460px}
+@media (max-width:900px){
+  .board{grid-template-columns:1fr}
+  .board>.center{order:2}
+  .col{position:static;max-height:420px}
 }
 @media (max-width:640px){
   .board{grid-template-columns:1fr}
@@ -413,7 +419,7 @@ function normalizeRows(header, rows){
 const S={
   people:new Map(), leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
   uid:null, readOnly:false, live:false, loaded:{people:false,matches:false},
-  tab:'progress', area:'__all', areaStored:false, sel:null, selRole:null, settingsOpen:false, settingsSec:'areas', progSort:'order',
+  tab:'progress', area:'__all', areaStored:false, sel:null, selRole:null, mentorFilter:'all', candScope:'area', factsOpen:false, settingsOpen:false, settingsSec:'areas', progSort:'order',
   listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
   peopleQ:'', peopleRole:'all', pending:null, overrideFor:null, importPreview:null, busy:'', clearStep:0, alertsOpen:{}
 };
@@ -474,6 +480,9 @@ function inScope(p){
   return a===S.area || (p.dept2 && IDX.deptArea.get(p.dept2)===S.area);
 }
 const groupOf=mid=>IDX.byMentor.get(mid)||[];
+const STAGE_ORDER=r=>r==null?-1:r;
+function stageGroup(p){ const r=p.rank; if(r==null) return 'שלב לא ידוע'; if(r>=50) return 'חברת סגל'; if(r>=40) return 'פוסט דוקטורט'; if(r>=30) return 'תואר שלישי'; if(r>=20) return 'תואר שני'; return 'תואר ראשון · שנה '+HEB_YEAR[r-10]; }
+const byStage=(a,b)=>STAGE_ORDER(b.rank)-STAGE_ORDER(a.rank);
 function roleFor(p,hint){ if(!p) return null; if(hint==='mentor'&&p.mentor) return 'mentor'; if(hint==='mentee'&&p.mentee) return 'mentee'; if(p.mentee&&!p.mentor) return 'mentee'; if(p.mentor&&!p.mentee) return 'mentor'; if(groupOf(p.id).length&&!S.matches.has(p.id)) return 'mentor'; return p.mentor&&!p.mentee?'mentor':(p.mentee?'mentee':null); }
 function rebuild(){
   IDX.byMentor=new Map();
@@ -791,37 +800,33 @@ function vEmptyPeople(){
 }
 function vBoard(){
   if(!S.people.size) return vEmptyPeople();
-  const q=S.listQ.trim();
   const match=(p,q)=>!q||fullName(p).includes(q)||(p.email||'').includes(q)||(p.dept||'').includes(q);
-  let mentees=[...S.people.values()].filter(p=>p.mentee&&inScope(p)&&match(p,q));
-  const openN=mentees.filter(p=>isActive(p)&&!S.matches.has(p.id)).length;
-  const propN=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
-  if(S.listMode==='open') mentees=mentees.filter(p=>isActive(p)&&!S.matches.has(p.id));
-  else if(S.listMode==='prop') mentees=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed');
-  mentees.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||(a.rank||0)-(b.rank||0)||fullName(a).localeCompare(fullName(b),'he'));
+  const scopedMentees=[...S.people.values()].filter(p=>p.mentee&&isActive(p)&&inScope(p));
+  const openN=scopedMentees.filter(p=>!S.matches.has(p.id)).length;
+  const propN=scopedMentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
   const mq=S.mentorQ.trim();
   let mentors=[...S.people.values()].filter(p=>p.mentor&&(S.mentorScope==='all'||inScope(p))&&match(p,mq));
-  mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||groupOf(a.id).length-groupOf(b.id).length||(b.rank||0)-(a.rank||0));
   const freeSeats=mentors.filter(isActive).reduce((s,m)=>s+Math.max(0,capOf(m)-groupOf(m.id).length),0);
-  return `<div class="board">
-    <section class="panel col col-mentees" aria-label="חניכות">
-      <div class="col-head">
-        <div class="row" style="justify-content:space-between"><h3 style="margin:0">חניכות</h3><span class="muted num">${openN} פנויות</span></div>
-        <div class="seg" role="group"><button data-lm="open" aria-pressed="${S.listMode==='open'}">ללא חונכת</button><button data-lm="prop" aria-pressed="${S.listMode==='prop'}">הצעות (${propN})</button><button data-lm="all" aria-pressed="${S.listMode==='all'}">כולן</button></div>
-        <div class="row"><input id="listQ" type="search" placeholder="חיפוש שם, מייל או מחלקה" value="${esc(S.listQ)}"></div>
-        <div class="row"><button class="btn sm" data-act="auto" ${S.readOnly||S.busy?'disabled':''} title="מציע חונכת לכל חניכה פנויה בתחום, לפי האילוצים. ההצעות ממתינות לאישור.">הצעת שיבוץ אוטומטית</button>${propN?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות</button>`:''}</div>
-      </div>
-      <div class="list" data-keep-scroll="mentees">${mentees.map(p=>personItem(p)).join('')||`<div class="empty">${S.listMode==='open'?'כל החניכות בתחום שובצו.':'אין חניכות להצגה.'}</div>`}</div>
-    </section>
-    <section class="center">${S.sel&&P(S.sel)?vDetail(P(S.sel)):`<div class="panel empty"><b>בחרי נרשמת</b>בחירה בחניכה מציגה את החונכות המתאימות לה, מדורגות לפי האילוצים. בחירה בחונכת מציגה את הקבוצה שלה ואת החניכות שאפשר לצרף.</div>`}</section>
+  if(S.mentorFilter==='free') mentors=mentors.filter(m=>isActive(m)&&groupOf(m.id).length<capOf(m));
+  else if(S.mentorFilter==='empty') mentors=mentors.filter(m=>isActive(m)&&!groupOf(m.id).length);
+  mentors.sort((a,b)=>byStage(a,b)||(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
+  let list='', last=null;
+  for(const m of mentors){ const g=stageGroup(m); if(g!==last){ const n=mentors.filter(x=>stageGroup(x)===g).length; list+=`<div class="stage-h"><span>${esc(g)}</span><span class="num">${n}</span></div>`; last=g; } list+=mentorItem(m); }
+  return `<div class="toolbar"><span><b class="num">${openN}</b> <span class="muted">חניכות בלי חונכת בתחום</span></span>
+      <button class="btn sm" data-act="auto" ${S.readOnly||S.busy?'disabled':''} title="מציע חונכת לכל חניכה פנויה בתחום, לפי האילוצים. ההצעות ממתינות לאישור.">הצעת שיבוץ אוטומטית</button>
+      ${propN?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות (${propN})</button>`:''}
+      <button class="link" data-goto-alert="unassigned">רשימת החניכות הפנויות</button></div>
+  <div class="board">
     <section class="panel col col-mentors" aria-label="חונכות">
       <div class="col-head">
         <div class="row" style="justify-content:space-between"><h3 style="margin:0">חונכות</h3><span class="muted num">${freeSeats} מקומות פנויים</span></div>
-        <div class="seg" role="group"><button data-ms="area" aria-pressed="${S.mentorScope==='area'}">מהתחום</button><button data-ms="all" aria-pressed="${S.mentorScope==='all'}">מכל התוכנית</button></div>
+        <div class="row"><div class="seg" role="group"><button data-ms="area" aria-pressed="${S.mentorScope==='area'}">מהתחום</button><button data-ms="all" aria-pressed="${S.mentorScope==='all'}">מכל התוכנית</button></div>
+        <div class="seg" role="group"><button data-mf="all" aria-pressed="${S.mentorFilter==='all'}">כולן</button><button data-mf="free" aria-pressed="${S.mentorFilter==='free'}">עם מקום</button><button data-mf="empty" aria-pressed="${S.mentorFilter==='empty'}">בלי חניכות</button></div></div>
         <div class="row"><input id="mentorQ" type="search" placeholder="חיפוש חונכת" value="${esc(S.mentorQ)}"></div>
       </div>
-      <div class="list" data-keep-scroll="mentors">${mentors.map(mentorItem).join('')||'<div class="empty">אין חונכות להצגה.</div>'}</div>
+      <div class="list" data-keep-scroll="mentors">${list||'<div class="empty">אין חונכות להצגה.</div>'}</div>
     </section>
+    <section class="center">${S.sel&&P(S.sel)?vDetail(P(S.sel)):`<div class="panel empty"><b>בחרי חונכת</b>בחירה בחונכת מציגה את הקבוצה שלה, ומתחתיה את כל החניכות שמתאימות לה לפי האילוצים, מסודרות לפי שלב אקדמי.</div>`}</section>
   </div>`;
 }
 function hl(t){ return esc(t).replace(/(מתרג\S*|מדריכ\S* מעבד\S*|שנה [א-ד]['׳]?|שנים [א-ד]-[א-ד]|לא רוצה|מעדיפה|אעדיף|להימנע|לא אוכל|אודיס\S*)/g,'<mark>$1</mark>'); }
@@ -841,12 +846,12 @@ function vDetail(p){
       </div>
       <div class="row">${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
     </div>
-    <dl class="facts">
+    <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen?'open':''}><summary>פרטים מהטופס</summary><dl class="facts">
       ${fact('מייל',p.email)}${fact('טלפון',p.phone)}${fact('מסלול מחקר',p.track)}${fact('תזה',p.thesis)}${fact('מסלול משולב',p.combined)}${fact('חוג נוסף',p.extra)}
       ${fact('תארים קודמים',p.degrees)}${fact('עבודה',p.work)}${fact('השתתפות קודמת',p.prev)}${fact('אודיסאה / עתודה',p.program)}
       ${p.mentee?fact('חונכת מבוקשת',prefTxt(p.wantMentor,p.wantMentorSpec)):''}${p.mentor?fact('חניכות מבוקשות',prefTxt(p.wantMentees,p.wantMenteesSpec)):''}
       ${p.mentee?fact('בנוח עם חונך גבר',p.okMale):''}${p.mentor?fact('מוכנה לחנוך עם חונך',p.mentorWithMale):''}${p.dups>1?fact('מילאה את הטופס',p.dups+' פעמים'):''}
-    </dl>
+    </dl></details>
     ${p.notes?`<div class="notes${a.notesOk?' done':''}">${hl(p.notes)}</div>
       <label class="row" style="margin-top:6px"><input type="checkbox" id="notesOk" data-ann="notesOk" ${a.notesOk?'checked':''} ${S.readOnly?'disabled':''}> ההערות נקראו וטופלו</label>`:''}
     <div class="ann">
@@ -893,11 +898,19 @@ function vMentorBlock(m){
   let h=`<div class="panel block"><p class="sec-title">הקבוצה של ${esc(m.first||'')} · <span class="num">${g.length}/${cap}</span></p>`;
   h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
     return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
-  if(g.length<cap&&isActive(m)){
-    const cand=[...S.people.values()].filter(e=>e.mentee&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)).map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok).sort((a,b)=>b.ev.score-a.ev.score);
-    h+=`<p class="sec-title" style="margin-top:14px">חניכות פנויות שמתאימות לה (${cand.length})</p>`;
-    h+=cand.slice(0,10).map(({e,ev})=>`<div class="sugg"><span class="score">${ev.score}</span><div class="who"><b data-sel="${e.id}" data-role="mentee">${esc(fullName(e))}</b> ${ladder(e)} <span class="muted">${esc(e.dept||'')}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">אין חניכות פנויות שעומדות באילוצים.</p>';
+  if(!isActive(m)) return h+'<p class="muted">החונכת סומנה כלא פעילה.</p></div>';
+  if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">הקבוצה מלאה (${g.length}/${cap}). כדי לצרף עוד חניכה, הגדילי את "מקסימום חניכות" או הסירי חניכה מהקבוצה.</p></div>`;
+  const pool=[...S.people.values()].filter(e=>e.mentee&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||inScope(e)));
+  const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
+  h+=`</div><div class="panel block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">חניכות פנויות שמתאימות ל${esc(m.first||'')} (${cand.length})</p>
+    <div class="seg"><button data-cs="area" aria-pressed="${S.candScope!=='all'}">מהתחום</button><button data-cs="all" aria-pressed="${S.candScope==='all'}">מכל התוכנית</button></div></div>`;
+  let last=null;
+  for(const {e,ev} of cand){
+    const sg=stageGroup(e);
+    if(sg!==last){ h+=`<div class="cand-h">${esc(sg)}<span class="num">${cand.filter(x=>stageGroup(x.e)===sg).length}</span></div>`; last=sg; }
+    h+=`<div class="sugg" style="padding:6px 0"><span class="score" title="ציון התאמה">${ev.score}</span><div class="who"><b data-sel="${e.id}" data-role="mentee">${esc(fullName(e))}</b> <span class="muted">${esc(e.dept||'')}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button><div class="why">${chips(ev)}</div></div>`;
   }
+  if(!cand.length) h+=`<p class="muted">אין חניכות פנויות שעומדות באילוצים${S.candScope!=='all'?'. אפשר לנסות "מכל התוכנית".':'.'}</p>`;
   return h+'</div>';
 }
 function vGroups(){
@@ -1110,9 +1123,12 @@ document.addEventListener('click',async ev=>{
   const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto],[data-act]'); if(!t) return;
   const d=t.dataset;
   if(d.tab){ S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
+  if(d.mf){ S.mentorFilter=d.mf; render(); return; }
+  if(d.cs){ S.candScope=d.cs; render(); return; }
+  if(d.gotoAlert){ S.tab='alerts'; S.alertsOpen[d.gotoAlert]=true; render(); window.scrollTo(0,0); return; }
   if(d.srole){ S.selRole=d.srole; S.pending=null; S.overrideFor=null; render(); return; }
   if(d.sel!==undefined&&d.sel){ S.selRole=roleFor(P(d.sel),d.role); S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
-  if(d.goto){ S.selRole=roleFor(P(d.goto),d.role); S.sel=d.goto; S.tab='board'; S.listMode='all'; pushPresence(); render(); window.scrollTo(0,0); return; }
+  if(d.goto){ S.selRole=roleFor(P(d.goto),d.role); S.sel=d.goto; S.tab='board'; pushPresence(); render(); window.scrollTo(0,0); return; }
   if(d.lm){ S.listMode=d.lm; render(); return; }
   if(d.ms){ S.mentorScope=d.ms; render(); return; }
   if(d.ss){ S.suggScope=d.ss; render(); return; }
@@ -1167,6 +1183,7 @@ document.addEventListener('submit',async ev=>{
   if(error) loginScreen(/Invalid login/i.test(error.message)?'המייל או הסיסמה שגויים.':error.message); else location.reload();
 });
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&S.settingsOpen){ S.settingsOpen=false; render(); } });
+document.addEventListener('toggle',ev=>{ if(ev.target.classList&&ev.target.classList.contains('facts-wrap')&&roleFor(P(S.sel),S.selRole)==='mentor') S.factsOpen=ev.target.open; },true);
 let qTimer;
 document.addEventListener('input',ev=>{
   const t=ev.target;

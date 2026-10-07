@@ -106,6 +106,7 @@ h3{font-size:15px;margin:0 0 8px}
 /* board */
 .board{display:grid;grid-template-columns:minmax(250px,1fr) minmax(0,1.7fr) minmax(250px,1fr);gap:14px;align-items:start}
 .col{min-width:0;display:flex;flex-direction:column;max-height:calc(100vh - 150px);position:sticky;top:120px}
+.board>.col-mentors{order:1}.board>.center{order:2}.board>.col-mentees{order:3}
 .col-head{padding:12px 12px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .col-head .row input{flex:1;min-width:0}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
@@ -202,7 +203,7 @@ tbody tr:hover{background:var(--sunk)}
 
 @media (max-width:1100px){
   .board{grid-template-columns:1fr 1fr}
-  .center{grid-column:1/-1;order:-1}
+  .board>.center{grid-column:1/-1;order:-1}
   .col{position:static;max-height:460px}
 }
 @media (max-width:640px){
@@ -764,7 +765,7 @@ function vBoard(){
   mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||groupOf(a.id).length-groupOf(b.id).length||(b.rank||0)-(a.rank||0));
   const freeSeats=mentors.filter(isActive).reduce((s,m)=>s+Math.max(0,capOf(m)-groupOf(m.id).length),0);
   return `<div class="board">
-    <section class="panel col" aria-label="חניכות">
+    <section class="panel col col-mentees" aria-label="חניכות">
       <div class="col-head">
         <div class="row" style="justify-content:space-between"><h3 style="margin:0">חניכות</h3><span class="muted num">${openN} פנויות</span></div>
         <div class="seg" role="group"><button data-lm="open" aria-pressed="${S.listMode==='open'}">ללא חונכת</button><button data-lm="prop" aria-pressed="${S.listMode==='prop'}">הצעות (${propN})</button><button data-lm="all" aria-pressed="${S.listMode==='all'}">כולן</button></div>
@@ -774,7 +775,7 @@ function vBoard(){
       <div class="list" data-keep-scroll="mentees">${mentees.map(p=>personItem(p)).join('')||`<div class="empty">${S.listMode==='open'?'כל החניכות בתחום שובצו.':'אין חניכות להצגה.'}</div>`}</div>
     </section>
     <section class="center">${S.sel&&P(S.sel)?vDetail(P(S.sel)):`<div class="panel empty"><b>בחרי נרשמת</b>בחירה בחניכה מציגה את החונכות המתאימות לה, מדורגות לפי האילוצים. בחירה בחונכת מציגה את הקבוצה שלה ואת החניכות שאפשר לצרף.</div>`}</section>
-    <section class="panel col" aria-label="חונכות">
+    <section class="panel col col-mentors" aria-label="חונכות">
       <div class="col-head">
         <div class="row" style="justify-content:space-between"><h3 style="margin:0">חונכות</h3><span class="muted num">${freeSeats} מקומות פנויים</span></div>
         <div class="seg" role="group"><button data-ms="area" aria-pressed="${S.mentorScope==='area'}">מהתחום</button><button data-ms="all" aria-pressed="${S.mentorScope==='all'}">מכל התוכנית</button></div>

@@ -18,19 +18,20 @@
   --f-body:"IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
   --f-display:"Suez One", "IBM Plex Sans Hebrew", Georgia, serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --open:#CBD5D3;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
@@ -45,6 +46,7 @@ button{cursor:pointer}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
 .top-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:10px 16px}
 .brand{display:flex;align-items:baseline;gap:10px;margin-inline-end:auto}
+.top-row>.burger{order:-1}
 .brand h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;letter-spacing:.2px}
 .brand small{color:var(--muted)}
 .area-pick{display:flex;align-items:center;gap:8px}
@@ -197,6 +199,40 @@ tbody tr:hover{background:var(--sunk)}
 .drop{border:2px dashed var(--line);border-radius:var(--r);padding:22px;text-align:center}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 
+/* hamburger + settings drawer */
+.burger{width:38px;height:38px;border:1px solid var(--line);background:var(--surface);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.burger svg{width:20px;height:20px;stroke:var(--ink)}
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(10,20,18,.38);display:flex;justify-content:flex-start}
+.drawer{background:var(--bg);width:min(760px,100%);height:100%;overflow-y:auto;padding-block:calc(16px + env(safe-area-inset-top,0px)) 40px;padding-inline:18px;box-shadow:0 0 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:14px}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.drawer-nav{display:flex;gap:6px;flex-wrap:wrap}
+.drawer-nav button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px}
+.drawer-nav button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.lchips{display:flex;flex-wrap:wrap;gap:4px}
+.lchips button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:1px 9px;font-size:12px}
+.lchips button[aria-pressed=true]{background:var(--mentor-soft);border-color:var(--mentor);color:var(--mentor);font-weight:600}
+/* progress */
+.hero{padding:18px 20px;display:grid;grid-template-columns:auto 1fr;gap:10px 28px;align-items:center}
+.hero .big{font-family:var(--f-mono);font-size:44px;line-height:1;font-weight:500}
+.hero .big small{font-size:18px;color:var(--muted);font-family:var(--f-body)}
+.sbar{display:flex;gap:2px;height:16px;border-radius:4px;overflow:hidden;background:var(--surface)}
+.sbar.lg{height:26px}
+.sbar i{display:block;height:100%;min-width:3px}
+.seg-final{background:var(--accent)}
+.seg-prop{background:repeating-linear-gradient(135deg,var(--accent) 0 3px,var(--accent-soft) 3px 6px)}
+.seg-open{background:var(--open)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:10px;border-radius:2px;display:inline-block}
+.prog{padding:6px 16px}
+.prow{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 110px 54px;gap:6px 14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow .an{background:none;border:0;padding:0;text-align:right;font-weight:600;color:var(--ink);cursor:pointer}
+.prow .an:hover{color:var(--accent);text-decoration:underline}
+.prow .pct{font-family:var(--f-mono);text-align:left}
+.prow .sub{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.mini{display:flex;gap:12px;flex-wrap:wrap}
+@media (max-width:640px){.prow{grid-template-columns:1fr 70px}.prow .sbar{grid-column:1/-1;order:3}.prow .sub{grid-column:1/-1;order:4}.prow .cnt{display:none}.hero{grid-template-columns:1fr}}
 #toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));inset-inline-start:16px;z-index:50;display:flex;flex-direction:column;gap:6px;direction:rtl}
 #toast div{background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.18);max-width:360px}
 #toast div.err{background:var(--hard);color:#fff}
@@ -218,6 +254,7 @@ tbody tr:hover{background:var(--sunk)}
 <div id="app">
   <header class="top">
     <div class="top-row">
+      <button class="burger" data-act="settings" aria-label="הגדרות" title="הגדרות"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <div class="brand"><h1>מדויקות · שיבוץ</h1><small id="season"></small></div>
       <div class="area-pick"><label for="areaSel">התחום שלי</label><select id="areaSel"></select></div>
       <div class="peers" id="peers"></div>
@@ -376,14 +413,14 @@ function normalizeRows(header, rows){
 const S={
   people:new Map(), leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
   uid:null, readOnly:false, live:false, loaded:{people:false,matches:false},
-  tab:'board', area:'__all', sel:null,
+  tab:'progress', area:'__all', areaStored:false, sel:null, settingsOpen:false, settingsSec:'areas', progSort:'order',
   listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
   peopleQ:'', peopleRole:'all', pending:null, overrideFor:null, importPreview:null, busy:'', clearStep:0, alertsOpen:{}
 };
 const IDX={byMentor:new Map(), dupNames:new Map(), deptArea:new Map()};
 let sb=null, chan=null; const downloads=true;
 const room={peers(){ const st=chan?chan.presenceState():{}; return Object.entries(st).map(([k,arr])=>({by:k,isMe:k===S.uid,kind:'viewer',presence:arr[arr.length-1]||{}})); }};
-try{ const a=localStorage.getItem('shibutz.area'); if(a) S.area=a; const t=localStorage.getItem('shibutz.tab'); if(t) S.tab=t; }catch(e){}
+try{ const a=localStorage.getItem('shibutz.area'); if(a){S.area=a;S.areaStored=true;} const t=localStorage.getItem('shibutz.tab'); if(t&&t!=='areas') S.tab=t; }catch(e){}
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -567,6 +604,7 @@ async function loadAll(){
   const me=S.leaders.get(S.uid);
   if(!me){ location.reload(); return; }
   S.role=me.role; S.readOnly=me.role==='viewer';
+  if(!S.areaStored){ const mine=[...S.areas.values()].find(a=>(a.leaders||[]).includes(S.uid)); if(mine) S.area=mine.id; S.areaStored=true; }
   rerenderSoon();
 }
 function showScreen(html){ $('#tabs').hidden=true; document.querySelector('.area-pick').hidden=true; $('#main').innerHTML=html; }
@@ -697,7 +735,7 @@ function render(){
   const active=document.activeElement; const aid=active&&active.id; let ss=null,se=null; try{ss=active.selectionStart;se=active.selectionEnd;}catch(e){}
   const keepVal=active&&(active.tagName==='TEXTAREA'||(active.tagName==='INPUT'&&active.type==='text'))?active.value:null;
   const scrolls={}; m.querySelectorAll('[data-keep-scroll]').forEach(el=>scrolls[el.dataset.keepScroll]=el.scrollTop);
-  m.innerHTML=banners()+(S.loaded.people?({board:vBoard,groups:vGroups,alerts:vAlerts,people:vPeople,areas:vAreas,data:vData,team:vTeam}[S.tab]||vBoard)():'<div class="empty"><b>טוען…</b></div>');
+  m.innerHTML=banners()+(S.loaded.people?({progress:vProgress,board:vBoard,groups:vGroups,alerts:vAlerts,people:vPeople,data:vData,team:vTeam}[S.tab]||vProgress)():'<div class="empty"><b>טוען…</b></div>')+(S.settingsOpen&&S.loaded.people?vSettings():'');
   m.querySelectorAll('[data-keep-scroll]').forEach(el=>{ if(scrolls[el.dataset.keepScroll]!=null) el.scrollTop=scrolls[el.dataset.keepScroll]; });
   if(aid){ const el=document.getElementById(aid); if(el){ if(keepVal!=null) el.value=keepVal; el.focus(); try{ if(ss!=null) el.setSelectionRange(ss,se);}catch(e){} } }
   $('#season').textContent=S.meta?(S.meta.demo?'נתוני הדגמה':`${S.people.size} נרשמות`):'';
@@ -715,7 +753,7 @@ function renderTabs(){
   const al=S.loaded.people?computeAlerts():[];
   const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
   const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
-  const T=[['board','לוח שיבוץ'],['groups','קבוצות'],['alerts','התראות'],['people','כל הנרשמות'],['areas','תחומי אחריות'],['data','ייבוא וייצוא'],['team','מובילות']];
+  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['groups','קבוצות'],['alerts','התראות'],['people','כל הנרשמות'],['data','ייבוא וייצוא'],['team','מובילות']];
   $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
 }
 function renderPeers(){
@@ -904,16 +942,51 @@ function vPeople(){
     return `<tr data-goto="${p.id}"><td><b>${esc(fullName(p))}</b>${!isActive(p)?' <span class="chip hard">לא פעילה</span>':''}</td><td>${p.mentee?'<span class="chip mentee">חניכה</span> ':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}</td><td>${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td>${esc(S.areas.get(areaOfPerson(p))?.name||'')}</td><td>${p.mentee?(mt?'← '+esc(fullName(P(mt.mentor)))+(mt.status==='proposed'?' (הצעה)':''):'<span class="muted">פנויה</span>'):''}${p.mentor?`<div class="num">${g.length}/${capOf(p)}</div>`:''}</td><td style="max-width:280px"><span class="muted" style="font-size:12px">${esc((p.notes||'').slice(0,110))}</span></td></tr>`;}).join('')}</tbody></table></div>`;
 }
 function vAreas(){
+  const admin=!S.readOnly;
   const areas=[...S.areas.values()].sort((a,b)=>(a.order||0)-(b.order||0));
   const depts=knownDepts();
+  const leaders=[...S.leaders.values()].filter(l=>l.role!=='viewer').sort((a,b)=>leaderFull(a.email).localeCompare(leaderFull(b.email),'he'));
   const cnt=a=>{const ps=[...S.people.values()].filter(p=>areaOfPerson(p)===a.id);return {e:ps.filter(p=>p.mentee).length,m:ps.filter(p=>p.mentor).length};};
-  let h=`<div class="row" style="margin-bottom:12px;justify-content:space-between"><div><h2>תחומי אחריות</h2><p class="muted" style="margin:0">כל מובילה בוחרת את התחום שלה בראש העמוד. תחום מוגדר לפי מחלקות. מחלקה יכולה להשתייך לתחום אחד.</p></div>
-    <div class="row"><button class="btn" data-act="addArea" ${S.readOnly?'disabled':''}>תחום חדש</button>${!areas.length&&depts.length?`<button class="btn primary" data-act="areasFromDepts" ${S.readOnly?'disabled':''}>תחום לכל מחלקה</button>`:''}</div></div>`;
-  if(!areas.length) return h+`<div class="panel empty"><b>עדיין לא הוגדרו תחומים</b>אפשר ליצור תחום לכל מחלקה בלחיצה אחת, ואחר כך לאחד מחלקות קטנות לתחום משותף.</div>`;
-  h+=`<div class="areas">`+areas.map(a=>{ const c=cnt(a); const mine=(a.leaders||[]).includes(S.uid);
-    return `<div class="panel acard2"><div class="row"><input id="an-${esc(a.id)}" type="text" data-area-name="${esc(a.id)}" value="${esc(a.name)}" style="flex:1;font-weight:600" ${S.readOnly?'disabled':''}><span class="muted num">${c.e} חניכות · ${c.m} חונכות</span></div>
-      <div class="dchips">${depts.map(d=>{const owner=IDX.deptArea.get(d); const on=(a.depts||[]).includes(d); return `<button data-adept="${esc(a.id)}|${esc(d)}" aria-pressed="${on}" class="${!on&&owner&&owner!==a.id?'taken':''}" title="${!on&&owner?'משויכת ל'+esc(S.areas.get(owner)?.name||''):''}" ${S.readOnly?'disabled':''}>${esc(d)}</button>`;}).join('')}</div>
-      <div class="row" style="justify-content:space-between"><span class="muted">מובילות: ${(a.leaders||[]).map(u=>esc(leaderName(u))).join(', ')||'—'}</span><div class="row"><button class="btn sm" data-lead="${esc(a.id)}" ${S.readOnly||!S.uid?'disabled':''}>${mine?'הסירי אותי':'אני אחראית כאן'}</button>${S.clearStep==='area-'+a.id?`<button class="btn sm danger" data-delarea="${esc(a.id)}">למחוק?</button>`:`<button class="btn sm" data-askdel="${esc(a.id)}" ${S.readOnly?'disabled':''}>מחיקה</button>`}</div></div></div>`;}).join('')+`</div>`;
+  const dis=admin?'':'disabled';
+  let h=`<div class="row" style="justify-content:space-between"><div><h3 style="margin:0">תחומי אחריות</h3><p class="muted" style="margin:4px 0 0">כל תחום מוגדר לפי מחלקות ומשויך למובילות. כשמובילה נכנסת, התחום שלה נבחר אוטומטית. ${admin?'':'יש לך הרשאת צפייה בלבד, ולכן אי אפשר לשנות כאן.'}</p></div>
+    ${admin?`<div class="row"><button class="btn" data-act="addArea">תחום חדש</button>${!areas.length&&depts.length?`<button class="btn primary" data-act="areasFromDepts">תחום לכל מחלקה</button>`:''}</div>`:''}</div>`;
+  if(!areas.length) return h+`<div class="panel empty"><b>עדיין לא הוגדרו תחומים</b>${admin?'אפשר ליצור תחום לכל מחלקה בלחיצה אחת, ואחר כך לאחד מחלקות קטנות לתחום משותף.':''}</div>`;
+  h+=`<div class="areas">`+areas.map(a=>{ const c=cnt(a);
+    return `<div class="panel acard2"><div class="row"><input id="an-${esc(a.id)}" type="text" data-area-name="${esc(a.id)}" value="${esc(a.name)}" style="flex:1;font-weight:600" ${dis}><span class="muted num">${c.e} חניכות · ${c.m} חונכות</span></div>
+      <div><p class="sec-title" style="margin-bottom:4px">מחלקות</p><div class="dchips">${depts.map(d=>{const owner=IDX.deptArea.get(d); const on=(a.depts||[]).includes(d); return `<button data-adept="${esc(a.id)}|${esc(d)}" aria-pressed="${on}" class="${!on&&owner&&owner!==a.id?'taken':''}" title="${!on&&owner?'משויכת ל'+esc(S.areas.get(owner)?.name||''):''}" ${dis}>${esc(d)}</button>`;}).join('')}</div></div>
+      <div><p class="sec-title" style="margin-bottom:4px">מובילות אחראיות</p><div class="lchips">${leaders.map(l=>`<button data-aleader="${esc(a.id)}|${esc(l.email)}" aria-pressed="${(a.leaders||[]).includes(l.email)}" title="${esc(l.email)}" ${dis}>${esc(leaderFull(l.email))}</button>`).join('')||'<span class="muted">אין עדיין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</span>'}</div></div>
+      ${admin?`<div class="row" style="justify-content:flex-end">${S.clearStep==='area-'+a.id?`<button class="btn sm danger" data-delarea="${esc(a.id)}">למחוק את התחום?</button>`:`<button class="btn sm" data-askdel="${esc(a.id)}">מחיקת תחום</button>`}</div>`:''}</div>`;}).join('')+`</div>`;
+  return h;
+}
+function vSettings(){
+  const SECS=[['areas','תחומי אחריות']];
+  return `<div class="overlay" data-act="closeSettingsBg"><aside class="drawer" role="dialog" aria-label="הגדרות">
+    <div class="drawer-head"><h2 style="margin:0">הגדרות</h2><button class="btn" data-act="closeSettings">סגירה</button></div>
+    <div class="drawer-nav">${SECS.map(([k,l])=>`<button data-ssec="${k}" aria-pressed="${S.settingsSec===k}">${l}</button>`).join('')}</div>
+    ${({areas:vAreas})[S.settingsSec]()}
+  </aside></div>`;
+}
+function vProgress(){
+  if(!S.people.size) return vEmptyPeople();
+  const all=[...S.people.values()];
+  const stat=list=>{ const me=list.filter(p=>p.mentee&&isActive(p)); let fin=0,prop=0; for(const p of me){ const st=S.matches.get(p.id)?.status; if(st==='final') fin++; else if(st==='proposed') prop++; } const mentors=list.filter(p=>p.mentor&&isActive(p)); const seats=mentors.reduce((s,m)=>s+Math.max(0,capOf(m)-groupOf(m.id).length),0); return {total:me.length,fin,prop,open:me.length-fin-prop,mentors:mentors.length,withGroup:mentors.filter(m=>groupOf(m.id).length).length,seats}; };
+  const pct=(n,t)=>t?Math.round(n*100/t):0;
+  const bar=(st,lg)=>{ if(!st.total) return `<div class="sbar${lg?' lg':''}"><i class="seg-open" style="flex:1" title="אין חניכות"></i></div>`; const seg=(n,c,l)=>n?`<i class="${c}" style="flex:${n}" title="${l}: ${n} (${pct(n,st.total)}%)"></i>`:''; return `<div class="sbar${lg?' lg':''}" role="img" aria-label="${st.fin} מאושרים, ${st.prop} הצעות, ${st.open} ללא חונכת">${seg(st.fin,'seg-final','שיבוץ מאושר')}${seg(st.prop,'seg-prop','הצעה ממתינה')}${seg(st.open,'seg-open','ללא חונכת')}</div>`; };
+  const legend=`<div class="legend"><span><i class="seg-final"></i>שיבוץ מאושר</span><span><i class="seg-prop"></i>הצעה ממתינה לאישור</span><span><i class="seg-open"></i>ללא חונכת</span></div>`;
+  const o=stat(all);
+  const sizes=[1,2,3,4].map(n=>all.filter(m=>m.mentor&&groupOf(m.id).length===n).length);
+  let h=`<div class="panel hero"><div><div class="big">${pct(o.fin+o.prop,o.total)}%<small> שובצו</small></div><div class="muted" style="margin-top:6px"><span class="num">${o.fin+o.prop}</span> מתוך <span class="num">${o.total}</span> חניכות</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:0">${bar(o,true)}${legend}
+      <div class="mini muted" style="font-size:13px"><span><b class="num" style="color:var(--ink)">${o.fin}</b> מאושרים</span><span><b class="num" style="color:var(--ink)">${o.prop}</b> הצעות</span><span><b class="num" style="color:var(--ink)">${o.open}</b> ללא חונכת</span><span>·</span><span><b class="num" style="color:var(--ink)">${o.withGroup}/${o.mentors}</b> חונכות עם קבוצה</span><span><b class="num" style="color:var(--ink)">${o.seats}</b> מקומות פנויים</span><span>קבוצות של 1·2·3·4: <b class="num" style="color:var(--ink)">${sizes.join(' · ')}</b></span></div></div></div>`;
+  const areas=[...S.areas.values()].sort((a,b)=>(a.order||0)-(b.order||0));
+  let rows=areas.map(a=>({id:a.id,name:a.name,leaders:a.leaders||[],st:stat(all.filter(p=>areaOfPerson(p)===a.id))}));
+  const none=all.filter(p=>!areaOfPerson(p)&&(p.mentee||p.mentor));
+  if(none.length) rows.push({id:'__none',name:'ללא תחום',leaders:[],st:stat(none)});
+  if(S.progSort==='low') rows.sort((x,y)=>pct(x.st.fin+x.st.prop,x.st.total)-pct(y.st.fin+y.st.prop,y.st.total)||y.st.open-x.st.open);
+  h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><h3 style="margin:0">לפי תחום</h3><div class="seg"><button data-psort="order" aria-pressed="${S.progSort==='order'}">לפי הסדר</button><button data-psort="low" aria-pressed="${S.progSort==='low'}">הכי פחות מתקדמים קודם</button></div></div>
+    <div class="panel prog">${rows.map(r=>{ const st=r.st; const short=st.open-st.seats;
+      return `<div class="prow"><button class="an" data-goarea="${esc(r.id)}" title="מעבר לשיבוצים של התחום">${esc(r.name)}</button>${bar(st)}<span class="cnt muted num" style="font-size:13px">${st.fin+st.prop}/${st.total}</span><span class="pct">${pct(st.fin+st.prop,st.total)}%</span>
+        <div class="sub"><span>${st.fin} מאושרים · ${st.prop} הצעות · ${st.open} ללא חונכת</span><span>${st.seats} מקומות פנויים אצל ${st.mentors} חונכות</span>${short>0?`<span class="chip warn">חסרים ${short} מקומות בתחום</span>`:''}${r.leaders.length?`<span>מובילות: ${r.leaders.map(u=>esc(leaderFull(u))).join(', ')}</span>`:''}</div></div>`; }).join('')||'<div class="empty">עדיין לא הוגדרו תחומים. מגדירים אותם בתפריט ההגדרות (☰).</div>'}</div>`;
   return h;
 }
 function vData(){
@@ -1030,7 +1103,7 @@ async function addArea(name,depts=[]){ const ord=Math.max(0,...[...S.areas.value
 
 /* ================= events ================= */
 document.addEventListener('click',async ev=>{
-  const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto]'); if(!t) return;
+  const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto],[data-act]'); if(!t) return;
   const d=t.dataset;
   if(d.tab){ S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
   if(d.sel!==undefined&&d.sel){ S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
@@ -1046,6 +1119,10 @@ document.addEventListener('click',async ev=>{
   if(d.approve){ t.disabled=true; await approve([d.approve]).catch(()=>{}); return; }
   if(d.ta){ const p=P(S.sel); const ta=taOf(p); let ys=ta.confirmed?[...ta.years]:[]; const y=+d.ta; ys=ys.includes(y)?ys.filter(x=>x!==y):[...ys,y].sort(); await setAnn(p.id,{ta:ys,taSet:true}).catch(()=>{}); return; }
   if(d.adept){ const [aid,dep]=d.adept.split('|'); const a=S.areas.get(aid); let ds=[...(a.depts||[])]; if(ds.includes(dep)) ds=ds.filter(x=>x!==dep); else { ds.push(dep); for(const o of S.areas.values()) if(o.id!==aid&&(o.depts||[]).includes(dep)) await W(()=>sb.from('areas').update({depts:o.depts.filter(x=>x!==dep)}).eq('id',o.id)); } await W(()=>sb.from('areas').update({depts:ds}).eq('id',aid)).catch(()=>{}); return; }
+  if(d.aleader){ const [aid,em]=d.aleader.split('|'); const a=S.areas.get(aid); let ls=[...(a.leaders||[])]; ls=ls.includes(em)?ls.filter(x=>x!==em):[...ls,em]; await W(()=>sb.from('areas').update({leaders:ls}).eq('id',aid)).catch(()=>{}); return; }
+  if(d.ssec){ S.settingsSec=d.ssec; render(); return; }
+  if(d.psort){ S.progSort=d.psort; render(); return; }
+  if(d.goarea){ S.area=d.goarea; try{localStorage.setItem('shibutz.area',S.area);}catch(e){} S.tab='board'; S.listMode='open'; pushPresence(); render(); window.scrollTo(0,0); return; }
   if(d.lead){ const a=S.areas.get(d.lead); let ls=[...(a.leaders||[])]; ls=ls.includes(S.uid)?ls.filter(x=>x!==S.uid):[...ls,S.uid]; await W(()=>sb.from('areas').update({leaders:ls}).eq('id',a.id)).catch(()=>{}); if(ls.includes(S.uid)){S.area=a.id;try{localStorage.setItem('shibutz.area',S.area);}catch(e){} pushPresence(); render();} return; }
   if(d.askdel){ S.clearStep='area-'+d.askdel; render(); return; }
   if(d.delarea){ S.clearStep=0; await W(()=>sb.from('areas').delete().eq('id',d.delarea)).catch(()=>{}); return; }
@@ -1056,6 +1133,9 @@ document.addEventListener('click',async ev=>{
     case 'logout': await sb.auth.signOut(); location.reload(); break;
     case 'changePw': { const v=$('#newPw')?.value||''; if(v.length<8){toast('סיסמה צריכה להיות באורך 8 תווים לפחות',true);break;} const {error}=await sb.auth.updateUser({password:v}); if(error) toast('הסיסמה לא נשמרה: '+error.message,true); else { toast('הסיסמה עודכנה'); $('#newPw').value=''; } break; }
     case 'addLeader': { const email=($('#newEmail')?.value||'').trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('כתובת המייל לא תקינה',true);break;} if(S.leaders.has(email)){toast('הכתובת כבר ברשימה',true);break;} await W(()=>sb.from('leaders').insert({email,name:($('#newName')?.value||'').trim(),role:$('#newRole')?.value||'leader'})).then(()=>toast('נוספה לרשימת המובילות')).catch(()=>{}); break; }
+    case 'settings': S.settingsOpen=true; render(); break;
+    case 'closeSettings': S.settingsOpen=false; S.clearStep=0; render(); break;
+    case 'closeSettingsBg': if(ev.target===t){ S.settingsOpen=false; S.clearStep=0; render(); } break;
     case 'auto': autoSuggest(); break;
     case 'approveAll': { const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); if(ids.length) await approve(ids).catch(()=>{}); break; }
     case 'confirmPending': { const p=S.pending; S.pending=null; await assign(p.eid,p.mid,{status:p.status,override:p.override,force:true}).catch(()=>{}); break; }
@@ -1081,6 +1161,7 @@ document.addEventListener('submit',async ev=>{
   const {error}=await sb.auth.signInWithPassword({email,password});
   if(error) loginScreen(/Invalid login/i.test(error.message)?'המייל או הסיסמה שגויים.':error.message); else location.reload();
 });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&S.settingsOpen){ S.settingsOpen=false; render(); } });
 let qTimer;
 document.addEventListener('input',ev=>{
   const t=ev.target;

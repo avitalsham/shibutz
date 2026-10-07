@@ -413,7 +413,7 @@ function normalizeRows(header, rows){
 const S={
   people:new Map(), leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
   uid:null, readOnly:false, live:false, loaded:{people:false,matches:false},
-  tab:'progress', area:'__all', areaStored:false, sel:null, settingsOpen:false, settingsSec:'areas', progSort:'order',
+  tab:'progress', area:'__all', areaStored:false, sel:null, selRole:null, settingsOpen:false, settingsSec:'areas', progSort:'order',
   listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
   peopleQ:'', peopleRole:'all', pending:null, overrideFor:null, importPreview:null, busy:'', clearStep:0, alertsOpen:{}
 };
@@ -474,6 +474,7 @@ function inScope(p){
   return a===S.area || (p.dept2 && IDX.deptArea.get(p.dept2)===S.area);
 }
 const groupOf=mid=>IDX.byMentor.get(mid)||[];
+function roleFor(p,hint){ if(!p) return null; if(hint==='mentor'&&p.mentor) return 'mentor'; if(hint==='mentee'&&p.mentee) return 'mentee'; if(p.mentee&&!p.mentor) return 'mentee'; if(p.mentor&&!p.mentee) return 'mentor'; if(groupOf(p.id).length&&!S.matches.has(p.id)) return 'mentor'; return p.mentor&&!p.mentee?'mentor':(p.mentee?'mentee':null); }
 function rebuild(){
   IDX.byMentor=new Map();
   for(const [eid,m] of S.matches){ if(!m.mentor) continue; if(!IDX.byMentor.has(m.mentor)) IDX.byMentor.set(m.mentor,[]); IDX.byMentor.get(m.mentor).push(eid); }
@@ -774,16 +775,16 @@ function personItem(p,{showMatch=true}={}){
   if(notesPending(p)) flags.push('<span class="chip warn" title="יש הערות שלא נבדקו">הערות</span>');
   if(p.taFlag&&!A(p.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>');
   if(!isActive(p)) flags.push('<span class="chip hard">לא פעילה</span>');
-  if(p.mentee&&p.mentor) flags.push('<span class="chip">גם וגם</span>');
+  if(p.mentee&&p.mentor) flags.push('<span class="chip">גם חונכת</span>');
   let right='';
   if(showMatch&&p.mentee){ right=m?`<span class="chip mentor${mt.status==='proposed'?' dashed':''}">${esc(fullName(m))}</span>`:'<span class="chip">—</span>'; }
-  return `<button class="item" data-sel="${p.id}" aria-current="${S.sel===p.id}"><span class="nm">${esc(fullName(p))}</span>${right}<span class="sub">${ladder(p,!showMatch)}<span>${esc(p.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+  return `<button class="item" data-sel="${p.id}" data-role="mentee" aria-current="${S.sel===p.id&&S.selRole==='mentee'}"><span class="nm">${esc(fullName(p))}</span>${right}<span class="sub">${ladder(p,!showMatch)}<span>${esc(p.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
 }
 function mentorItem(m){
   const g=groupOf(m.id), cap=capOf(m);
   const dots=Array.from({length:4},(_,i)=>{ if(i>=Math.max(cap,g.length)) return ''; if(i<g.length){ const st=S.matches.get(g[i])?.status; return `<i class="${i>=cap?'x':st==='proposed'?'p':'f'}"></i>`;} return '<i></i>'; }).join('');
-  const flags=[]; if(notesPending(m)) flags.push('<span class="chip warn">הערות</span>'); if(m.taFlag&&!A(m.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>'); if(!isActive(m)) flags.push('<span class="chip hard">לא פעילה</span>');
-  return `<button class="item" data-sel="${m.id}" aria-current="${S.sel===m.id}"><span class="nm">${esc(fullName(m))}</span><span class="dots" title="${g.length} מתוך ${cap}">${dots}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+  const flags=[]; if(notesPending(m)) flags.push('<span class="chip warn">הערות</span>'); if(m.taFlag&&!A(m.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>'); if(!isActive(m)) flags.push('<span class="chip hard">לא פעילה</span>'); if(m.mentee) flags.push('<span class="chip">גם חניכה</span>');
+  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}"><span class="nm">${esc(fullName(m))}</span><span class="dots" title="${g.length} מתוך ${cap}">${dots}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
 }
 function vEmptyPeople(){
   return `<div class="panel empty"><b>עדיין אין נרשמות במערכת</b>ייבאי את קובץ האקסל מטופס הרישום, והחניכות והחונכות יופיעו כאן לכל המובילות.<div style="margin-top:12px"><button class="btn primary" data-tab="data">לייבוא קובץ</button></div></div>`;
@@ -857,8 +858,10 @@ function vDetail(p){
     </div>
   </div>`;
   if(S.pending&&(S.pending.eid===p.id||S.pending.mid===p.id)) h+=`<div class="confirm"><b>שימי לב:</b> ${esc(S.pending.msg)} <button class="btn sm primary" data-act="confirmPending">כן, להחליף</button><button class="btn sm" data-act="cancelPending">ביטול</button></div>`;
-  if(p.mentee) h+=vMenteeBlock(p);
-  if(p.mentor) h+=vMentorBlock(p);
+  const role=roleFor(p,S.selRole);
+  if(p.mentee&&p.mentor) h+=`<div class="panel block row" style="justify-content:space-between"><span>נרשמה גם כחניכה וגם כחונכת. ${role==='mentor'?'מוצגות החניכות שאפשר לצרף אליה.':'מוצגות החונכות שמתאימות לה.'}</span><div class="seg"><button data-srole="mentor" aria-pressed="${role==='mentor'}">כחונכת</button><button data-srole="mentee" aria-pressed="${role==='mentee'}">כחניכה</button></div></div>`;
+  if(role==='mentee') h+=vMenteeBlock(p);
+  if(role==='mentor') h+=vMentorBlock(p);
   return h;
 }
 function vMenteeBlock(e){
@@ -866,7 +869,7 @@ function vMenteeBlock(e){
   let h=`<div class="panel block"><p class="sec-title">החונכת של ${esc(e.first||'')}</p>`;
   if(mt){
     const ev=m?evaluate(e,m,{ignoreCap:true}):{hard:['החונכת לא קיימת'],warn:[],info:[],good:[]};
-    h+=`<div class="current${mt.status==='proposed'?' prop':''}"><div style="flex:1;min-width:0"><b class="link" data-sel="${m?m.id:''}" style="text-decoration:none;cursor:pointer;color:inherit">${esc(fullName(m))}</b> ${m?ladder(m,true):''} <span class="muted">${esc(m?.dept||'')}</span>
+    h+=`<div class="current${mt.status==='proposed'?' prop':''}"><div style="flex:1;min-width:0"><b class="link" data-sel="${m?m.id:''}" data-role="mentor" style="text-decoration:none;cursor:pointer;color:inherit">${esc(fullName(m))}</b> ${m?ladder(m,true):''} <span class="muted">${esc(m?.dept||'')}</span>
       <div class="muted" style="font-size:12px">${mt.status==='proposed'?'הצעה אוטומטית':'שובצה'} ע״י ${esc(leaderName(mt.by))} · ${ago(mt.at)}${mt.override?' · נעקף אילוץ: '+esc(mt.override):''}</div>
       <div class="row" style="margin-top:4px">${chips(ev)}</div></div>
       <div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${e.id}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${e.id}" ${S.readOnly?'disabled':''}>ביטול שיבוץ</button></div></div>`;
@@ -876,12 +879,12 @@ function vMenteeBlock(e){
   const ok=evs.filter(x=>x.ev.ok&&x.m.id!==mt?.mentor).sort((a,b)=>b.ev.score-a.ev.score);
   const bad=evs.filter(x=>!x.ev.ok&&x.m.id!==mt?.mentor&&isActive(x.m)).sort((a,b)=>a.ev.hard.length-b.ev.hard.length||b.ev.score-a.ev.score);
   h+=`<div class="row" style="justify-content:space-between;margin:14px 0 4px"><p class="sec-title" style="margin:0">חונכות מתאימות (${ok.length})</p><div class="seg"><button data-ss="all" aria-pressed="${S.suggScope==='all'}">כל התוכנית</button><button data-ss="area" aria-pressed="${S.suggScope==='area'}">רק מהתחום</button></div></div>`;
-  h+=ok.slice(0,12).map(({m,ev})=>`<div class="sugg"><span class="score" title="ציון התאמה">${ev.score}</span><div class="who"><b data-sel="${m.id}">${esc(fullName(m))}</b> ${ladder(m,true)} <span class="muted">${esc(m.dept||'')} · ${groupOf(m.id).length}/${capOf(m)}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>${mt?'החלפה':'שיבוץ'}</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">לא נמצאה חונכת שעומדת בכל האילוצים הקשיחים. אפשר להרחיב ל"כל התוכנית", לפנות מקום בקבוצה, או לבדוק את הרשימה למטה.</p>';
+  h+=ok.slice(0,12).map(({m,ev})=>`<div class="sugg"><span class="score" title="ציון התאמה">${ev.score}</span><div class="who"><b data-sel="${m.id}" data-role="mentor">${esc(fullName(m))}</b> ${ladder(m,true)} <span class="muted">${esc(m.dept||'')} · ${groupOf(m.id).length}/${capOf(m)}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>${mt?'החלפה':'שיבוץ'}</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">לא נמצאה חונכת שעומדת בכל האילוצים הקשיחים. אפשר להרחיב ל"כל התוכנית", לפנות מקום בקבוצה, או לבדוק את הרשימה למטה.</p>';
   if(ok.length>12) h+=`<p class="muted" style="font-size:12px">מוצגות 12 ההתאמות הטובות ביותר מתוך ${ok.length}.</p>`;
   if(bad.length){
     h+=`<details ${S.overrideFor?'open':''}><summary>לא מתאימות (${bad.length}) — עם הסיבות</summary>`+bad.slice(0,30).map(({m,ev})=>{
       const ov=S.overrideFor===e.id+'|'+m.id;
-      return `<div class="sugg"><span class="score bad">✕</span><div class="who"><b data-sel="${m.id}">${esc(fullName(m))}</b> ${ladder(m,true)} <span class="muted">${esc(m.dept||'')} · ${groupOf(m.id).length}/${capOf(m)}</span></div>${ov?'':`<button class="btn sm" data-override="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>שיבוץ חריג</button>`}<div class="why">${chips(ev)}</div>${ov?`<div style="grid-column:1/-1" class="confirm"><label for="ovr">סיבה לעקיפת האילוץ (תופיע לכל המובילות)</label><input id="ovr" type="text" style="flex:1;min-width:180px" placeholder="למשל: הנתון בטופס שגוי, וידאתי איתה"><button class="btn sm danger" data-act="doOverride" data-pair="${e.id}|${m.id}">שיבוץ למרות האילוץ</button><button class="btn sm" data-act="cancelOverride">ביטול</button></div>`:''}</div>`;}).join('')+`</details>`;
+      return `<div class="sugg"><span class="score bad">✕</span><div class="who"><b data-sel="${m.id}" data-role="mentor">${esc(fullName(m))}</b> ${ladder(m,true)} <span class="muted">${esc(m.dept||'')} · ${groupOf(m.id).length}/${capOf(m)}</span></div>${ov?'':`<button class="btn sm" data-override="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>שיבוץ חריג</button>`}<div class="why">${chips(ev)}</div>${ov?`<div style="grid-column:1/-1" class="confirm"><label for="ovr">סיבה לעקיפת האילוץ (תופיע לכל המובילות)</label><input id="ovr" type="text" style="flex:1;min-width:180px" placeholder="למשל: הנתון בטופס שגוי, וידאתי איתה"><button class="btn sm danger" data-act="doOverride" data-pair="${e.id}|${m.id}">שיבוץ למרות האילוץ</button><button class="btn sm" data-act="cancelOverride">ביטול</button></div>`:''}</div>`;}).join('')+`</details>`;
   }
   return h+'</div>';
 }
@@ -889,11 +892,11 @@ function vMentorBlock(m){
   const g=groupOf(m.id); const cap=capOf(m);
   let h=`<div class="panel block"><p class="sec-title">הקבוצה של ${esc(m.first||'')} · <span class="num">${g.length}/${cap}</span></p>`;
   h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
-    return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
+    return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
   if(g.length<cap&&isActive(m)){
     const cand=[...S.people.values()].filter(e=>e.mentee&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)).map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok).sort((a,b)=>b.ev.score-a.ev.score);
     h+=`<p class="sec-title" style="margin-top:14px">חניכות פנויות שמתאימות לה (${cand.length})</p>`;
-    h+=cand.slice(0,10).map(({e,ev})=>`<div class="sugg"><span class="score">${ev.score}</span><div class="who"><b data-sel="${e.id}">${esc(fullName(e))}</b> ${ladder(e)} <span class="muted">${esc(e.dept||'')}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">אין חניכות פנויות שעומדות באילוצים.</p>';
+    h+=cand.slice(0,10).map(({e,ev})=>`<div class="sugg"><span class="score">${ev.score}</span><div class="who"><b data-sel="${e.id}" data-role="mentee">${esc(fullName(e))}</b> ${ladder(e)} <span class="muted">${esc(e.dept||'')}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">אין חניכות פנויות שעומדות באילוצים.</p>';
   }
   return h+'</div>';
 }
@@ -912,8 +915,8 @@ function vGroups(){
   h+=`<div class="groups">`+mentors.map(m=>{
     const g=groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
     const bad=evs.some(x=>x.ev.hard.length&&!x.mt.override)||g.length>capOf(m);
-    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" style="cursor:pointer">${esc(fullName(m))}</b><div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div>${mentorItemDots(m)}</div>
-      ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
+    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b><div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div>${mentorItemDots(m)}</div>
+      ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}" data-role="mentee">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
     </div>`;}).join('')+`</div>`;
   if(!mentors.length) h+=`<div class="panel empty"><b>אין עדיין קבוצות בתחום</b>שבצי בלוח השיבוץ, או השתמשי ב"הצעת שיבוץ אוטומטית".</div>`;
   return h;
@@ -927,7 +930,8 @@ function vAlerts(){
     const open=S.alertsOpen[a.key]; const items=open?a.items:a.items.slice(0,8);
     return `<div class="panel acard"><h3><span class="sev ${a.sev}"></span>${esc(a.title)} <span class="badge ${a.sev==='hard'?'':'soft'}">${a.items.length}</span></h3>${a.hint?`<p class="muted" style="margin:0 0 6px">${esc(a.hint)}</p>`:''}<ul>${items.map(it=>{
       const pid=it.e||it.p; const p=P(pid);
-      return `<li><button class="link" data-goto="${esc(pid)}">${esc(fullName(p))}</button>${it.m?` ← <button class="link" data-goto="${esc(it.m)}">${esc(fullName(P(it.m)))}</button>`:''}${(it.others||[]).map(o=>` · <button class="link" data-goto="${esc(o)}">${esc(P(o)?.email||'')}</button>`).join('')}<span class="muted">${esc(it.text||'')}</span></li>`;}).join('')}</ul>${a.items.length>8?`<button class="link" data-aopen="${a.key}" style="margin-top:6px">${open?'פחות':'הצגת כל '+a.items.length}</button>`:''}</div>`;}).join('')+`</div>`;
+      const r1=(a.key==='idle'||a.key==='over')?'mentor':(it.e?'mentee':'');
+      return `<li><button class="link" data-goto="${esc(pid)}" data-role="${r1}">${esc(fullName(p))}</button>${it.m?` ← <button class="link" data-goto="${esc(it.m)}" data-role="mentor">${esc(fullName(P(it.m)))}</button>`:''}${(it.others||[]).map(o=>` · <button class="link" data-goto="${esc(o)}">${esc(P(o)?.email||'')}</button>`).join('')}<span class="muted">${esc(it.text||'')}</span></li>`;}).join('')}</ul>${a.items.length>8?`<button class="link" data-aopen="${a.key}" style="margin-top:6px">${open?'פחות':'הצגת כל '+a.items.length}</button>`:''}</div>`;}).join('')+`</div>`;
 }
 function vPeople(){
   if(!S.people.size) return vEmptyPeople();
@@ -1106,8 +1110,9 @@ document.addEventListener('click',async ev=>{
   const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto],[data-act]'); if(!t) return;
   const d=t.dataset;
   if(d.tab){ S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
-  if(d.sel!==undefined&&d.sel){ S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
-  if(d.goto){ S.sel=d.goto; S.tab='board'; S.listMode='all'; pushPresence(); render(); window.scrollTo(0,0); return; }
+  if(d.srole){ S.selRole=d.srole; S.pending=null; S.overrideFor=null; render(); return; }
+  if(d.sel!==undefined&&d.sel){ S.selRole=roleFor(P(d.sel),d.role); S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(d.goto){ S.selRole=roleFor(P(d.goto),d.role); S.sel=d.goto; S.tab='board'; S.listMode='all'; pushPresence(); render(); window.scrollTo(0,0); return; }
   if(d.lm){ S.listMode=d.lm; render(); return; }
   if(d.ms){ S.mentorScope=d.ms; render(); return; }
   if(d.ss){ S.suggScope=d.ss; render(); return; }

@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>שיבוץ מדויקות</title>
+<meta name="description" content="מערכת שיבוץ משותפת לחניכות ולחונכות בתוכנית מדויקות">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Suez+One&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky header + tabs; matching board = three columns (mentees · decision · mentors), stacks on narrow screens */
+:root{
+  --bg:#EEF2F1; --surface:#FFFFFF; --sunk:#F6F8F7; --ink:#13201E; --muted:#5A6A67; --line:#D6DEDC;
+  --accent:#0B6E63; --accent-ink:#FFFFFF; --accent-soft:#DDEFEB;
+  --mentor:#9A4A1C; --mentor-soft:#F6E7DC;
+  --hard:#B42318; --hard-soft:#FDE8E6; --warn:#A15C07; --warn-soft:#FDF1DC; --ok:#1E7B45; --ok-soft:#E1F3E8; --info:#475467; --info-soft:#EEF0F3;
+  --f-body:"IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
+  --f-display:"Suez One", "IBM Plex Sans Hebrew", Georgia, serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
+  --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
+  --mentor:#E59C6C; --mentor-soft:#3A2618;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
+  --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
+  --mentor:#E59C6C; --mentor-soft:#3A2618;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+[hidden]{display:none!important}
+#app{direction:rtl;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:10px 16px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-inline-end:auto}
+.brand h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;letter-spacing:.2px}
+.brand small{color:var(--muted)}
+.area-pick{display:flex;align-items:center;gap:8px}
+.area-pick label{color:var(--muted);font-size:13px}
+select,input[type=text],input[type=search],textarea{background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+textarea{width:100%;min-height:60px;resize:vertical}
+.peers{display:flex;align-items:center;gap:4px}
+.peers .av{width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);margin-inline-start:-8px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600}
+.me{display:flex;align-items:center;gap:8px;font-size:13px}
+.login{max-width:420px;margin:40px auto;padding:24px;display:flex;flex-direction:column;gap:12px}
+.login input{width:100%}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.peers span{color:var(--muted);font-size:12px;margin-inline-start:6px}
+.sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block}
+.sync.live i{background:var(--ok)}
+nav.tabs{display:flex;gap:2px;padding:0 10px;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:9px 12px;color:var(--muted);font-weight:500;white-space:nowrap}
+nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--hard);color:#fff;font-size:11px;line-height:18px;text-align:center;margin-inline-start:6px;font-family:var(--f-mono)}
+.badge.soft{background:var(--line);color:var(--ink)}
+
+main{padding-block:16px 60px;padding-inline:16px;max-width:1560px;margin:0 auto}
+.banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 14px;border-radius:var(--r);margin-bottom:14px;background:var(--info-soft);color:var(--ink)}
+.banner.warn{background:var(--warn-soft)}
+.banner b{font-weight:600}
+
+/* generic */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--hard);border-color:var(--hard)}
+.btn.sm{padding:3px 9px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.link{background:none;border:0;color:var(--accent);padding:0;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.muted{color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font-size:12px;line-height:20px;background:var(--info-soft);color:var(--info);white-space:nowrap}
+.chip.hard{background:var(--hard-soft);color:var(--hard)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.mentee{background:var(--accent-soft);color:var(--accent)}
+.chip.mentor{background:var(--mentor-soft);color:var(--mentor)}
+.chip.dashed{background:transparent;border:1px dashed currentColor}
+.sec-title{font-size:12px;letter-spacing:.6px;color:var(--muted);font-weight:600;margin:0 0 8px}
+h2{font-size:18px;margin:0 0 4px;text-wrap:balance}
+h3{font-size:15px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+
+/* stage ladder */
+.ladder{display:inline-flex;gap:2px;vertical-align:middle;direction:rtl}
+.ladder s{display:block;width:7px;height:12px;border-radius:2px;background:var(--line);text-decoration:none}
+.ladder s.on{background:var(--accent)}
+.ladder.m s.on{background:var(--mentor)}
+.stage{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+
+/* board */
+.board{display:grid;grid-template-columns:minmax(250px,1fr) minmax(0,1.7fr) minmax(250px,1fr);gap:14px;align-items:start}
+.col{min-width:0;display:flex;flex-direction:column;max-height:calc(100vh - 150px);position:sticky;top:120px}
+.col-head{padding:12px 12px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.col-head .row input{flex:1;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:3px 9px;font-size:12px;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.list{overflow-y:auto;flex:1}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-inline:0;border-top:0;width:100%;text-align:right}
+.item:hover{background:var(--sunk)}
+.item[aria-current=true]{background:var(--accent-soft)}
+.item .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .sub{grid-column:1/-1;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.dots{display:inline-flex;gap:3px;direction:ltr}
+.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--mentor);display:block}
+.dots i.f{background:var(--mentor)}
+.dots i.p{background:repeating-linear-gradient(45deg,var(--mentor) 0 2px,transparent 2px 4px)}
+.dots i.x{border-color:var(--hard);background:var(--hard)}
+.center{min-width:0}
+.card{padding:16px}
+.pname{font-size:22px;font-weight:700;margin:0}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 16px;margin:12px 0}
+.facts div{min-width:0}
+.facts dt{font-size:11px;color:var(--muted);letter-spacing:.3px}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.notes{background:var(--warn-soft);border-radius:6px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.notes mark{background:transparent;color:var(--hard);font-weight:600}
+.notes.done{background:var(--sunk)}
+.ann{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.ann label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.toggle-chips{display:flex;gap:4px}
+.toggle-chips button{border:1px solid var(--line);background:var(--surface);border-radius:6px;min-width:34px;padding:3px 6px}
+.toggle-chips button[aria-pressed=true]{background:var(--hard-soft);border-color:var(--hard);color:var(--hard);font-weight:600}
+.block{margin-top:14px;padding:14px 16px}
+.sugg{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.sugg:first-of-type{border-top:0}
+.score{width:44px;text-align:center;font-family:var(--f-mono);font-size:15px;font-weight:500;border-radius:6px;padding:4px 0;background:var(--accent-soft);color:var(--accent)}
+.score.bad{background:var(--hard-soft);color:var(--hard)}
+.sugg .who{min-width:0}
+.sugg .who b{cursor:pointer}
+.sugg .why{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:4px}
+.current{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px;border-radius:6px;background:var(--mentor-soft)}
+.current.prop{background:transparent;border:1.5px dashed var(--mentor)}
+.confirm{margin-top:10px;padding:10px 12px;border-radius:6px;background:var(--warn-soft);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.watchers{font-size:12px;color:var(--warn);font-weight:500}
+details>summary{cursor:pointer;color:var(--muted);padding:8px 0}
+
+/* groups */
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.stat{padding:10px 14px;min-width:130px}
+.stat b{display:block;font-family:var(--f-mono);font-size:22px;font-weight:500}
+.stat span{font-size:12px;color:var(--muted)}
+.groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.gcard{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.gcard.bad{border-color:var(--hard)}
+.ghead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.gm{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;background:var(--sunk)}
+.gm.prop{background:transparent;border:1px dashed var(--line)}
+.gm .l{min-width:0}
+.gm .l b{cursor:pointer}
+
+/* alerts */
+.alerts{display:grid;gap:12px}
+.acard{padding:12px 16px}
+.acard h3{display:flex;align-items:center;gap:8px}
+.acard ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.acard li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.sev{width:10px;height:10px;border-radius:2px;display:inline-block}
+.sev.hard{background:var(--hard)}.sev.warn{background:var(--warn)}.sev.info{background:var(--info)}.sev.ok{background:var(--ok)}
+
+/* table */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--surface)}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--sunk)}
+
+/* areas */
+.areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.acard2{padding:14px;display:flex;flex-direction:column;gap:10px}
+.dchips{display:flex;flex-wrap:wrap;gap:4px}
+.dchips button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:1px 9px;font-size:12px}
+.dchips button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dchips button.taken{opacity:.5}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start}
+.log{list-style:none;margin:0;padding:0;max-height:420px;overflow-y:auto}
+.log li{padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:22px;text-align:center}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+
+#toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));inset-inline-start:16px;z-index:50;display:flex;flex-direction:column;gap:6px;direction:rtl}
+#toast div{background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.18);max-width:360px}
+#toast div.err{background:var(--hard);color:#fff}
+
+@media (max-width:1100px){
+  .board{grid-template-columns:1fr 1fr}
+  .center{grid-column:1/-1;order:-1}
+  .col{position:static;max-height:460px}
+}
+@media (max-width:640px){
+  .board{grid-template-columns:1fr}
+  .brand h1{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <div class="top-row">
+      <div class="brand"><h1>מדויקות · שיבוץ</h1><small id="season"></small></div>
+      <div class="area-pick"><label for="areaSel">התחום שלי</label><select id="areaSel"></select></div>
+      <div class="peers" id="peers"></div>
+      <div class="sync" id="sync"><i></i><span>מתחבר…</span></div>
+      <div class="me" id="me"></div>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+  </header>
+  <main id="main"><div class="empty"><b>טוען את נתוני השיבוץ…</b>הרשימות יופיעו כאן מיד.</div></main>
+  <div id="toast" aria-live="polite"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+/*NORM-START*/
+const HEB_YEAR={1:'א',2:'ב',3:'ג',4:'ד+'};
+const DEPT_SCHOOL={
+  'מדעי המחשב':'exact','פיזיקה':'exact','כימיה':'exact','מתמטיקה':'exact','סטטיסטיקה וחקר ביצועים':'exact','גאופיזיקה':'exact','לימודי סביבה':'exact',
+  'הנדסת חשמל':'eng','הנדסה ביו-רפואית':'eng','הנדסת תעשייה וניהול':'eng','הנדסה מכנית':'eng','הנדסת חומרים':'eng','מדעים דיגיטליים להייטק':'eng'
+};
+const DEPT_KW={
+  'מדעי המחשב':['מדעי המחשב','מדמח','מדמ"ח','מחשב'],'פיזיקה':['פיזיק','פיסיק'],'כימיה':['כימי'],'מתמטיקה':['מתמטי'],
+  'סטטיסטיקה וחקר ביצועים':['סטטיס','חקר ביצועים'],'גאופיזיקה':['גאופיז','כדור הארץ'],'לימודי סביבה':['סביבה'],
+  'הנדסת חשמל':['חשמל'],'הנדסה ביו-רפואית':['ביו רפו','ביורפו','ביו-רפו'],'הנדסת תעשייה וניהול':['תעשי'],'הנדסה מכנית':['מכני'],
+  'הנדסת חומרים':['חומרים'],'מדעים דיגיטליים להייטק':['דיגיט','להייטק']
+};
+function deptFromText(t){
+  if(!t) return '';
+  t=String(t);
+  for(const [d,kws] of Object.entries(DEPT_KW)){ if(kws.some(k=>t.includes(k))) return d; }
+  return '';
+}
+function normDept(raw){
+  if(!raw) return '';
+  const s=String(raw).trim();
+  if(s.startsWith('הנדסת חשמל')) return 'הנדסת חשמל';
+  if(s.includes('החוג למתמטיקה')) return 'מתמטיקה';
+  if(s.includes('סטטיסטיקה')) return 'סטטיסטיקה וחקר ביצועים';
+  if(s.includes('גאופיזיקה')) return 'גאופיזיקה';
+  if(s.includes('לימודי סביבה')) return 'לימודי סביבה';
+  if(s.startsWith('מדעים דיגיטל')) return 'מדעים דיגיטליים להייטק';
+  if(s.startsWith('הנדסת תעשי')) return 'הנדסת תעשייה וניהול';
+  if(s.startsWith('הנדסה ביו')) return 'הנדסה ביו-רפואית';
+  return s;
+}
+const COLS={
+  ts:['submission time'],last:['שם משפחה'],first:['שם פרטי'],email:['אימייל','מייל'],phone:['מספר טלפון','טלפון'],
+  stage:['באיזה שלב בתואר'],work:['עבודה מחוץ לאוניברסיטה'],role:['אני רוצה להיות'],prev:['האם השתתפת בשנה שעברה'],
+  program:['אודיסאה או עתודה'],year:['שנת לימודים'],faculty:['פקולטה'],deptExact:['בי"ס (מדויקים)'],deptEng:['בי"ס (הנדסה)'],
+  track:['מסלול מחקר'],wantMentor:['בי"ס חונכת'],wantMentorSpec:['בי"ס חונכת ספציפי'],okMale:['תרגישי בנוח עם חונך'],
+  combinedOther:['מסלול לימודים משולב - אחר'],extraExact:['חוג נוסף (מדויקים)'],combined:['מסלול לימודים אחר (משולב)'],
+  mentorWithMale:['לחנוך עם חונך'],thesis:['מסלול (תזה או ללא תזה)'],wantMentees:['בי"ס חניכות'],wantMenteesSpec:['בי"ס חניכות ספציפי'],
+  baWhere:['תואר ראשון היכן'],baWhat:['תואר ראשון במה'],maWhere:['תואר שני היכן'],maWhat:['תואר שני במה'],
+  phdWhere:['תואר שלישי היכן'],phdWhat:['תואר שלישי במה'],notes:['הערות'],gift:['מתנה']
+};
+function mapHeader(header){
+  const H=header.map(h=>String(h==null?'':h).trim());
+  const used=new Set(), idx={};
+  // exact matches first, then "starts with", then "includes"
+  for(const pass of ['eq','starts','inc']){
+    for(const [k,names] of Object.entries(COLS)){
+      if(idx[k]!=null) continue;
+      for(const n of names){
+        const i=H.findIndex((h,j)=>!used.has(j)&&(pass==='eq'?h===n:pass==='starts'?h.startsWith(n):h.includes(n)));
+        if(i>=0){idx[k]=i;used.add(i);break;}
+      }
+    }
+  }
+  return idx;
+}
+function fnv(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return h.toString(36);}
+function clean(v){ if(v==null) return ''; const s=String(v).trim(); return s; }
+function phoneStr(v){
+  if(v==null||v==='') return '';
+  let s=typeof v==='number'?String(Math.round(v)):String(v).replace(/[^\d+]/g,'');
+  if(/^\d{9}$/.test(s)) s='0'+s;
+  return s;
+}
+const TA_RE=/מתרגל|מדריכ[הת]\s*(?:ה)?מעבד|בודק[ת]?\s*תרגיל|עוזר[ת]?\s*הוראה|\bTA\b/;
+function parseTaYears(t){
+  const ys=new Set(); if(!t||!TA_RE.test(t)) return [];
+  const L={'א':1,'ב':2,'ג':3,'ד':4};
+  for(const m of t.matchAll(/(?:שנה|שנים|שנת|שנתון|לשנה|שנתונים)\s*([א-ד])['׳"]?(?:\s*[-–]\s*([א-ד])['׳"]?)?(?![א-ת])/g)){
+    const a=L[m[1]], b=m[2]?L[m[2]]:a; for(let i=Math.min(a,b);i<=Math.max(a,b);i++) ys.add(i);
+  }
+  const O={'ראשונה':1,'הראשונה':1,'שנייה':2,'שניה':2,'השנייה':2,'השניה':2,'שלישית':3,'השלישית':3,'רביעית':4,'הרביעית':4};
+  for(const m of t.matchAll(/(?:מתרגל\S*|סטודנט\S*|תרגול)[^.\n]{0,25}?שנה\s+(ה?(?:ראשונה|שנייה|שניה|שלישית|רביעית))/g)){ ys.add(O[m[1]]); }
+  return [...ys].sort();
+}
+function buildPerson(g){
+  const first=clean(g('first')), last=clean(g('last')), email=clean(g('email')).toLowerCase();
+  if(!first&&!last&&!email) return null;
+  const stageLabel=clean(g('stage'));
+  const yRaw=clean(g('year'));
+  const year={'שנה א':1,'שנה ב':2,'שנה ג':3,'שנה ד ומעלה':4,'שנה ד':4}[yRaw]||null;
+  let rank=null;
+  if(stageLabel==='תואר ראשון') rank=year?10+year:null;
+  else if(stageLabel==='תואר שני') rank=20; else if(stageLabel==='תואר שלישי') rank=30;
+  else if(stageLabel==='פוסט דוקטורט') rank=40; else if(stageLabel==='חברת סגל') rank=50;
+  const roleRaw=clean(g('role'));
+  const fac=clean(g('faculty'));
+  let school=fac==='מדעים מדויקים'?'exact':fac==='הנדסה'?'eng':fac.includes('משולב')?'both':fac==='ניהול'?'mgmt':'';
+  let dept='',dept2='';
+  const combined=clean(g('combined')), combinedOther=clean(g('combinedOther'));
+  if(g('deptExact')) dept=normDept(g('deptExact'));
+  else if(g('deptEng')) dept=normDept(g('deptEng'));
+  if(combined){
+    const C={'הנדסת חשמל ופיזיקה':['הנדסת חשמל','פיזיקה'],'הנדסת מחשבים - הנדסת חשמל ומדעי המחשב':['הנדסת חשמל','מדעי המחשב'],
+      'כימיה והנדסת חומרים':['הנדסת חומרים','כימיה'],'הנדסה מכנית ומדעי כדור הארץ':['הנדסה מכנית','גאופיזיקה']}[combined];
+    if(C){ if(!dept) dept=C[0]; dept2=C[0]===dept?C[1]:C[0]; }
+    else if(combinedOther){ const d=deptFromText(combinedOther); if(!dept) dept=d||'משולב – אחר'; else if(d&&d!==dept) dept2=d; }
+  }
+  const extra=clean(g('extraExact'));
+  if(extra&&!dept2){ const d=deptFromText(extra); if(d&&d!==dept) dept2=d; }
+  if(school==='both'&&dept&&dept2&&DEPT_SCHOOL[dept]&&DEPT_SCHOOL[dept]===DEPT_SCHOOL[dept2]) school=DEPT_SCHOOL[dept];
+  if(!school&&dept&&DEPT_SCHOOL[dept]) school=DEPT_SCHOOL[dept];
+  const wm=clean(g('wantMentor')), wn=clean(g('wantMentees'));
+  const pref=v=>v.startsWith('בית הספר שלי')?'mine':v.startsWith('לא משנה')?'any':v.startsWith('בית ספר')?'specific':'';
+  const prog=clean(g('program'));
+  const notes=clean(g('notes'));
+  const deg=[];
+  const dg=(lbl,w,h)=>{const a=clean(g(w)),b=clean(g(h)); if(a||b) deg.push(lbl+': '+[b,a].filter(Boolean).join(' · '));};
+  dg('ראשון','baWhere','baWhat'); dg('שני','maWhere','maWhat'); dg('שלישי','phdWhere','phdWhat');
+  const key=email||(first+' '+last);
+  return {
+    id:'p'+fnv(key), first, last, email, phone:phoneStr(g('phone')), ts:clean(g('ts')),
+    stageLabel, year, rank, mentee:roleRaw.includes('חניכה'), mentor:roleRaw.includes('חונכת'),
+    faculty:fac, school, dept, dept2, deptRaw:clean(g('deptExact')||g('deptEng')), combined:[combined,combinedOther].filter(Boolean).join(' · '),
+    extra, track:clean(g('track')), thesis:clean(g('thesis')),
+    wantMentor:pref(wm), wantMentorSpec:clean(g('wantMentorSpec')), wantMentees:pref(wn), wantMenteesSpec:clean(g('wantMenteesSpec')),
+    okMale:clean(g('okMale')), mentorWithMale:clean(g('mentorWithMale')),
+    program:prog.includes('אודיס')?'אודיסאה':prog.includes('עתודה')?'עתודה':'',
+    prev:clean(g('prev')), work:clean(g('work')), degrees:deg.join('\n'), notes,
+    taAuto:parseTaYears(notes), taFlag:TA_RE.test(notes), gift:!!g('gift'), dups:1
+  };
+}
+function normalizeRows(header, rows){
+  const idx=mapHeader(header);
+  const out=new Map(); let skipped=0, dupRows=0;
+  for(const r of rows){
+    const g=k=>{const i=idx[k]; if(i==null) return null; const v=r[i]; return (v===''||v==null)?null:v;};
+    const p=buildPerson(g);
+    if(!p){skipped++;continue;}
+    const prev=out.get(p.id);
+    if(prev){ dupRows++; const keep=(p.ts||'')>(prev.ts||'')?p:prev; keep.dups=prev.dups+1; out.set(p.id,keep); }
+    else out.set(p.id,p);
+  }
+  const missing=Object.keys(COLS).filter(k=>idx[k]==null);
+  return {people:[...out.values()], skipped, dupRows, missing};
+}
+/*NORM-END*/
+
+/* ================= state ================= */
+const S={
+  people:new Map(), leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
+  uid:null, readOnly:false, live:false, loaded:{people:false,matches:false},
+  tab:'board', area:'__all', sel:null,
+  listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
+  peopleQ:'', peopleRole:'all', pending:null, overrideFor:null, importPreview:null, busy:'', clearStep:0, alertsOpen:{}
+};
+const IDX={byMentor:new Map(), dupNames:new Map(), deptArea:new Map()};
+let sb=null, chan=null; const downloads=true;
+const room={peers(){ const st=chan?chan.presenceState():{}; return Object.entries(st).map(([k,arr])=>({by:k,isMe:k===S.uid,kind:'viewer',presence:arr[arr.length-1]||{}})); }};
+try{ const a=localStorage.getItem('shibutz.area'); if(a) S.area=a; const t=localStorage.getItem('shibutz.tab'); if(t) S.tab=t; }catch(e){}
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function toast(msg,err){const d=document.createElement('div');d.textContent=msg;if(err)d.className='err';$('#toast').appendChild(d);setTimeout(()=>d.remove(),err?6000:3200);}
+async function W(fn){
+  for(let i=0;i<4;i++){
+    try{ const r=await fn(); if(r&&r.error) throw r.error; return r&&('data' in r)?r.data:r; }
+    catch(e){
+      const transient=(e instanceof TypeError)||/fetch|network|timeout/i.test(e&&e.message||'');
+      if(transient&&i<3){await sleep(600*(i+1)+Math.random()*400);continue;}
+      toast(errText(e),true); throw e;
+    }
+  }
+}
+function errText(e){
+  const m=(e&&(e.message||e.details))||'';
+  if(/GROUP_FULL/.test(m)) return 'הקבוצה כבר מלאה. אי אפשר לשבץ אליה עוד חניכה.';
+  if(/row-level security|NOT_ALLOWED|permission denied|42501/.test(m+(e&&e.code||''))) return 'אין לך הרשאה לפעולה הזאת. פני למנהלת המערכת.';
+  if(/JWT|expired/i.test(m)) return 'פג תוקף ההתחברות. רענני את העמוד והתחברי שוב.';
+  if(e instanceof TypeError) return 'אין חיבור לשרת. בדקי את החיבור לאינטרנט ונסי שוב.';
+  return 'הפעולה לא נשמרה: '+m;
+}
+
+/* ================= derived ================= */
+const P=id=>S.people.get(id);
+const A=id=>S.ann.get(id)||{};
+const fullName=p=>p?((p.first||'')+' '+(p.last||'')).trim()||p.email||'ללא שם':'נרשמת שנמחקה';
+const isActive=p=>p&&A(p.id).status!=='withdrawn';
+const capOf=p=>Math.min(4,Math.max(1,Number(A(p.id).capacity)||4));
+const deptsOf=p=>[p.dept,p.dept2].filter(Boolean);
+const sameDept=(a,b)=>{const B=deptsOf(b);return deptsOf(a).some(x=>B.includes(x));};
+const schoolsOf=p=>p.school==='both'?['exact','eng']:p.school?[p.school]:[];
+const SCHOOL_NAME={exact:'מדעים מדויקים',eng:'הנדסה',both:'משולב',mgmt:'ניהול'};
+function stageShort(p){
+  if(!p) return '';
+  if(p.stageLabel==='תואר ראשון') return p.year?'שנה '+HEB_YEAR[p.year]:'תואר ראשון';
+  return {'תואר שני':'תואר שני','תואר שלישי':'דוקטורט','פוסט דוקטורט':'פוסט־דוק','חברת סגל':'סגל'}[p.stageLabel]||'שלב לא ידוע';
+}
+function ladder(p,m){
+  const steps=[11,12,13,14,20,30,40,50]; const r=p.rank||0;
+  return `<span class="stage" title="${esc(stageShort(p))}"><span class="ladder${m?' m':''}">${steps.map(s=>`<s class="${r>=s?'on':''}"></s>`).join('')}</span>${esc(stageShort(p))}</span>`;
+}
+function taOf(p){const a=A(p.id); if(a.taSet) return {years:a.ta||[],confirmed:true}; return {years:p.taAuto||[],confirmed:false};}
+const notesPending=p=>p.notes&&!A(p.id).notesOk;
+const areaOfPerson=p=>p?(IDX.deptArea.get(p.dept)||IDX.deptArea.get(p.dept2)||null):null;
+function inScope(p){
+  if(S.area==='__all') return true;
+  const a=areaOfPerson(p);
+  if(S.area==='__none') return !a;
+  return a===S.area || (p.dept2 && IDX.deptArea.get(p.dept2)===S.area);
+}
+const groupOf=mid=>IDX.byMentor.get(mid)||[];
+function rebuild(){
+  IDX.byMentor=new Map();
+  for(const [eid,m] of S.matches){ if(!m.mentor) continue; if(!IDX.byMentor.has(m.mentor)) IDX.byMentor.set(m.mentor,[]); IDX.byMentor.get(m.mentor).push(eid); }
+  IDX.deptArea=new Map();
+  const areas=[...S.areas.values()].sort((a,b)=>(a.order||0)-(b.order||0));
+  for(const a of areas) for(const d of (a.depts||[])) if(!IDX.deptArea.has(d)) IDX.deptArea.set(d,a.id);
+  IDX.dupNames=new Map();
+  const byName=new Map();
+  for(const p of S.people.values()){ const k=(p.first+' '+p.last).replace(/\s+/g,' ').trim(); if(!k) continue; if(!byName.has(k)) byName.set(k,[]); byName.get(k).push(p.id); }
+  for(const [k,ids] of byName) if(ids.length>1) IDX.dupNames.set(k,ids);
+}
+function knownDepts(){ const s=new Set(); for(const p of S.people.values()){ if(p.dept) s.add(p.dept); if(p.dept2) s.add(p.dept2);} return [...s].sort((a,b)=>a.localeCompare(b,'he')); }
+function textMatchesDept(t,p){ if(!t) return false; return deptsOf(p).some(d=>(DEPT_KW[d]||[d]).some(k=>t.includes(k))); }
+function tokens(s){return new Set(String(s||'').replace(/[,.()\-\/]/g,' ').split(/\s+/).filter(w=>w.length>2&&!['של','עם','וגם','בעיקר'].includes(w)));}
+
+/* ================= constraints ================= */
+function evaluate(e,m,opts={}){
+  const hard=[],warn=[],info=[],good=[]; let score=50;
+  if(!e||!m) return {hard:['נרשמת חסרה'],warn,info,good,score:0,ok:false};
+  if(e.id===m.id) hard.push('אותה נרשמת');
+  if(!m.mentor) hard.push('לא נרשמה כחונכת');
+  if(!e.mentee) hard.push('לא נרשמה כחניכה');
+  if(!isActive(m)) hard.push('החונכת סומנה כלא פעילה');
+  if(!isActive(e)) hard.push('החניכה סומנה כלא פעילה');
+  if(e.rank==null||m.rank==null) warn.push('שלב אקדמי חסר בטופס');
+  else if(m.rank<=e.rank) hard.push(`החונכת (${stageShort(m)}) לא בשלב מתקדם מהחניכה (${stageShort(e)})`);
+  else if(m.rank<20&&m.rank-e.rank===1){score-=4;info.push('פער של שנה אחת בלבד');}
+  const S1=schoolsOf(e),S2=schoolsOf(m);
+  if(!S1.length||!S2.length) warn.push('בית ספר חסר בטופס');
+  else if(!S1.some(s=>S2.includes(s))) hard.push(`בית ספר שונה (${SCHOOL_NAME[e.school]} / ${SCHOOL_NAME[m.school]})`);
+  const sd=sameDept(e,m);
+  const ta=taOf(m);
+  if(e.year&&ta.years.includes(e.year)&&(sd||!m.dept)){
+    if(ta.confirmed) hard.push(`החונכת מתרגלת את שנה ${HEB_YEAR[e.year]}`);
+    else {warn.push(`ייתכן שמתרגלת שנה ${HEB_YEAR[e.year]} — לאמת בהערות`);score-=10;}
+  }
+  if(S.matches.get(m.id)?.mentor===e.id) hard.push('החניכה היא החונכת שלה (שיבוץ הפוך)');
+  const load=opts.loadOf?opts.loadOf(m.id):groupOf(m.id).filter(x=>x!==e.id).length;
+  const cap=capOf(m);
+  if(!opts.ignoreCap&&load>=cap) hard.push(`הקבוצה מלאה (${load}/${cap})`);
+  if(sd){score+=30;good.push('אותה מחלקה');}
+  else{
+    const grad=e.rank!=null&&e.rank>=20;
+    let pen=grad?6:24; if(e.wantMentor==='any') pen=Math.round(pen/2);
+    score-=pen;
+    if(grad) info.push('מחלקה שונה (גמיש בתארים מתקדמים)');
+    else if(e.wantMentor==='any') info.push('מחלקה שונה (לחניכה לא משנה)');
+    else warn.push('מחלקה שונה');
+  }
+  if(e.wantMentor==='specific'&&e.wantMentorSpec){
+    if(textMatchesDept(e.wantMentorSpec,m)){score+=18;good.push('תואם בקשת החניכה');}
+    else if(!sd) warn.push('החניכה ביקשה: '+e.wantMentorSpec.slice(0,40));
+  }
+  if(m.wantMentees==='mine'&&!sd){score-=8;warn.push('החונכת ביקשה חניכות מבית הספר שלה');}
+  if(m.wantMentees==='specific'&&m.wantMenteesSpec){ if(textMatchesDept(m.wantMenteesSpec,e)){score+=10;good.push('תואם בקשת החונכת');} }
+  const t1=tokens(e.track),t2=tokens(m.track+' '+m.dept2); if([...t1].some(w=>t2.has(w))){score+=8;good.push('תחום מחקר דומה');}
+  if(e.program&&e.program===m.program){score+=6;good.push('שתיהן ב'+e.program);}
+  else if(e.program==='אודיסאה'&&/אודיס/.test(m.notes||'')){score+=6;good.push('החונכת ביקשה חניכות מאודיסאה');}
+  if(load===0){score+=6;good.push('עדיין בלי חניכות');} else score-=3*load;
+  if(notesPending(e)||notesPending(m)) info.push('יש הערות שלא נבדקו');
+  return {hard,warn,info,good,score:Math.max(0,Math.min(99,score)),ok:!hard.length};
+}
+
+/* ================= alerts ================= */
+function computeAlerts(){
+  const scoped=[...S.people.values()].filter(inScope);
+  const al=[];
+  const add=(key,sev,title,items,hint)=>al.push({key,sev,title,items,hint});
+  const viol=[], prop=[], dangling=[], notesInGroups=new Set();
+  for(const [eid,mt] of S.matches){
+    const e=P(eid), m=P(mt.mentor);
+    if(!e||!m){dangling.push({e:eid,m:mt.mentor,text:'שיבוץ לנרשמת שכבר לא קיימת בנתונים'});continue;}
+    if(!inScope(e)&&!inScope(m)) continue;
+    const ev=evaluate(e,m,{ignoreCap:true});
+    if(ev.hard.length&&!mt.override) viol.push({e:eid,m:mt.mentor,text:ev.hard.join(' · ')});
+    if(mt.status==='proposed') prop.push({e:eid,m:mt.mentor,text:'הצעה שממתינה לאישור'});
+    if(notesPending(e)) notesInGroups.add(eid); if(notesPending(m)) notesInGroups.add(m.id);
+  }
+  const over=[];
+  for(const [mid,list] of IDX.byMentor){ const m=P(mid); if(!m||!inScope(m)) continue; if(list.length>capOf(m)) over.push({p:mid,text:`${list.length} חניכות, המקסימום ${capOf(m)}`}); }
+  add('viol','hard','שיבוצים שמפרים אילוץ קשיח',viol,'לחצי על שם כדי לפתוח ולתקן.');
+  add('over','hard','קבוצות מעל 4 חניכות',over,'יכול לקרות כששתי מובילות שיבצו באותו רגע.');
+  add('dangling','hard','שיבוצים לנרשמות שנמחקו',dangling);
+  const unassigned=scoped.filter(p=>p.mentee&&isActive(p)&&!S.matches.has(p.id)).map(p=>({p:p.id,text:stageShort(p)+' · '+(p.dept||'ללא מחלקה')}));
+  add('unassigned','warn','חניכות בלי חונכת',unassigned);
+  const idle=scoped.filter(p=>p.mentor&&isActive(p)&&!groupOf(p.id).length).map(p=>({p:p.id,text:stageShort(p)+' · '+(p.dept||'ללא מחלקה')+(p.mentee?' · נרשמה גם כחניכה':'')}));
+  add('idle','warn','חונכות בלי חניכות',idle);
+  add('prop','info','הצעות שממתינות לאישור',prop,'הצעות אוטומטיות מסומנות בקו מקווקו עד שמובילה מאשרת.');
+  const dupItems=[];
+  for(const p of scoped) if(p.dups>1) dupItems.push({p:p.id,text:`מילאה את הטופס ${p.dups} פעמים — נשמרה התשובה האחרונה`});
+  for(const [n,ids] of IDX.dupNames){ if(!ids.some(id=>inScope(P(id)))) continue; dupItems.push({p:ids[0],text:`${ids.length} רישומים עם אותו שם וכתובות מייל שונות`,others:ids.slice(1)}); }
+  add('dups','warn','רישומים כפולים',dupItems,'כדאי לסמן את הרישום המיותר כ"לא פעילה".');
+  const both=[];
+  for(const p of scoped){ if(p.mentee&&p.mentor){ const mt=S.matches.get(p.id); const g=groupOf(p.id); if(mt&&g.length){ const myM=P(mt.mentor); if(g.includes(mt.mentor)) continue; both.push({p:p.id,text:`חניכה של ${fullName(myM)} וחונכת של ${g.length}`,sev:'info'});} } }
+  add('both','info','נרשמות שהן גם חניכות וגם חונכות',both,'לוודא שזה מתאים לה.');
+  add('notes','info','הערות שלא נבדקו אצל משובצות',[...notesInGroups].map(id=>({p:id,text:(P(id).notes||'').slice(0,90)})));
+  const missing=scoped.filter(p=>(p.mentee||p.mentor)&&(p.rank==null||!p.school||!p.dept)).map(p=>({p:p.id,text:[p.rank==null?'שלב':null,!p.school?'בית ספר':null,!p.dept?'מחלקה':null].filter(Boolean).join(', ')+' חסר'}));
+  add('missing','info','נתונים חסרים בטופס',missing);
+  const noRole=scoped.filter(p=>!p.mentee&&!p.mentor).map(p=>({p:p.id,text:'לא סימנה חניכה או חונכת'}));
+  add('norole','info','בלי תפקיד',noRole);
+  if(S.areas.size){ const na=[...S.people.values()].filter(p=>!areaOfPerson(p)&&(p.mentee||p.mentor)).map(p=>({p:p.id,text:p.dept||'ללא מחלקה'})); if(S.area==='__all'||S.area==='__none') add('noarea','info','נרשמות שלא שייכות לאף תחום',na,'הוסיפי את המחלקה שלהן לתחום בלשונית תחומי אחריות.'); }
+  return al;
+}
+
+/* ================= data layer ================= */
+function rerenderSoon(){ if(rerenderSoon.t) return; rerenderSoon.t=requestAnimationFrame(()=>{rerenderSoon.t=0;rebuild();render();resolveNames();}); }
+const toMs=t=>t?Date.parse(t):0;
+const MAP={
+  people:{key:'id',set:r=>S.people.set(r.id,r.data),del:k=>S.people.delete(k)},
+  ann:{key:'person_id',set:r=>S.ann.set(r.person_id,{...r.data,by:r.by_email,at:toMs(r.at)}),del:k=>S.ann.delete(k)},
+  matches:{key:'mentee_id',set:r=>S.matches.set(r.mentee_id,{mentor:r.mentor_id,status:r.status,override:r.override||'',by:r.by_email,at:toMs(r.at)}),del:k=>S.matches.delete(k)},
+  areas:{key:'id',set:r=>S.areas.set(r.id,{id:r.id,name:r.name,depts:r.depts||[],leaders:r.leaders||[],order:r.ord}),del:k=>S.areas.delete(k)},
+  leaders:{key:'email',set:r=>S.leaders.set(r.email,r),del:k=>S.leaders.delete(k)},
+  meta:{key:'key',set:r=>{ if(r.key==='import') S.meta=r.data; },del:k=>{ if(k==='import') S.meta=null; }},
+  activity:{key:'id',set:r=>{ S.log=[mapLog(r),...S.log.filter(l=>l.id!==r.id)].sort((a,b)=>b.t-a.t).slice(0,150); },del:k=>{ S.log=S.log.filter(l=>l.id!==k); }}
+};
+const mapLog=r=>({...(r.data||{}),id:r.id,t:toMs(r.t),by:r.by_email,kind:r.kind});
+async function fetchAll(table){
+  if(table==='activity'){ const {data,error}=await sb.from('activity').select('*').order('t',{ascending:false}).limit(150); if(error) throw error; return data; }
+  const out=[]; for(let from=0;;from+=1000){ const {data,error}=await sb.from(table).select('*').range(from,from+999); if(error) throw error; out.push(...data); if(data.length<1000) break; } return out;
+}
+async function loadAll(){
+  const tables=Object.keys(MAP);
+  const res=await Promise.all(tables.map(fetchAll));
+  S.people=new Map(); S.ann=new Map(); S.matches=new Map(); S.areas=new Map(); S.leaders=new Map(); S.meta=null; S.log=[];
+  tables.forEach((t,i)=>{ if(t==='activity') S.log=res[i].map(mapLog); else res[i].forEach(MAP[t].set); });
+  S.loaded.people=true; S.loaded.matches=true;
+  const me=S.leaders.get(S.uid);
+  if(!me){ location.reload(); return; }
+  S.role=me.role; S.readOnly=me.role==='viewer';
+  rerenderSoon();
+}
+function showScreen(html){ $('#tabs').hidden=true; document.querySelector('.area-pick').hidden=true; $('#main').innerHTML=html; }
+function loginScreen(msg){
+  showScreen(`<div class="panel login"><h2>כניסה למערכת השיבוץ</h2><p class="muted" style="margin:0">הכניסה מיועדת למובילות התוכנית בלבד.</p>
+    <button class="btn primary" data-act="google" type="button">כניסה עם Google</button>
+    <div class="or">או עם מייל וסיסמה</div>
+    <form id="loginForm" class="login" style="margin:0;padding:0;gap:8px">
+      <label for="lemail" class="muted">מייל</label><input id="lemail" type="text" inputmode="email" autocomplete="username" dir="ltr">
+      <label for="lpass" class="muted">סיסמה</label><input id="lpass" type="password" autocomplete="current-password" dir="ltr" style="background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:6px 9px">
+      <button class="btn" type="submit">כניסה</button>
+    </form>
+    ${msg?`<p class="chip hard" style="white-space:normal">${esc(msg)}</p>`:''}
+    <p class="muted" style="font-size:12px;margin:0">אין לך גישה? בקשי מהמנהלת להוסיף את המייל שלך לרשימת המובילות.</p></div>`);
+}
+async function start(){
+  const cfg=window.SHIBUTZ_CONFIG||{};
+  if(!window.supabase||!cfg.url||!cfg.key||/PASTE/.test(cfg.url+cfg.key)){
+    showScreen(`<div class="panel empty"><b>המערכת עדיין לא מחוברת למסד הנתונים</b>ערכי את הקובץ config.js והדביקי בו את כתובת הפרויקט והמפתח מ־Supabase.</div>`); setSync(false,'לא מחובר'); return;
+  }
+  sb=supabase.createClient(cfg.url,cfg.key);
+  sb.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') location.reload(); });
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){ setSync(false,'לא מחוברת'); loginScreen(); return; }
+  S.uid=(session.user.email||'').toLowerCase();
+  const {data:me,error}=await sb.from('leaders').select('*').eq('email',S.uid).maybeSingle();
+  if(error){ showScreen(`<div class="panel empty"><b>אין חיבור למסד הנתונים</b>${esc(error.message)}</div>`); return; }
+  if(!me){
+    renderMe();
+    showScreen(`<div class="panel login"><h2>אין לך עדיין גישה</h2><p>התחברת בתור <b dir="ltr">${esc(S.uid)}</b>, אבל הכתובת הזאת לא ברשימת המובילות.</p><p class="muted">בקשי מהמנהלת להוסיף אותה בלשונית "מובילות", ואז רענני את העמוד.</p><button class="btn" data-act="logout">יציאה והתחברות עם חשבון אחר</button></div>`);
+    setSync(false,'אין הרשאה'); return;
+  }
+  chan=sb.channel('shibutz',{config:{presence:{key:S.uid}}});
+  for(const t of Object.keys(MAP)){
+    chan.on('postgres_changes',{event:'*',schema:'public',table:t},p=>{
+      if(p.eventType==='DELETE'){ const k=p.old&&p.old[MAP[t].key]; if(k!=null) MAP[t].del(k); }
+      else MAP[t].set(p.new);
+      if(t==='leaders'&&!S.leaders.has(S.uid)) location.reload();
+      if(t==='leaders'){ const me=S.leaders.get(S.uid); if(me){S.role=me.role;S.readOnly=me.role==='viewer';} }
+      rerenderSoon();
+    });
+  }
+  chan.on('presence',{event:'sync'},()=>{ renderPeers(); if(S.tab==='board'&&S.sel) rerenderSoon(); });
+  let first=true;
+  chan.subscribe(async st=>{
+    if(st==='SUBSCRIBED'){ setSync(true); pushPresence(); try{ await loadAll(); }catch(e){ toast(errText(e),true); } first=false; }
+    else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){ setSync(false,'החיבור נקטע — מנסה להתחבר מחדש'); }
+  });
+  try{ await loadAll(); }catch(e){ toast(errText(e),true); }
+  renderMe();
+}
+function setSync(live,txt){ S.live=live; const el=$('#sync'); el.className='sync'+(live?' live':''); el.querySelector('span').textContent=txt||(live?'מסונכרן':'מתחבר…'); }
+function pushPresence(){ if(chan) chan.track({area:S.area,sel:S.sel||null}).catch(()=>{}); }
+function resolveNames(){}
+const leaderFull=id=>!id?'':((S.leaders.get(id)?.name)||String(id).split('@')[0]);
+const leaderName=id=>!id?'':(id===S.uid?'את':leaderFull(id));
+function ago(t){ if(!t) return ''; const s=Math.round((Date.now()-t)/1000); if(s<60) return 'עכשיו'; if(s<3600) return `לפני ${Math.round(s/60)} דק׳`; if(s<86400) return `לפני ${Math.round(s/3600)} שע׳`; return new Date(t).toLocaleDateString('he-IL'); }
+function colorOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return `hsl(${h%360} 45% 42%)`; }
+function renderMe(){
+  const el=$('#me'); if(!el) return;
+  if(!S.uid){ el.innerHTML=''; return; }
+  const role={admin:'מנהלת',leader:'מובילה',viewer:'צפייה'}[S.role]||'';
+  el.innerHTML=`<span title="${esc(S.uid)}">${esc(leaderFull(S.uid))}</span>${role?`<span class="chip">${role}</span>`:''}<button class="btn sm" data-act="logout">יציאה</button>`;
+}
+async function logAct(kind,data){ try{ await sb.from('activity').insert({by_email:S.uid,kind,data}); }catch(e){} }
+
+/* ================= actions ================= */
+async function assign(eid,mid,{expected,status='final',override='',force=false}={}){
+  if(S.readOnly) return toast('יש לך הרשאת צפייה בלבד',true);
+  const e=P(eid), m=P(mid);
+  if(!override&&groupOf(mid).filter(x=>x!==eid).length>=capOf(m)){ toast(`הקבוצה של ${fullName(m)} כבר מלאה (${capOf(m)} חניכות)`,true); return; }
+  let r; try{ r=await W(()=>sb.rpc('assign_match',{p_mentee:eid,p_mentor:mid,p_expected:expected||null,p_status:status,p_override:override||'',p_force:!!force})); }catch(err){ return; }
+  if(r&&r.conflict){
+    S.pending={eid,mid,status,override,msg:`בזמן שעבדת, ${leaderName(r.by)} שיבצה את ${fullName(e)} אל ${fullName(P(r.mentor))} (${ago(toMs(r.at))}). להחליף?`};
+    render(); return;
+  }
+  S.pending=null; S.overrideFor=null;
+  toast(`${fullName(e)} שובצה אל ${fullName(m)}`);
+}
+async function unassign(eid){
+  if(S.readOnly) return;
+  const cur=S.matches.get(eid);
+  await W(()=>sb.from('matches').delete().eq('mentee_id',eid));
+  toast(`השיבוץ של ${fullName(P(eid))} בוטל`);
+  logAct('unassign',{e:eid,m:cur?cur.mentor:null});
+}
+async function approve(eids){
+  if(!eids.length) return;
+  for(let i=0;i<eids.length;i+=100) await W(()=>sb.from('matches').update({status:'final',by_email:S.uid,at:new Date().toISOString()}).in('mentee_id',eids.slice(i,i+100)).eq('status','proposed'));
+  toast(eids.length>1?`${eids.length} הצעות אושרו`:'השיבוץ אושר');
+  logAct('approve',{n:eids.length,e:eids.length===1?eids[0]:null});
+}
+async function setAnn(pid,patch){
+  if(S.readOnly) return;
+  const {by,at,...cur}=S.ann.get(pid)||{};
+  await W(()=>sb.from('ann').upsert({person_id:pid,data:{...cur,...patch},by_email:S.uid,at:new Date().toISOString()}));
+}
+async function autoSuggest(){
+  if(S.readOnly) return;
+  const mentees=[...S.people.values()].filter(p=>inScope(p)&&p.mentee&&isActive(p)&&!S.matches.has(p.id));
+  const pool=[...S.people.values()].filter(p=>p.mentor&&isActive(p)&&(S.mentorScope==='all'||inScope(p)));
+  if(!mentees.length){toast('אין חניכות פנויות בתחום');return;}
+  const load=new Map(pool.map(m=>[m.id,groupOf(m.id).length]));
+  const opts={loadOf:id=>load.get(id)||0};
+  const cand=mentees.map(e=>({e,list:pool.map(m=>({m,ev:evaluate(e,m,opts)})).filter(x=>x.ev.ok)}));
+  cand.sort((a,b)=>a.list.length-b.list.length);
+  const plan=[]; let none=0;
+  for(const c of cand){
+    const best=c.list.map(x=>({m:x.m,ev:evaluate(c.e,x.m,opts)})).filter(x=>x.ev.ok).sort((a,b)=>b.ev.score-a.ev.score)[0];
+    if(!best){none++;continue;}
+    plan.push([c.e.id,best.m.id]); load.set(best.m.id,(load.get(best.m.id)||0)+1);
+  }
+  S.busy=`שומרת ${plan.length} הצעות…`; render();
+  let n=0;
+  for(const [eid,mid] of plan){ const {data,error}=await sb.rpc('assign_match',{p_mentee:eid,p_mentor:mid,p_expected:null,p_status:'proposed',p_override:'',p_force:false}); if(!error&&data&&!data.conflict) n++; if(n%10===0){S.busy=`שומרת הצעות… ${n}/${plan.length}`;render();} }
+  S.busy='';
+  toast(`נוספו ${n} הצעות לשיבוץ${none?` · ל־${none} חניכות לא נמצאה חונכת מתאימה`:''}`);
+  logAct('auto',{n,none});
+  render();
+}
+
+/* ================= render ================= */
+function render(){
+  if(!S.loaded.people) return;
+  $('#tabs').hidden=false; document.querySelector('.area-pick').hidden=false;
+  renderAreaSel(); renderTabs(); renderMe();
+  const m=$('#main');
+  const active=document.activeElement; const aid=active&&active.id; let ss=null,se=null; try{ss=active.selectionStart;se=active.selectionEnd;}catch(e){}
+  const keepVal=active&&(active.tagName==='TEXTAREA'||(active.tagName==='INPUT'&&active.type==='text'))?active.value:null;
+  const scrolls={}; m.querySelectorAll('[data-keep-scroll]').forEach(el=>scrolls[el.dataset.keepScroll]=el.scrollTop);
+  m.innerHTML=banners()+(S.loaded.people?({board:vBoard,groups:vGroups,alerts:vAlerts,people:vPeople,areas:vAreas,data:vData,team:vTeam}[S.tab]||vBoard)():'<div class="empty"><b>טוען…</b></div>');
+  m.querySelectorAll('[data-keep-scroll]').forEach(el=>{ if(scrolls[el.dataset.keepScroll]!=null) el.scrollTop=scrolls[el.dataset.keepScroll]; });
+  if(aid){ const el=document.getElementById(aid); if(el){ if(keepVal!=null) el.value=keepVal; el.focus(); try{ if(ss!=null) el.setSelectionRange(ss,se);}catch(e){} } }
+  $('#season').textContent=S.meta?(S.meta.demo?'נתוני הדגמה':`${S.people.size} נרשמות`):'';
+}
+const renderMainKeepFocus=()=>render();
+function renderAreaSel(){
+  const sel=$('#areaSel');
+  const areas=[...S.areas.values()].sort((a,b)=>(a.order||0)-(b.order||0));
+  if(S.area!=='__all'&&S.area!=='__none'&&!S.areas.has(S.area)&&S.areas.size) S.area='__all';
+  const html=`<option value="__all">כל התוכנית</option>`+areas.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('')+(areas.length?`<option value="__none">ללא תחום</option>`:'');
+  if(sel.dataset.h!==html){sel.innerHTML=html;sel.dataset.h=html;}
+  sel.value=S.area;
+}
+function renderTabs(){
+  const al=S.loaded.people?computeAlerts():[];
+  const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
+  const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
+  const T=[['board','לוח שיבוץ'],['groups','קבוצות'],['alerts','התראות'],['people','כל הנרשמות'],['areas','תחומי אחריות'],['data','ייבוא וייצוא'],['team','מובילות']];
+  $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
+}
+function renderPeers(){
+  const list=room.peers();
+  $('#peers').innerHTML=list.slice(0,8).map(p=>{ const area=S.areas.get(p.presence?.area)?.name||'כל התוכנית'; const nm=p.isMe?'את':leaderFull(p.by); return `<span class="av" style="background:${colorOf(p.by)}" title="${esc(nm+' · '+area)}">${esc((leaderFull(p.by)||'?').trim().charAt(0))}</span>`; }).join('')+(list.length?`<span>${list.length} מחוברות</span>`:'');
+}
+function banners(){
+  let h='';
+  if(S.readOnly) h+=`<div class="banner warn"><b>צפייה בלבד.</b> כדי לשבץ, בקשי מהמנהלת לשנות את ההרשאה שלך ל"מובילה".</div>`;
+  if(S.meta&&S.meta.demo&&false) h+=`<div class="banner"><b>נתוני הדגמה.</b> אלה נתוני הרישום של השנה שעברה, עם שמות ופרטי קשר בדויים. כשטופס השנה מוכן, ייבאי אותו בלשונית <button class="link" data-tab="data">ייבוא וייצוא</button> עם "החלפת כל הנרשמות".</div>`;
+  if(S.busy) h+=`<div class="banner">${esc(S.busy)}</div>`;
+  return h;
+}
+function personItem(p,{showMatch=true}={}){
+  const mt=S.matches.get(p.id); const m=mt&&P(mt.mentor);
+  const g=groupOf(p.id);
+  const flags=[];
+  if(notesPending(p)) flags.push('<span class="chip warn" title="יש הערות שלא נבדקו">הערות</span>');
+  if(p.taFlag&&!A(p.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>');
+  if(!isActive(p)) flags.push('<span class="chip hard">לא פעילה</span>');
+  if(p.mentee&&p.mentor) flags.push('<span class="chip">גם וגם</span>');
+  let right='';
+  if(showMatch&&p.mentee){ right=m?`<span class="chip mentor${mt.status==='proposed'?' dashed':''}">${esc(fullName(m))}</span>`:'<span class="chip">—</span>'; }
+  return `<button class="item" data-sel="${p.id}" aria-current="${S.sel===p.id}"><span class="nm">${esc(fullName(p))}</span>${right}<span class="sub">${ladder(p,!showMatch)}<span>${esc(p.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+}
+function mentorItem(m){
+  const g=groupOf(m.id), cap=capOf(m);
+  const dots=Array.from({length:4},(_,i)=>{ if(i>=Math.max(cap,g.length)) return ''; if(i<g.length){ const st=S.matches.get(g[i])?.status; return `<i class="${i>=cap?'x':st==='proposed'?'p':'f'}"></i>`;} return '<i></i>'; }).join('');
+  const flags=[]; if(notesPending(m)) flags.push('<span class="chip warn">הערות</span>'); if(m.taFlag&&!A(m.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>'); if(!isActive(m)) flags.push('<span class="chip hard">לא פעילה</span>');
+  return `<button class="item" data-sel="${m.id}" aria-current="${S.sel===m.id}"><span class="nm">${esc(fullName(m))}</span><span class="dots" title="${g.length} מתוך ${cap}">${dots}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+}
+function vEmptyPeople(){
+  return `<div class="panel empty"><b>עדיין אין נרשמות במערכת</b>ייבאי את קובץ האקסל מטופס הרישום, והחניכות והחונכות יופיעו כאן לכל המובילות.<div style="margin-top:12px"><button class="btn primary" data-tab="data">לייבוא קובץ</button></div></div>`;
+}
+function vBoard(){
+  if(!S.people.size) return vEmptyPeople();
+  const q=S.listQ.trim();
+  const match=(p,q)=>!q||fullName(p).includes(q)||(p.email||'').includes(q)||(p.dept||'').includes(q);
+  let mentees=[...S.people.values()].filter(p=>p.mentee&&inScope(p)&&match(p,q));
+  const openN=mentees.filter(p=>isActive(p)&&!S.matches.has(p.id)).length;
+  const propN=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
+  if(S.listMode==='open') mentees=mentees.filter(p=>isActive(p)&&!S.matches.has(p.id));
+  else if(S.listMode==='prop') mentees=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed');
+  mentees.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||(a.rank||0)-(b.rank||0)||fullName(a).localeCompare(fullName(b),'he'));
+  const mq=S.mentorQ.trim();
+  let mentors=[...S.people.values()].filter(p=>p.mentor&&(S.mentorScope==='all'||inScope(p))&&match(p,mq));
+  mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||groupOf(a.id).length-groupOf(b.id).length||(b.rank||0)-(a.rank||0));
+  const freeSeats=mentors.filter(isActive).reduce((s,m)=>s+Math.max(0,capOf(m)-groupOf(m.id).length),0);
+  return `<div class="board">
+    <section class="panel col" aria-label="חניכות">
+      <div class="col-head">
+        <div class="row" style="justify-content:space-between"><h3 style="margin:0">חניכות</h3><span class="muted num">${openN} פנויות</span></div>
+        <div class="seg" role="group"><button data-lm="open" aria-pressed="${S.listMode==='open'}">ללא חונכת</button><button data-lm="prop" aria-pressed="${S.listMode==='prop'}">הצעות (${propN})</button><button data-lm="all" aria-pressed="${S.listMode==='all'}">כולן</button></div>
+        <div class="row"><input id="listQ" type="search" placeholder="חיפוש שם, מייל או מחלקה" value="${esc(S.listQ)}"></div>
+        <div class="row"><button class="btn sm" data-act="auto" ${S.readOnly||S.busy?'disabled':''} title="מציע חונכת לכל חניכה פנויה בתחום, לפי האילוצים. ההצעות ממתינות לאישור.">הצעת שיבוץ אוטומטית</button>${propN?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות</button>`:''}</div>
+      </div>
+      <div class="list" data-keep-scroll="mentees">${mentees.map(p=>personItem(p)).join('')||`<div class="empty">${S.listMode==='open'?'כל החניכות בתחום שובצו.':'אין חניכות להצגה.'}</div>`}</div>
+    </section>
+    <section class="center">${S.sel&&P(S.sel)?vDetail(P(S.sel)):`<div class="panel empty"><b>בחרי נרשמת</b>בחירה בחניכה מציגה את החונכות המתאימות לה, מדורגות לפי האילוצים. בחירה בחונכת מציגה את הקבוצה שלה ואת החניכות שאפשר לצרף.</div>`}</section>
+    <section class="panel col" aria-label="חונכות">
+      <div class="col-head">
+        <div class="row" style="justify-content:space-between"><h3 style="margin:0">חונכות</h3><span class="muted num">${freeSeats} מקומות פנויים</span></div>
+        <div class="seg" role="group"><button data-ms="area" aria-pressed="${S.mentorScope==='area'}">מהתחום</button><button data-ms="all" aria-pressed="${S.mentorScope==='all'}">מכל התוכנית</button></div>
+        <div class="row"><input id="mentorQ" type="search" placeholder="חיפוש חונכת" value="${esc(S.mentorQ)}"></div>
+      </div>
+      <div class="list" data-keep-scroll="mentors">${mentors.map(mentorItem).join('')||'<div class="empty">אין חונכות להצגה.</div>'}</div>
+    </section>
+  </div>`;
+}
+function hl(t){ return esc(t).replace(/(מתרג\S*|מדריכ\S* מעבד\S*|שנה [א-ד]['׳]?|שנים [א-ד]-[א-ד]|לא רוצה|מעדיפה|אעדיף|להימנע|לא אוכל|אודיס\S*)/g,'<mark>$1</mark>'); }
+function chips(ev){
+  return ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')+ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')+ev.good.map(t=>`<span class="chip ok">${esc(t)}</span>`).join('')+ev.info.map(t=>`<span class="chip">${esc(t)}</span>`).join('');
+}
+function vDetail(p){
+  const a=A(p.id), ta=taOf(p);
+  const area=S.areas.get(areaOfPerson(p));
+  const watchers=room?room.peers().filter(x=>!x.isMe&&x.presence?.sel===p.id):[];
+  const fact=(l,v)=>v?`<div><dt>${l}</dt><dd>${esc(v)}</dd></div>`:'';
+  const prefTxt=(k,s)=>({mine:'מבית הספר שלי',any:'לא משנה לי',specific:'ספציפי: '+(s||'')}[k]||'');
+  let h=`<div class="panel card">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div><p class="pname">${esc(fullName(p))}</p>
+        <div class="row" style="margin-top:4px">${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(p.dept||'מחלקה חסרה')}${p.dept2?' + '+esc(p.dept2):''}</span>${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
+      </div>
+      <div class="row">${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
+    </div>
+    <dl class="facts">
+      ${fact('מייל',p.email)}${fact('טלפון',p.phone)}${fact('מסלול מחקר',p.track)}${fact('תזה',p.thesis)}${fact('מסלול משולב',p.combined)}${fact('חוג נוסף',p.extra)}
+      ${fact('תארים קודמים',p.degrees)}${fact('עבודה',p.work)}${fact('השתתפות קודמת',p.prev)}${fact('אודיסאה / עתודה',p.program)}
+      ${p.mentee?fact('חונכת מבוקשת',prefTxt(p.wantMentor,p.wantMentorSpec)):''}${p.mentor?fact('חניכות מבוקשות',prefTxt(p.wantMentees,p.wantMenteesSpec)):''}
+      ${p.mentee?fact('בנוח עם חונך גבר',p.okMale):''}${p.mentor?fact('מוכנה לחנוך עם חונך',p.mentorWithMale):''}${p.dups>1?fact('מילאה את הטופס',p.dups+' פעמים'):''}
+    </dl>
+    ${p.notes?`<div class="notes${a.notesOk?' done':''}">${hl(p.notes)}</div>
+      <label class="row" style="margin-top:6px"><input type="checkbox" id="notesOk" data-ann="notesOk" ${a.notesOk?'checked':''} ${S.readOnly?'disabled':''}> ההערות נקראו וטופלו</label>`:''}
+    <div class="ann">
+      ${p.mentor?`<div><label>מתרגלת את השנתונים</label><div class="toggle-chips">${[1,2,3,4].map(y=>`<button data-ta="${y}" aria-pressed="${ta.years.includes(y)&&ta.confirmed}" ${S.readOnly?'disabled':''}>${HEB_YEAR[y]}</button>`).join('')}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px">${ta.confirmed?(ta.years.length?'מאומת: לא תשובץ לחניכות מהשנתונים האלה במחלקה שלה.':'מאומת: לא מתרגלת.'):(p.taAuto.length?`זוהה בהערות: שנה ${p.taAuto.map(y=>HEB_YEAR[y]).join(', ')}. לחצי לאישור.`:p.taFlag?'ההערות מזכירות תרגול. סמני שנתונים אם רלוונטי.':'סמני אם רלוונטי.')}${!ta.confirmed?` <button class="link" data-act="taNone">לא מתרגלת</button>`:''}</div></div>
+      <div><label for="cap">מקסימום חניכות</label><select id="cap" data-ann="capacity" ${S.readOnly?'disabled':''}>${[1,2,3,4].map(n=>`<option ${capOf(p)===n?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
+      <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
+      <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
+    </div>
+  </div>`;
+  if(S.pending&&(S.pending.eid===p.id||S.pending.mid===p.id)) h+=`<div class="confirm"><b>שימי לב:</b> ${esc(S.pending.msg)} <button class="btn sm primary" data-act="confirmPending">כן, להחליף</button><button class="btn sm" data-act="cancelPending">ביטול</button></div>`;
+  if(p.mentee) h+=vMenteeBlock(p);
+  if(p.mentor) h+=vMentorBlock(p);
+  return h;
+}
+function vMenteeBlock(e){
+  const mt=S.matches.get(e.id), m=mt&&P(mt.mentor);
+  let h=`<div class="panel block"><p class="sec-title">החונכת של ${esc(e.first||'')}</p>`;
+  if(mt){
+    const ev=m?evaluate(e,m,{ignoreCap:true}):{hard:['החונכת לא קיימת'],warn:[],info:[],good:[]};
+    h+=`<div class="current${mt.status==='proposed'?' prop':''}"><div style="flex:1;min-width:0"><b class="link" data-sel="${m?m.id:''}" style="text-decoration:none;cursor:pointer;color:inherit">${esc(fullName(m))}</b> ${m?ladder(m,true):''} <span class="muted">${esc(m?.dept||'')}</span>
+      <div class="muted" style="font-size:12px">${mt.status==='proposed'?'הצעה אוטומטית':'שובצה'} ע״י ${esc(leaderName(mt.by))} · ${ago(mt.at)}${mt.override?' · נעקף אילוץ: '+esc(mt.override):''}</div>
+      <div class="row" style="margin-top:4px">${chips(ev)}</div></div>
+      <div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${e.id}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${e.id}" ${S.readOnly?'disabled':''}>ביטול שיבוץ</button></div></div>`;
+  } else h+=`<p class="muted" style="margin:0">עדיין לא שובצה.</p>`;
+  const pool=[...S.people.values()].filter(m=>m.mentor&&m.id!==e.id&&(S.suggScope==='all'||inScope(m)));
+  const evs=pool.map(m=>({m,ev:evaluate(e,m)}));
+  const ok=evs.filter(x=>x.ev.ok&&x.m.id!==mt?.mentor).sort((a,b)=>b.ev.score-a.ev.score);
+  const bad=evs.filter(x=>!x.ev.ok&&x.m.id!==mt?.mentor&&isActive(x.m)).sort((a,b)=>a.ev.hard.length-b.ev.hard.length||b.ev.score-a.ev.score);
+  h+=`<div class="row" style="justify-content:space-between;margin:14px 0 4px"><p class="sec-title" style="margin:0">חונכות מתאימות (${ok.length})</p><div class="seg"><button data-ss="all" aria-pressed="${S.suggScope==='all'}">כל התוכנית</button><button data-ss="area" aria-pressed="${S.suggScope==='area'}">רק מהתחום</button></div></div>`;
+  h+=ok.slice(0,12).map(({m,ev})=>`<div class="sugg"><span class="score" title="ציון התאמה">${ev.score}</span><div class="who"><b data-sel="${m.id}">${esc(fullName(m))}</b> ${ladder(m,true)} <span class="muted">${esc(m.dept||'')} · ${groupOf(m.id).length}/${capOf(m)}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>${mt?'החלפה':'שיבוץ'}</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">לא נמצאה חונכת שעומדת בכל האילוצים הקשיחים. אפשר להרחיב ל"כל התוכנית", לפנות מקום בקבוצה, או לבדוק את הרשימה למטה.</p>';
+  if(ok.length>12) h+=`<p class="muted" style="font-size:12px">מוצגות 12 ההתאמות הטובות ביותר מתוך ${ok.length}.</p>`;
+  if(bad.length){
+    h+=`<details ${S.overrideFor?'open':''}><summary>לא מתאימות (${bad.length}) — עם הסיבות</summary>`+bad.slice(0,30).map(({m,ev})=>{
+      const ov=S.overrideFor===e.id+'|'+m.id;
+      return `<div class="sugg"><span class="score bad">✕</span><div class="who"><b data-sel="${m.id}">${esc(fullName(m))}</b> ${ladder(m,true)} <span class="muted">${esc(m.dept||'')} · ${groupOf(m.id).length}/${capOf(m)}</span></div>${ov?'':`<button class="btn sm" data-override="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>שיבוץ חריג</button>`}<div class="why">${chips(ev)}</div>${ov?`<div style="grid-column:1/-1" class="confirm"><label for="ovr">סיבה לעקיפת האילוץ (תופיע לכל המובילות)</label><input id="ovr" type="text" style="flex:1;min-width:180px" placeholder="למשל: הנתון בטופס שגוי, וידאתי איתה"><button class="btn sm danger" data-act="doOverride" data-pair="${e.id}|${m.id}">שיבוץ למרות האילוץ</button><button class="btn sm" data-act="cancelOverride">ביטול</button></div>`:''}</div>`;}).join('')+`</details>`;
+  }
+  return h+'</div>';
+}
+function vMentorBlock(m){
+  const g=groupOf(m.id); const cap=capOf(m);
+  let h=`<div class="panel block"><p class="sec-title">הקבוצה של ${esc(m.first||'')} · <span class="num">${g.length}/${cap}</span></p>`;
+  h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
+    return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
+  if(g.length<cap&&isActive(m)){
+    const cand=[...S.people.values()].filter(e=>e.mentee&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)).map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok).sort((a,b)=>b.ev.score-a.ev.score);
+    h+=`<p class="sec-title" style="margin-top:14px">חניכות פנויות שמתאימות לה (${cand.length})</p>`;
+    h+=cand.slice(0,10).map(({e,ev})=>`<div class="sugg"><span class="score">${ev.score}</span><div class="who"><b data-sel="${e.id}">${esc(fullName(e))}</b> ${ladder(e)} <span class="muted">${esc(e.dept||'')}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button><div class="why">${chips(ev)}</div></div>`).join('')||'<p class="muted">אין חניכות פנויות שעומדות באילוצים.</p>';
+  }
+  return h+'</div>';
+}
+function vGroups(){
+  if(!S.people.size) return vEmptyPeople();
+  const scoped=[...S.people.values()].filter(inScope);
+  const mentees=scoped.filter(p=>p.mentee&&isActive(p));
+  const fin=mentees.filter(p=>S.matches.get(p.id)?.status==='final').length;
+  const prop=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
+  let mentors=[...S.people.values()].filter(m=>m.mentor&&(groupOf(m.id).length?(inScope(m)||groupOf(m.id).some(id=>inScope(P(id)))):(S.showAllMentorsInGroups&&inScope(m)&&isActive(m))));
+  mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
+  const sizes=[1,2,3,4].map(n=>mentors.filter(m=>groupOf(m.id).length===n).length);
+  const stat=(v,l)=>`<div class="panel stat"><b>${v}</b><span>${l}</span></div>`;
+  let h=`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1 · 2 · 3 · 4')}</div>
+  <div class="row" style="margin-bottom:12px"><label class="row"><input type="checkbox" id="showIdle" ${S.showAllMentorsInGroups?'checked':''}> להציג גם חונכות בלי חניכות</label>${prop?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות בתחום</button>`:''}</div>`;
+  h+=`<div class="groups">`+mentors.map(m=>{
+    const g=groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
+    const bad=evs.some(x=>x.ev.hard.length&&!x.mt.override)||g.length>capOf(m);
+    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" style="cursor:pointer">${esc(fullName(m))}</b><div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div>${mentorItemDots(m)}</div>
+      ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
+    </div>`;}).join('')+`</div>`;
+  if(!mentors.length) h+=`<div class="panel empty"><b>אין עדיין קבוצות בתחום</b>שבצי בלוח השיבוץ, או השתמשי ב"הצעת שיבוץ אוטומטית".</div>`;
+  return h;
+}
+function mentorItemDots(m){ const g=groupOf(m.id), cap=capOf(m); return `<span class="dots" title="${g.length}/${cap}">${Array.from({length:Math.max(cap,g.length)},(_,i)=>`<i class="${i<g.length?(i>=cap?'x':S.matches.get(g[i])?.status==='proposed'?'p':'f'):''}"></i>`).join('')}</span>`; }
+function vAlerts(){
+  if(!S.people.size) return vEmptyPeople();
+  const al=computeAlerts().filter(a=>a.items.length);
+  if(!al.length) return `<div class="panel empty"><b>אין התראות בתחום</b>כל החניכות שובצו וכל השיבוצים עומדים באילוצים.</div>`;
+  return `<div class="alerts">`+al.map(a=>{
+    const open=S.alertsOpen[a.key]; const items=open?a.items:a.items.slice(0,8);
+    return `<div class="panel acard"><h3><span class="sev ${a.sev}"></span>${esc(a.title)} <span class="badge ${a.sev==='hard'?'':'soft'}">${a.items.length}</span></h3>${a.hint?`<p class="muted" style="margin:0 0 6px">${esc(a.hint)}</p>`:''}<ul>${items.map(it=>{
+      const pid=it.e||it.p; const p=P(pid);
+      return `<li><button class="link" data-goto="${esc(pid)}">${esc(fullName(p))}</button>${it.m?` ← <button class="link" data-goto="${esc(it.m)}">${esc(fullName(P(it.m)))}</button>`:''}${(it.others||[]).map(o=>` · <button class="link" data-goto="${esc(o)}">${esc(P(o)?.email||'')}</button>`).join('')}<span class="muted">${esc(it.text||'')}</span></li>`;}).join('')}</ul>${a.items.length>8?`<button class="link" data-aopen="${a.key}" style="margin-top:6px">${open?'פחות':'הצגת כל '+a.items.length}</button>`:''}</div>`;}).join('')+`</div>`;
+}
+function vPeople(){
+  if(!S.people.size) return vEmptyPeople();
+  const q=S.peopleQ.trim();
+  let rows=[...S.people.values()].filter(inScope).filter(p=>!q||fullName(p).includes(q)||(p.email||'').includes(q)||(p.dept||'').includes(q)||(p.notes||'').includes(q));
+  if(S.peopleRole==='mentee') rows=rows.filter(p=>p.mentee); else if(S.peopleRole==='mentor') rows=rows.filter(p=>p.mentor); else if(S.peopleRole==='both') rows=rows.filter(p=>p.mentor&&p.mentee);
+  rows.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||(a.rank||0)-(b.rank||0));
+  return `<div class="row" style="margin-bottom:12px"><input id="peopleQ" type="search" placeholder="חיפוש בשם, מייל, מחלקה או הערות" value="${esc(S.peopleQ)}" style="flex:1;min-width:200px">
+    <div class="seg"><button data-pr="all" aria-pressed="${S.peopleRole==='all'}">כולן</button><button data-pr="mentee" aria-pressed="${S.peopleRole==='mentee'}">חניכות</button><button data-pr="mentor" aria-pressed="${S.peopleRole==='mentor'}">חונכות</button><button data-pr="both" aria-pressed="${S.peopleRole==='both'}">גם וגם</button></div><span class="muted num">${rows.length} נרשמות</span></div>
+  <div class="panel tablewrap"><table><thead><tr><th>שם</th><th>תפקיד</th><th>שלב</th><th>בית ספר</th><th>מחלקה</th><th>תחום</th><th>שיבוץ</th><th>הערות</th></tr></thead><tbody>${rows.map(p=>{
+    const mt=S.matches.get(p.id); const g=groupOf(p.id);
+    return `<tr data-goto="${p.id}"><td><b>${esc(fullName(p))}</b>${!isActive(p)?' <span class="chip hard">לא פעילה</span>':''}</td><td>${p.mentee?'<span class="chip mentee">חניכה</span> ':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}</td><td>${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td>${esc(S.areas.get(areaOfPerson(p))?.name||'')}</td><td>${p.mentee?(mt?'← '+esc(fullName(P(mt.mentor)))+(mt.status==='proposed'?' (הצעה)':''):'<span class="muted">פנויה</span>'):''}${p.mentor?`<div class="num">${g.length}/${capOf(p)}</div>`:''}</td><td style="max-width:280px"><span class="muted" style="font-size:12px">${esc((p.notes||'').slice(0,110))}</span></td></tr>`;}).join('')}</tbody></table></div>`;
+}
+function vAreas(){
+  const areas=[...S.areas.values()].sort((a,b)=>(a.order||0)-(b.order||0));
+  const depts=knownDepts();
+  const cnt=a=>{const ps=[...S.people.values()].filter(p=>areaOfPerson(p)===a.id);return {e:ps.filter(p=>p.mentee).length,m:ps.filter(p=>p.mentor).length};};
+  let h=`<div class="row" style="margin-bottom:12px;justify-content:space-between"><div><h2>תחומי אחריות</h2><p class="muted" style="margin:0">כל מובילה בוחרת את התחום שלה בראש העמוד. תחום מוגדר לפי מחלקות. מחלקה יכולה להשתייך לתחום אחד.</p></div>
+    <div class="row"><button class="btn" data-act="addArea" ${S.readOnly?'disabled':''}>תחום חדש</button>${!areas.length&&depts.length?`<button class="btn primary" data-act="areasFromDepts" ${S.readOnly?'disabled':''}>תחום לכל מחלקה</button>`:''}</div></div>`;
+  if(!areas.length) return h+`<div class="panel empty"><b>עדיין לא הוגדרו תחומים</b>אפשר ליצור תחום לכל מחלקה בלחיצה אחת, ואחר כך לאחד מחלקות קטנות לתחום משותף.</div>`;
+  h+=`<div class="areas">`+areas.map(a=>{ const c=cnt(a); const mine=(a.leaders||[]).includes(S.uid);
+    return `<div class="panel acard2"><div class="row"><input id="an-${esc(a.id)}" type="text" data-area-name="${esc(a.id)}" value="${esc(a.name)}" style="flex:1;font-weight:600" ${S.readOnly?'disabled':''}><span class="muted num">${c.e} חניכות · ${c.m} חונכות</span></div>
+      <div class="dchips">${depts.map(d=>{const owner=IDX.deptArea.get(d); const on=(a.depts||[]).includes(d); return `<button data-adept="${esc(a.id)}|${esc(d)}" aria-pressed="${on}" class="${!on&&owner&&owner!==a.id?'taken':''}" title="${!on&&owner?'משויכת ל'+esc(S.areas.get(owner)?.name||''):''}" ${S.readOnly?'disabled':''}>${esc(d)}</button>`;}).join('')}</div>
+      <div class="row" style="justify-content:space-between"><span class="muted">מובילות: ${(a.leaders||[]).map(u=>esc(leaderName(u))).join(', ')||'—'}</span><div class="row"><button class="btn sm" data-lead="${esc(a.id)}" ${S.readOnly||!S.uid?'disabled':''}>${mine?'הסירי אותי':'אני אחראית כאן'}</button>${S.clearStep==='area-'+a.id?`<button class="btn sm danger" data-delarea="${esc(a.id)}">למחוק?</button>`:`<button class="btn sm" data-askdel="${esc(a.id)}" ${S.readOnly?'disabled':''}>מחיקה</button>`}</div></div></div>`;}).join('')+`</div>`;
+  return h;
+}
+function vData(){
+  const m=S.meta; const pv=S.importPreview;
+  let h=`<div class="two"><div class="panel card"><h2>ייבוא נרשמות</h2><p class="muted">קובץ אקסל שיוצא מטופס הרישום. העמודות מזוהות לפי הכותרות. נרשמת שמילאה את הטופס כמה פעמים נשמרת פעם אחת, עם התשובה האחרונה.</p>
+    ${m?`<p style="margin:0 0 10px">נטען לאחרונה: <b>${esc(m.fileName||'')}</b> · ${m.count} נרשמות · ${ago(m.at)}${m.by?' · '+esc(leaderName(m.by)):''}</p>`:''}
+    <label class="drop" id="drop" for="file" style="display:block;cursor:pointer"><b>בחירת קובץ xlsx</b><br><span class="muted">או גרירה לכאן</span><input type="file" id="file" accept=".xlsx,.xls,.csv" hidden></label>`;
+  if(pv){
+    const existing=pv.people.filter(p=>S.people.has(p.id)).length;
+    h+=`<div class="panel card" style="margin-top:12px;background:var(--sunk)"><h3>${esc(pv.fileName)}</h3>
+      <p style="margin:0">${pv.people.length} נרשמות · ${pv.people.filter(p=>p.mentee).length} חניכות · ${pv.people.filter(p=>p.mentor).length} חונכות${pv.dupRows?` · ${pv.dupRows} שורות כפולות אוחדו`:''}${pv.skipped?` · ${pv.skipped} שורות ריקות דולגו`:''}</p>
+      <p class="muted" style="margin:4px 0">${existing} כבר קיימות במערכת (יעודכנו), ${pv.people.length-existing} חדשות.</p>
+      ${pv.missing.length?`<p class="chip warn" style="white-space:normal">עמודות שלא נמצאו: ${esc(pv.missing.join(', '))}</p>`:''}
+      <label class="row" style="margin:10px 0"><input type="checkbox" id="replaceAll" ${pv.replace?'checked':''}> החלפת כל הנרשמות (מוחק גם את השיבוצים וההערות של הנתונים הקודמים)</label>
+      <div class="row"><button class="btn primary" data-act="doImport" ${S.readOnly||S.busy?'disabled':''}>ייבוא</button><button class="btn" data-act="cancelImport">ביטול</button></div></div>`;
+  }
+  h+=`</div><div class="panel card"><h2>ייצוא השיבוצים</h2><p class="muted">קובץ CSV שנפתח באקסל: שורה לכל חניכה, עם פרטי החונכת שלה.${S.area!=='__all'?' הייצוא כולל רק את התחום שנבחר.':''}</p>
+    <div class="row"><button class="btn primary" data-act="exportCsv" ${downloads?'':'disabled'}>הורדת CSV</button><button class="btn" data-act="copyTsv">העתקה להדבקה בגיליון</button><label class="row"><input type="checkbox" id="exportFinal" ${S.exportFinal?'checked':''}> רק שיבוצים מאושרים</label></div>
+    <h3 style="margin-top:20px">יומן פעולות</h3><ul class="log">${S.log.map(l=>`<li><span class="muted">${ago(l.t)}</span> · <b>${esc(leaderName(l.by))}</b> ${logText(l)}</li>`).join('')||'<li class="muted">עדיין אין פעולות.</li>'}</ul>
+  </div></div>
+  <div class="panel card" style="margin-top:14px;border-color:var(--hard)"><h3>איפוס לשנה חדשה</h3><p class="muted">מוחק את כל הנרשמות, השיבוצים, ההערות והיומן. תחומי האחריות נשמרים.</p>
+    ${S.clearStep==='data'?`<div class="row"><b style="color:var(--hard)">בטוחה? אי אפשר לשחזר.</b><button class="btn danger" data-act="doClear">כן, למחוק הכל</button><button class="btn" data-act="cancelClear">ביטול</button></div>`:`<button class="btn danger" data-act="askClear" ${S.readOnly||S.busy?'disabled':''}>מחיקת כל הנתונים</button>`}</div>`;
+  return h;
+}
+function vTeam(){
+  const admin=S.role==='admin';
+  const L=[...S.leaders.values()].sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||(a.name||a.email).localeCompare(b.name||b.email,'he'));
+  const ROLE={admin:'מנהלת',leader:'מובילה',viewer:'צפייה בלבד'};
+  let h=`<div class="two"><div class="panel card"><h2>מובילות עם גישה</h2>
+    <p class="muted">רק כתובות מהרשימה הזאת יכולות להיכנס ולראות נתונים. <b>מובילה</b> משבצת ומעדכנת. <b>צפייה בלבד</b> רואה הכול בלי לשנות. <b>מנהלת</b> גם מוסיפה ומסירה מובילות.</p>
+    <div class="tablewrap"><table style="min-width:520px"><thead><tr><th>שם</th><th>מייל</th><th>הרשאה</th><th></th></tr></thead><tbody>${L.map(l=>`<tr style="cursor:default">
+      <td>${admin?`<input type="text" id="ln-${esc(l.email)}" data-lname="${esc(l.email)}" value="${esc(l.name||'')}" placeholder="שם" style="width:130px">`:esc(l.name||'')}</td>
+      <td dir="ltr" style="text-align:left">${esc(l.email)}</td>
+      <td>${admin&&l.email!==S.uid?`<select data-lrole="${esc(l.email)}">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${l.role===k?'selected':''}>${v}</option>`).join('')}</select>`:esc(ROLE[l.role]||l.role)}</td>
+      <td>${admin&&l.email!==S.uid?(S.clearStep==='lead-'+l.email?`<button class="btn sm danger" data-rmleader="${esc(l.email)}">להסיר?</button>`:`<button class="btn sm" data-askrm="${esc(l.email)}">הסרה</button>`):''}</td></tr>`).join('')}</tbody></table></div>
+    ${admin?`<h3 style="margin-top:16px">הוספת מובילה</h3><div class="row"><input id="newEmail" type="text" dir="ltr" placeholder="name@gmail.com" style="flex:2;min-width:180px"><input id="newName" type="text" placeholder="שם" style="flex:1;min-width:100px"><select id="newRole"><option value="leader">מובילה</option><option value="viewer">צפייה בלבד</option><option value="admin">מנהלת</option></select><button class="btn primary" data-act="addLeader">הוספה</button></div>
+    <p class="muted" style="font-size:12px">אחרי ההוספה, המובילה נכנסת עם "כניסה עם Google" באותה כתובת. למובילה בלי חשבון Google, צרי משתמש עם סיסמה ב־Supabase (ראי במדריך).</p>`:''}
+  </div>
+  <div class="panel card"><h2>החשבון שלי</h2><p>מחוברת בתור <b dir="ltr">${esc(S.uid||'')}</b> · ${esc(ROLE[S.role]||'')}</p>
+    <label for="newPw" class="muted">החלפת סיסמה (לכניסה עם מייל וסיסמה)</label>
+    <div class="row"><input id="newPw" type="password" dir="ltr" style="flex:1;min-width:160px;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:6px 9px" autocomplete="new-password"><button class="btn" data-act="changePw">שמירה</button></div>
+    <div style="margin-top:16px"><button class="btn" data-act="logout">יציאה מהמערכת</button></div></div></div>`;
+  return h;
+}
+function logText(l){
+  const n=id=>esc(fullName(P(id)));
+  switch(l.kind){
+    case 'assign': return `שיבצה את ${n(l.e)} אל ${n(l.m)}${l.override?' (חריג: '+esc(l.override)+')':''}`;
+    case 'reassign': return `העבירה את ${n(l.e)} מ־${n(l.prev)} אל ${n(l.m)}`;
+    case 'unassign': return `ביטלה את השיבוץ של ${n(l.e)}`;
+    case 'approve': return l.e?`אישרה את השיבוץ של ${n(l.e)}`:`אישרה ${l.n} הצעות`;
+    case 'auto': return `יצרה ${l.n} הצעות שיבוץ אוטומטיות`;
+    case 'import': return `ייבאה ${l.n} נרשמות${l.replace?' (החלפה מלאה)':''}`;
+    case 'clear': return 'מחקה את כל הנתונים';
+    default: return esc(l.kind||'');
+  }
+}
+
+/* ================= import / export / areas ================= */
+async function readFile(f){
+  try{
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    const header=rows.shift()||[];
+    const res=normalizeRows(header,rows);
+    if(!res.people.length){toast('לא נמצאו נרשמות בקובץ. ודאי שהשורה הראשונה היא שורת הכותרות.',true);return;}
+    S.importPreview={...res,fileName:f.name,replace:!!(S.meta&&S.meta.demo)};
+    render();
+  }catch(e){ console.error(e); toast('לא הצלחתי לקרוא את הקובץ. ודאי שזה קובץ xlsx מטופס הרישום.',true); }
+}
+const PK={people:'id',ann:'person_id',matches:'mentee_id',activity:'id',meta:'key'};
+async function deleteAll(t){ await W(()=>sb.from(t).delete().not(PK[t],'is',null)); }
+async function doImport(){
+  const pv=S.importPreview; if(!pv) return;
+  const replace=$('#replaceAll')?.checked;
+  S.busy='מייבאת נרשמות…'; render();
+  try{
+    if(replace){ S.busy='מוחקת את הנתונים הקודמים…'; render(); await deleteAll('matches'); await deleteAll('ann'); await deleteAll('people'); }
+    const list=pv.people, size=200, now=new Date().toISOString();
+    for(let i=0;i<list.length;i+=size){ S.busy=`שומרת נרשמות… ${Math.min(i+size,list.length)}/${list.length}`; render(); await W(()=>sb.from('people').upsert(list.slice(i,i+size).map(p=>({id:p.id,data:p,updated_at:now})))); }
+    const total=replace?list.length:new Set([...S.people.keys(),...list.map(p=>p.id)]).size;
+    await W(()=>sb.from('meta').upsert({key:'import',data:{at:Date.now(),by:S.uid,count:total,fileName:pv.fileName,demo:false}}));
+    logAct('import',{n:pv.people.length,replace:!!replace});
+    toast(`יובאו ${pv.people.length} נרשמות`);
+    S.importPreview=null;
+  }catch(e){ console.error(e); }
+  S.busy=''; render();
+}
+async function doClear(){
+  S.busy='מוחקת…'; S.clearStep=0; render();
+  try{ for(const c of ['matches','ann','people','activity','meta']) await deleteAll(c); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
+  S.busy=''; S.sel=null; render();
+}
+function exportRows(){
+  const rows=[['תחום','חונכת','שלב חונכת','מחלקת חונכת','מייל חונכת','טלפון חונכת','חניכה','שלב חניכה','מחלקת חניכה','מייל חניכה','טלפון חניכה','סטטוס','שובץ ע״י']];
+  const list=[...S.matches.entries()].map(([eid,mt])=>({e:P(eid),m:P(mt.mentor),mt})).filter(x=>x.e&&x.m&&(inScope(x.e)||inScope(x.m))&&(!S.exportFinal||x.mt.status==='final'));
+  list.sort((a,b)=>(a.m.dept||'').localeCompare(b.m.dept||'','he')||fullName(a.m).localeCompare(fullName(b.m),'he'));
+  for(const {e,m,mt} of list) rows.push([S.areas.get(areaOfPerson(m))?.name||'',fullName(m),stageShort(m),m.dept,m.email,m.phone,fullName(e),stageShort(e),e.dept,e.email,e.phone,mt.status==='proposed'?'הצעה':'מאושר',leaderFull(mt.by)]);
+  return rows;
+}
+async function exportCsv(){
+  const rows=exportRows(); if(rows.length<2) return toast('אין שיבוצים לייצוא');
+  const csv='﻿'+rows.map(r=>r.map(v=>{v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='shibutzim-meduyakot.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+async function copyTsv(){
+  const rows=exportRows(); if(rows.length<2) return toast('אין שיבוצים לייצוא');
+  const tsv=rows.map(r=>r.map(v=>String(v==null?'':v).replace(/[\t\n]/g,' ')).join('\t')).join('\n');
+  try{ await navigator.clipboard.writeText(tsv); toast(`הועתקו ${rows.length-1} שורות. אפשר להדביק בגיליון.`); }catch(e){ toast('הדפדפן חסם העתקה. נסי את הורדת ה־CSV.',true); }
+}
+async function addArea(name,depts=[]){ const ord=Math.max(0,...[...S.areas.values()].map(a=>a.order||0))+1; await W(()=>sb.from('areas').insert({name,depts,leaders:[],ord})); }
+
+/* ================= events ================= */
+document.addEventListener('click',async ev=>{
+  const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto]'); if(!t) return;
+  const d=t.dataset;
+  if(d.tab){ S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
+  if(d.sel!==undefined&&d.sel){ S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(d.goto){ S.sel=d.goto; S.tab='board'; S.listMode='all'; pushPresence(); render(); window.scrollTo(0,0); return; }
+  if(d.lm){ S.listMode=d.lm; render(); return; }
+  if(d.ms){ S.mentorScope=d.ms; render(); return; }
+  if(d.ss){ S.suggScope=d.ss; render(); return; }
+  if(d.pr){ S.peopleRole=d.pr; render(); return; }
+  if(d.aopen){ S.alertsOpen[d.aopen]=!S.alertsOpen[d.aopen]; render(); return; }
+  if(d.assign){ const [e,m]=d.assign.split('|'); t.disabled=true; await assign(e,m,{expected:S.matches.get(e)?.mentor||null}).catch(()=>{}); return; }
+  if(d.override){ S.overrideFor=d.override; render(); setTimeout(()=>$('#ovr')?.focus(),0); return; }
+  if(d.unassign){ t.disabled=true; await unassign(d.unassign).catch(()=>{}); return; }
+  if(d.approve){ t.disabled=true; await approve([d.approve]).catch(()=>{}); return; }
+  if(d.ta){ const p=P(S.sel); const ta=taOf(p); let ys=ta.confirmed?[...ta.years]:[]; const y=+d.ta; ys=ys.includes(y)?ys.filter(x=>x!==y):[...ys,y].sort(); await setAnn(p.id,{ta:ys,taSet:true}).catch(()=>{}); return; }
+  if(d.adept){ const [aid,dep]=d.adept.split('|'); const a=S.areas.get(aid); let ds=[...(a.depts||[])]; if(ds.includes(dep)) ds=ds.filter(x=>x!==dep); else { ds.push(dep); for(const o of S.areas.values()) if(o.id!==aid&&(o.depts||[]).includes(dep)) await W(()=>sb.from('areas').update({depts:o.depts.filter(x=>x!==dep)}).eq('id',o.id)); } await W(()=>sb.from('areas').update({depts:ds}).eq('id',aid)).catch(()=>{}); return; }
+  if(d.lead){ const a=S.areas.get(d.lead); let ls=[...(a.leaders||[])]; ls=ls.includes(S.uid)?ls.filter(x=>x!==S.uid):[...ls,S.uid]; await W(()=>sb.from('areas').update({leaders:ls}).eq('id',a.id)).catch(()=>{}); if(ls.includes(S.uid)){S.area=a.id;try{localStorage.setItem('shibutz.area',S.area);}catch(e){} pushPresence(); render();} return; }
+  if(d.askdel){ S.clearStep='area-'+d.askdel; render(); return; }
+  if(d.delarea){ S.clearStep=0; await W(()=>sb.from('areas').delete().eq('id',d.delarea)).catch(()=>{}); return; }
+  if(d.askrm){ S.clearStep='lead-'+d.askrm; render(); return; }
+  if(d.rmleader){ S.clearStep=0; await W(()=>sb.from('leaders').delete().eq('email',d.rmleader)).catch(()=>{}); toast('ההרשאה הוסרה'); return; }
+  switch(d.act){
+    case 'google': { const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}); if(error) loginScreen('הכניסה עם Google עדיין לא מוגדרת. היכנסי עם מייל וסיסמה.'); break; }
+    case 'logout': await sb.auth.signOut(); location.reload(); break;
+    case 'changePw': { const v=$('#newPw')?.value||''; if(v.length<8){toast('סיסמה צריכה להיות באורך 8 תווים לפחות',true);break;} const {error}=await sb.auth.updateUser({password:v}); if(error) toast('הסיסמה לא נשמרה: '+error.message,true); else { toast('הסיסמה עודכנה'); $('#newPw').value=''; } break; }
+    case 'addLeader': { const email=($('#newEmail')?.value||'').trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('כתובת המייל לא תקינה',true);break;} if(S.leaders.has(email)){toast('הכתובת כבר ברשימה',true);break;} await W(()=>sb.from('leaders').insert({email,name:($('#newName')?.value||'').trim(),role:$('#newRole')?.value||'leader'})).then(()=>toast('נוספה לרשימת המובילות')).catch(()=>{}); break; }
+    case 'auto': autoSuggest(); break;
+    case 'approveAll': { const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); if(ids.length) await approve(ids).catch(()=>{}); break; }
+    case 'confirmPending': { const p=S.pending; S.pending=null; await assign(p.eid,p.mid,{status:p.status,override:p.override,force:true}).catch(()=>{}); break; }
+    case 'cancelPending': S.pending=null; render(); break;
+    case 'cancelOverride': S.overrideFor=null; render(); break;
+    case 'doOverride': { const why=($('#ovr')?.value||'').trim(); if(!why){toast('כתבי סיבה קצרה לעקיפת האילוץ',true);$('#ovr')?.focus();break;} const [e,m]=d.pair.split('|'); await assign(e,m,{expected:S.matches.get(e)?.mentor||null,override:why}).catch(()=>{}); break; }
+    case 'taNone': await setAnn(S.sel,{ta:[],taSet:true}).catch(()=>{}); break;
+    case 'addArea': await addArea('תחום חדש').catch(()=>{}); break;
+    case 'areasFromDepts': { S.busy='יוצרת תחומים…'; render(); for(const dep of knownDepts()) await addArea(dep,[dep]).catch(()=>{}); S.busy=''; render(); break; }
+    case 'doImport': doImport(); break;
+    case 'cancelImport': S.importPreview=null; render(); break;
+    case 'exportCsv': exportCsv(); break;
+    case 'copyTsv': copyTsv(); break;
+    case 'askClear': S.clearStep='data'; render(); break;
+    case 'cancelClear': S.clearStep=0; render(); break;
+    case 'doClear': doClear(); break;
+  }
+});
+document.addEventListener('submit',async ev=>{
+  if(ev.target.id!=='loginForm') return;
+  ev.preventDefault();
+  const email=($('#lemail').value||'').trim(), password=$('#lpass').value||'';
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error) loginScreen(/Invalid login/i.test(error.message)?'המייל או הסיסמה שגויים.':error.message); else location.reload();
+});
+let qTimer;
+document.addEventListener('input',ev=>{
+  const t=ev.target;
+  if(t.id==='listQ'||t.id==='mentorQ'||t.id==='peopleQ'){ S[t.id]=t.value; clearTimeout(qTimer); qTimer=setTimeout(render,150); }
+});
+document.addEventListener('change',async ev=>{
+  const t=ev.target;
+  if(t.dataset.lrole){ await W(()=>sb.from('leaders').update({role:t.value}).eq('email',t.dataset.lrole)).catch(()=>{}); return; }
+  if(t.dataset.lname){ await W(()=>sb.from('leaders').update({name:t.value.trim()}).eq('email',t.dataset.lname)).catch(()=>{}); return; }
+  if(t.id==='areaSel'){ S.area=t.value; try{localStorage.setItem('shibutz.area',S.area);}catch(e){} pushPresence(); render(); return; }
+  if(t.id==='file'&&t.files[0]){ readFile(t.files[0]); t.value=''; return; }
+  if(t.id==='showIdle'){ S.showAllMentorsInGroups=t.checked; render(); return; }
+  if(t.id==='exportFinal'){ S.exportFinal=t.checked; return; }
+  if(t.id==='replaceAll'&&S.importPreview){ S.importPreview.replace=t.checked; return; }
+  if(t.dataset.ann&&S.sel){
+    const k=t.dataset.ann; let v=t.type==='checkbox'?t.checked:t.value; if(k==='capacity') v=+v;
+    await setAnn(S.sel,{[k]:v}).catch(()=>{}); return;
+  }
+  if(t.dataset.areaName){ const v=t.value.trim(); if(v) await W(()=>sb.from('areas').update({name:v}).eq('id',t.dataset.areaName)).catch(()=>{}); }
+});
+document.addEventListener('dragover',ev=>{const d=ev.target.closest&&ev.target.closest('#drop'); if(d){ev.preventDefault();d.classList.add('over');}});
+document.addEventListener('dragleave',ev=>{const d=ev.target.closest&&ev.target.closest('#drop'); if(d) d.classList.remove('over');});
+document.addEventListener('drop',ev=>{const d=ev.target.closest&&ev.target.closest('#drop'); if(d){ev.preventDefault();d.classList.remove('over');const f=ev.dataTransfer.files[0]; if(f) readFile(f);}});
+
+render();
+start();
+setInterval(()=>{ if(S.tab==='data'||S.sel) render(); },60000);
+</script>
+</body>
+</html>

@@ -456,7 +456,7 @@ const P=id=>S.people.get(id);
 const A=id=>S.ann.get(id)||{};
 const fullName=p=>p?((p.first||'')+' '+(p.last||'')).trim()||p.email||'ללא שם':'נרשמת שנמחקה';
 const isActive=p=>p&&A(p.id).status!=='withdrawn';
-const capOf=p=>Math.min(4,Math.max(1,Number(A(p.id).capacity)||4));
+const capOf=p=>4;
 const deptsOf=p=>[p.dept,p.dept2].filter(Boolean);
 const sameDept=(a,b)=>{const B=deptsOf(b);return deptsOf(a).some(x=>B.includes(x));};
 const schoolsOf=p=>p.school==='both'?['exact','eng']:p.school?[p.school]:[];
@@ -468,7 +468,7 @@ function stageShort(p){
 }
 function ladder(p,m){
   const steps=[11,12,13,14,20,30,40,50]; const r=p.rank||0;
-  return `<span class="stage" title="${esc(stageShort(p))}"><span class="ladder${m?' m':''}">${steps.map(s=>`<s class="${r>=s?'on':''}"></s>`).join('')}</span>${esc(stageShort(p))}</span>`;
+  return `<span class="stage">${esc(stageShort(p))}</span>`;
 }
 function taOf(p){const a=A(p.id); if(a.taSet) return {years:a.ta||[],confirmed:true}; return {years:p.taAuto||[],confirmed:false};}
 const notesPending=p=>p.notes&&!A(p.id).notesOk;
@@ -823,7 +823,7 @@ function mentorItem(m){
   const g=groupOf(m.id), cap=capOf(m);
   const dots=Array.from({length:4},(_,i)=>{ if(i>=Math.max(cap,g.length)) return ''; if(i<g.length){ const st=S.matches.get(g[i])?.status; return `<i class="${i>=cap?'x':st==='proposed'?'p':'f'}"></i>`;} return '<i></i>'; }).join('');
   const flags=[]; if(notesPending(m)) flags.push('<span class="chip warn">הערות</span>'); if(m.taFlag&&!A(m.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>'); if(!isActive(m)) flags.push('<span class="chip hard">לא פעילה</span>'); if(m.mentee) flags.push('<span class="chip">גם חניכה</span>'); if(S.area==='__all'||S.mentorScope==='all'){ const L=leaderOf(m); flags.push(L?`<span class="chip mentor">${esc(leaderFull(L))}</span>`:'<span class="chip warn">ללא מובילה</span>'); }
-  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}"><span class="nm">${esc(fullName(m))}</span><span class="dots" title="${g.length} מתוך ${cap}">${dots}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}"><span class="nm">${esc(fullName(m))}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
 }
 function vEmptyPeople(){
   return `<div class="panel empty"><b>עדיין אין נרשמות במערכת</b>ייבאי את קובץ האקסל מטופס הרישום, והחניכות והחונכות יופיעו כאן לכל המובילות.<div style="margin-top:12px"><button class="btn primary" data-tab="data">לייבוא קובץ</button></div></div>`;
@@ -886,8 +886,7 @@ function vDetail(p){
       <label class="row" style="margin-top:6px"><input type="checkbox" id="notesOk" data-ann="notesOk" ${a.notesOk?'checked':''} ${S.readOnly?'disabled':''}> ההערות נקראו וטופלו</label>`:''}
     <div class="ann">
       ${p.mentor?`<div><label>מתרגלת את השנתונים</label><div class="toggle-chips">${[1,2,3,4].map(y=>`<button data-ta="${y}" aria-pressed="${ta.years.includes(y)&&ta.confirmed}" ${S.readOnly?'disabled':''}>${HEB_YEAR[y]}</button>`).join('')}</div>
-        <div class="muted" style="font-size:12px;margin-top:4px">${ta.confirmed?(ta.years.length?'מאומת: לא תשובץ לחניכות מהשנתונים האלה במחלקה שלה.':'מאומת: לא מתרגלת.'):(p.taAuto.length?`זוהה בהערות: שנה ${p.taAuto.map(y=>HEB_YEAR[y]).join(', ')}. לחצי לאישור.`:p.taFlag?'ההערות מזכירות תרגול. סמני שנתונים אם רלוונטי.':'סמני אם רלוונטי.')}${!ta.confirmed?` <button class="link" data-act="taNone">לא מתרגלת</button>`:''}</div></div>
-      <div><label for="cap">מקסימום חניכות</label><select id="cap" data-ann="capacity" ${S.readOnly?'disabled':''}>${[1,2,3,4].map(n=>`<option ${capOf(p)===n?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
+        <div class="muted" style="font-size:12px;margin-top:4px">${ta.confirmed?(ta.years.length?'מאומת: לא תשובץ לחניכות מהשנתונים האלה במחלקה שלה.':'מאומת: לא מתרגלת.'):(p.taAuto.length?`זוהה בהערות: שנה ${p.taAuto.map(y=>HEB_YEAR[y]).join(', ')}. לחצי לאישור.`:p.taFlag?'ההערות מזכירות תרגול. סמני שנתונים אם רלוונטי.':'סמני אם רלוונטי.')}${!ta.confirmed?` <button class="link" data-act="taNone">לא מתרגלת</button>`:''}</div></div>`:''}
       ${p.mentor?`<div><label for="leadOf">מובילה אחראית</label><select id="leadOf" data-ann="leader" ${S.readOnly?'disabled':''}><option value="">${(()=>{const r=fileLeaderOf(p);return r?'לפי הקובץ: '+esc(leaderFull(r)):(p.leader?'בקובץ: '+esc(p.leader)+' (לא ברשימה)':'לא נקבעה בקובץ');})()}</option>${leaderOptions().map(l=>`<option value="${esc(l.email)}" ${isManualLeader(p)&&A(p.id).leader===l.email?'selected':''}>${esc(leaderFull(l.email))}</option>`).join('')}</select><div class="muted" style="font-size:12px;margin-top:4px">${isManualLeader(p)?'שונתה ידנית במערכת, וזה גובר על הקובץ.':'נקבעת לפי עמודת "מובילה" בקובץ הרישום.'} החניכות שלה עוברות איתה.</div></div>`:''}
       <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
       <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
@@ -930,7 +929,7 @@ function vMentorBlock(m){
   h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
     return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
   if(!isActive(m)) return h+'<p class="muted">החונכת סומנה כלא פעילה.</p></div>';
-  if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">הקבוצה מלאה (${g.length}/${cap}). כדי לצרף עוד חניכה, הגדילי את "מקסימום חניכות" או הסירי חניכה מהקבוצה.</p></div>`;
+  if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">הקבוצה מלאה (${g.length}/${cap}). כדי לצרף חניכה אחרת, הסירי קודם חניכה מהקבוצה.</p></div>`;
   const pool=[...S.people.values()].filter(e=>e.mentee&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||areaOfPerson(e)===areaOfPerson(m)||sameDept(e,m)));
   const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
   h+=`</div><div class="panel block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">חניכות פנויות שמתאימות ל${esc(m.first||'')} (${cand.length})</p>

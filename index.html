@@ -473,8 +473,17 @@ function ladder(p,m){
 function taOf(p){const a=A(p.id); if(a.taSet) return {years:a.ta||[],confirmed:true}; return {years:p.taAuto||[],confirmed:false};}
 const notesPending=p=>p.notes&&!A(p.id).notesOk;
 const areaOfPerson=p=>p?(IDX.deptArea.get(p.dept)||IDX.deptArea.get(p.dept2)||null):null;
-function resolveLeader(v){ if(!v) return null; v=String(v).trim(); const low=v.toLowerCase(); if(S.leaders.has(low)) return low; for(const l of S.leaders.values()) if(l.name&&l.name.trim()===v) return l.email; return null; }
-const fileLeaderOf=m=>m?resolveLeader(m.leader):null;
+const normName=s=>String(s||'').toLowerCase().replace(/["'׳״.,()\-_]/g,' ').replace(/\s+/g,' ').trim();
+function resolveLeader(v){
+  if(!v) return null; const raw=String(v).trim(), low=raw.toLowerCase();
+  if(S.leaders.has(low)) return low;
+  const n=normName(raw); if(!n) return null; const L=[...S.leaders.values()];
+  let hit=L.filter(l=>normName(l.name)===n||normName(l.email.split('@')[0])===n); if(hit.length===1) return hit[0].email;
+  hit=L.filter(l=>{ const ln=normName(l.name); return ln&&(ln.split(' ')[0]===n||n.split(' ')[0]===ln||ln.startsWith(n+' ')||n.startsWith(ln+' ')); }); if(hit.length===1) return hit[0].email;
+  return null;
+}
+const fileLeaderOf=m=>{ if(!m||!m.leader) return null; return resolveLeader(m.leader)||('file:'+String(m.leader).trim()); };
+function leaderKeysAll(){ const keys=leaderOptions().map(l=>l.email); const extra=new Set(); for(const p of S.people.values()) if(p.mentor){ const k=leaderOf(p); if(k&&k.startsWith('file:')) extra.add(k); } return [...keys,...[...extra].sort()]; }
 function leaderOf(m){ if(!m) return null; const v=A(m.id).leader; if(v&&S.leaders.has(v)) return v; return fileLeaderOf(m); }
 const isManualLeader=m=>{ const v=A(m.id).leader; return !!(v&&S.leaders.has(v)); };
 const leadTarget=()=>S.area==='__none'?null:S.area;
@@ -684,7 +693,7 @@ async function start(){
 function setSync(live,txt){ S.live=live; const el=$('#sync'); el.className='sync'+(live?' live':''); el.querySelector('span').textContent=txt||(live?'מסונכרן':'מתחבר…'); }
 function pushPresence(){ if(chan) chan.track({lead:S.area,sel:S.sel||null}).catch(()=>{}); }
 function resolveNames(){}
-const leaderFull=id=>!id?'':((S.leaders.get(id)?.name)||String(id).split('@')[0]);
+const leaderFull=id=>!id?'':String(id).startsWith('file:')?String(id).slice(5)+' (לא ברשימת המובילות)':((S.leaders.get(id)?.name)||String(id).split('@')[0]);
 const leaderName=id=>!id?'':(id===S.uid?'את':leaderFull(id));
 function ago(t){ if(!t) return ''; const s=Math.round((Date.now()-t)/1000); if(s<60) return 'עכשיו'; if(s<3600) return `לפני ${Math.round(s/60)} דק׳`; if(s<86400) return `לפני ${Math.round(s/3600)} שע׳`; return new Date(t).toLocaleDateString('he-IL'); }
 function colorOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return `hsl(${h%360} 45% 42%)`; }
@@ -782,10 +791,9 @@ function render(){
 const renderMainKeepFocus=()=>render();
 function renderAreaSel(){
   const sel=$('#areaSel');
-  const ls=leaderOptions();
-  if(S.area!=='__all'&&S.area!=='__none'&&!S.leaders.has(S.area)) S.area='__all';
-  const me=ls.find(l=>l.email===S.uid);
-  const html=(me?`<option value="${esc(S.uid)}">שלי</option>`:'')+ls.filter(l=>l.email!==S.uid).map(l=>`<option value="${esc(l.email)}">${esc(leaderFull(l.email))}</option>`).join('')+`<option value="__all">כל התוכנית</option><option value="__none">ללא מובילה</option>`;
+  const keys=leaderKeysAll();
+  if(S.area!=='__all'&&S.area!=='__none'&&!keys.includes(S.area)) S.area=keys.includes(S.uid)?S.uid:'__all';
+  const html=(keys.includes(S.uid)?`<option value="${esc(S.uid)}">שלי</option>`:'')+keys.filter(k=>k!==S.uid).map(k=>`<option value="${esc(k)}">${esc(leaderFull(k))}</option>`).join('')+`<option value="__all">כל התוכנית</option><option value="__none">ללא מובילה</option>`;
   if(sel.dataset.h!==html){sel.innerHTML=html;sel.dataset.h=html;}
   sel.value=S.area;
 }
@@ -854,7 +862,7 @@ function vBoard(){
         <div class="seg" role="group"><button data-mf="all" aria-pressed="${S.mentorFilter==='all'}">כולן</button><button data-mf="free" aria-pressed="${S.mentorFilter==='free'}">עם מקום</button><button data-mf="empty" aria-pressed="${S.mentorFilter==='empty'}">בלי חניכות</button></div></div>
         <div class="row"><input id="mentorQ" type="search" placeholder="חיפוש חונכת" value="${esc(S.mentorQ)}"></div>
       </div>
-      <div class="list" data-keep-scroll="mentors">${list||'<div class="empty">אין חונכות להצגה.</div>'}</div>
+      <div class="list" data-keep-scroll="mentors">${list||(S.area!=='__all'&&S.mentorScope!=='all'?`<div class="empty"><b>אין חונכות באחריות ${S.area===S.uid?'שלך':esc(leaderFull(S.area))}</b>המובילה האחראית נקבעת בעמודת "מובילה" בקובץ הרישום. כדאי לבדוק שהמייל או השם שם תואמים בדיוק לרשימה בלשונית מובילות. בינתיים אפשר לבחור "כל התוכנית" למעלה.</div>`:'<div class="empty">אין חונכות להצגה.</div>')}</div>
     </section>
     <section class="center">${S.sel&&P(S.sel)?vDetail(P(S.sel)):`<div class="panel empty"><b>בחרי חונכת</b>בחירה בחונכת מציגה את הקבוצה שלה, ומתחתיה את כל החניכות שמתאימות לה לפי האילוצים, מסודרות לפי שלב אקדמי.</div>`}</section>
   </div>`;
@@ -1026,7 +1034,7 @@ function vProgress(){
       <div class="mini muted" style="font-size:13px"><span><b class="num" style="color:var(--ink)">${o.fin}</b> מאושרים</span><span><b class="num" style="color:var(--ink)">${o.prop}</b> הצעות</span><span><b class="num" style="color:var(--ink)">${o.open}</b> ללא חונכת</span><span>·</span><span><b class="num" style="color:var(--ink)">${o.withGroup}/${o.mentors}</b> חונכות עם קבוצה</span><span><b class="num" style="color:var(--ink)">${o.seats}</b> מקומות פנויים</span><span>קבוצות של 1·2·3·4: <b class="num" style="color:var(--ink)">${sizes.join(' · ')}</b></span></div></div></div>`;
   const lstat=ms=>{ ms=ms.filter(isActive); let fin=0,prop=0,me=0,mp=0,seats=0; for(const m of ms){ const g=groupOf(m.id); const sts=g.map(id=>S.matches.get(id)?.status); if(sts.includes('final')) fin++; else if(g.length) prop++; me+=sts.filter(x=>x==='final').length; mp+=sts.filter(x=>x==='proposed').length; seats+=Math.max(0,capOf(m)-g.length); } return {total:ms.length,fin,prop,open:ms.length-fin-prop,me,mp,seats}; };
   const mentorsAll=all.filter(p=>p.mentor);
-  let rows=leaderOptions().map(l=>({id:l.email,name:leaderFull(l.email),st:lstat(mentorsAll.filter(m=>leaderOf(m)===l.email))}));
+  let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),st:lstat(mentorsAll.filter(m=>leaderOf(m)===k))}));
   const nol=mentorsAll.filter(m=>!leaderOf(m)&&isActive(m));
   if(nol.length) rows.push({id:'__none',name:'ללא מובילה',st:lstat(nol)});
   if(S.progSort==='low') rows.sort((x,y)=>pct(x.st.fin+x.st.prop,x.st.total)-pct(y.st.fin+y.st.prop,y.st.total)||y.st.open-x.st.open);

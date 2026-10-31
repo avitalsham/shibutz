@@ -191,6 +191,18 @@ th{font-size:12px;color:var(--muted);font-weight:600;position:sticky;top:0;backg
 tbody tr{cursor:pointer}
 tbody tr:hover{background:var(--sunk)}
 
+/* participants table */
+.ptbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.pt{max-height:calc(100vh - 230px);overflow:auto}
+.pt table{min-width:1500px;font-size:13px}
+.pt th{z-index:2;padding:0}
+.pt .thsort{background:none;border:0;padding:8px 10px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;text-align:right;width:100%}
+.pt .thsort:hover{color:var(--ink)}
+.pt tbody tr{cursor:default}
+.pt tbody tr.on{background:var(--accent-soft)}
+.pt td{padding:6px 10px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.pt select{padding:3px 6px;font-size:13px;max-width:150px}
+.ptnotes{max-width:320px;min-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
 /* areas */
 .areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .acard2{padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -316,7 +328,7 @@ const COLS={
   combinedOther:['מסלול לימודים משולב - אחר'],extraExact:['חוג נוסף (מדויקים)'],combined:['מסלול לימודים אחר (משולב)'],
   mentorWithMale:['לחנוך עם חונך'],thesis:['מסלול (תזה או ללא תזה)'],wantMentees:['בי"ס חניכות'],wantMenteesSpec:['בי"ס חניכות ספציפי'],
   baWhere:['תואר ראשון היכן'],baWhat:['תואר ראשון במה'],maWhere:['תואר שני היכן'],maWhat:['תואר שני במה'],
-  phdWhere:['תואר שלישי היכן'],phdWhat:['תואר שלישי במה'],notes:['הערות'],gift:['מתנה'],leader:['מובילה אחראית','מובילה']
+  phdWhere:['תואר שלישי היכן'],phdWhat:['תואר שלישי במה'],notes:['הערות'],gift:['מתנה']
 };
 function mapHeader(header){
   const H=header.map(h=>String(h==null?'':h).trim());
@@ -396,7 +408,7 @@ function buildPerson(g){
     okMale:clean(g('okMale')), mentorWithMale:clean(g('mentorWithMale')),
     program:prog.includes('אודיס')?'אודיסאה':prog.includes('עתודה')?'עתודה':'',
     prev:clean(g('prev')), work:clean(g('work')), degrees:deg.join('\n'), notes,
-    taAuto:parseTaYears(notes), taFlag:TA_RE.test(notes), gift:!!g('gift'), leader:(()=>{const v=clean(g('leader'));return v.includes('@')?v.toLowerCase():v;})(), dups:1
+    taAuto:parseTaYears(notes), taFlag:TA_RE.test(notes), gift:!!g('gift'), dups:1
   };
 }
 function normalizeRows(header, rows){
@@ -419,7 +431,7 @@ function normalizeRows(header, rows){
 const S={
   people:new Map(), leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
   uid:null, readOnly:false, live:false, loaded:{people:false,matches:false},
-  tab:'progress', area:'__all', areaStored:false, sel:null, selRole:null, mentorFilter:'all', candScope:'area', factsOpen:false, settingsOpen:false, settingsSec:'areas', progSort:'order',
+  tab:'progress', area:'__all', areaStored:false, sel:null, selRole:null, pt:{q:'',role:'all',school:'',dept:'',stage:'',lead:'',match:'',status:'',sort:'dept',dir:1}, ptSel:new Set(), mentorFilter:'all', candScope:'area', factsOpen:false, settingsOpen:false, settingsSec:'areas', progSort:'order',
   listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
   peopleQ:'', peopleRole:'all', pending:null, overrideFor:null, importPreview:null, busy:'', clearStep:0, alertsOpen:{}
 };
@@ -482,9 +494,9 @@ function resolveLeader(v){
   hit=L.filter(l=>{ const ln=normName(l.name); return ln&&(ln.split(' ')[0]===n||n.split(' ')[0]===ln||ln.startsWith(n+' ')||n.startsWith(ln+' ')); }); if(hit.length===1) return hit[0].email;
   return null;
 }
-const fileLeaderOf=m=>{ if(!m||!m.leader) return null; return resolveLeader(m.leader)||('file:'+String(m.leader).trim()); };
-function leaderKeysAll(){ const keys=leaderOptions().map(l=>l.email); const extra=new Set(); for(const p of S.people.values()) if(p.mentor){ const k=leaderOf(p); if(k&&k.startsWith('file:')) extra.add(k); } return [...keys,...[...extra].sort()]; }
-function leaderOf(m){ if(!m) return null; const v=A(m.id).leader; if(v&&S.leaders.has(v)) return v; return fileLeaderOf(m); }
+function leaderOf(m){ if(!m) return null; const v=A(m.id).leader; return v&&S.leaders.has(v)?v:null; }
+function personLeader(p){ if(!p) return null; if(p.mentor&&leaderOf(p)) return leaderOf(p); const mt=S.matches.get(p.id); if(mt) return leaderOf(P(mt.mentor)); return leaderOf(p); }
+const leaderKeysAll=()=>leaderOptions().map(l=>l.email);
 const isManualLeader=m=>{ const v=A(m.id).leader; return !!(v&&S.leaders.has(v)); };
 const leadTarget=()=>S.area==='__none'?null:S.area;
 function inScope(p){
@@ -492,7 +504,7 @@ function inScope(p){
   if(S.area==='__all') return true;
   const target=leadTarget();
   if(p.mentor&&leaderOf(p)===target) return true;
-  if(p.mentee){ const mt=S.matches.get(p.id); if(mt) return leaderOf(P(mt.mentor))===target; const fl=fileLeaderOf(p); if(fl) return fl===target; if(target==null) return false; return IDX.leadAreas.has(areaOfPerson(p)); }
+  if(p.mentee){ const mt=S.matches.get(p.id); if(mt) return leaderOf(P(mt.mentor))===target; const fl=leaderOf(p); if(fl) return fl===target; if(target==null) return false; return IDX.leadAreas.has(areaOfPerson(p)); }
   return false;
 }
 const mentorInScope=m=>!!m&&m.mentor&&(S.area==='__all'||leaderOf(m)===leadTarget());
@@ -599,9 +611,7 @@ function computeAlerts(){
   const both=[];
   for(const p of scoped){ if(p.mentee&&p.mentor){ const mt=S.matches.get(p.id); const g=groupOf(p.id); if(mt&&g.length){ const myM=P(mt.mentor); if(g.includes(mt.mentor)) continue; both.push({p:p.id,text:`חניכה של ${fullName(myM)} וחונכת של ${g.length}`,sev:'info'});} } }
   const nolead=[...S.people.values()].filter(p=>p.mentor&&isActive(p)&&!leaderOf(p)&&(S.area==='__all'||S.area==='__none')).map(p=>({p:p.id,text:(p.dept||'ללא מחלקה')+' · '+groupOf(p.id).length+' חניכות'}));
-  add('nolead','warn','חונכות בלי מובילה אחראית',nolead,'ממלאים את עמודת "מובילה" בקובץ הרישום ומייבאים שוב, או בוחרים מובילה בכרטיס של החונכת.');
-  const badlead=[...S.people.values()].filter(p=>p.leader&&!resolveLeader(p.leader)).map(p=>({p:p.id,text:'בקובץ כתוב: '+p.leader}));
-  add('badlead','warn','מובילה מהקובץ שלא נמצאה ברשימת המובילות',badlead,'כדאי לכתוב בקובץ את המייל של המובילה, בדיוק כמו בלשונית מובילות.');
+  add('nolead','warn','חונכות בלי מובילה אחראית',nolead,'משייכים מובילה בלשונית משתתפות, או בכרטיס של החונכת.');
   add('both','info','נרשמות שהן גם חניכות וגם חונכות',both,'לוודא שזה מתאים לה.');
   add('notes','info','הערות שלא נבדקו אצל משובצות',[...notesInGroups].map(id=>({p:id,text:(P(id).notes||'').slice(0,90)})));
   const missing=scoped.filter(p=>(p.mentee||p.mentor)&&(p.rank==null||!p.school||!p.dept)).map(p=>({p:p.id,text:[p.rank==null?'שלב':null,!p.school?'בית ספר':null,!p.dept?'מחלקה':null].filter(Boolean).join(', ')+' חסר'}));
@@ -801,7 +811,7 @@ function renderTabs(){
   const al=S.loaded.people?computeAlerts():[];
   const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
   const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
-  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['groups','קבוצות'],['alerts','התראות'],['people','כל הנרשמות'],['data','ייבוא וייצוא'],['team','מובילות']];
+  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['groups','קבוצות'],['alerts','התראות'],['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']];
   $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
 }
 function renderPeers(){
@@ -895,7 +905,7 @@ function vDetail(p){
     <div class="ann">
       ${p.mentor?`<div><label>מתרגלת את השנתונים</label><div class="toggle-chips">${[1,2,3,4].map(y=>`<button data-ta="${y}" aria-pressed="${ta.years.includes(y)&&ta.confirmed}" ${S.readOnly?'disabled':''}>${HEB_YEAR[y]}</button>`).join('')}</div>
         <div class="muted" style="font-size:12px;margin-top:4px">${ta.confirmed?(ta.years.length?'מאומת: לא תשובץ לחניכות מהשנתונים האלה במחלקה שלה.':'מאומת: לא מתרגלת.'):(p.taAuto.length?`זוהה בהערות: שנה ${p.taAuto.map(y=>HEB_YEAR[y]).join(', ')}. לחצי לאישור.`:p.taFlag?'ההערות מזכירות תרגול. סמני שנתונים אם רלוונטי.':'סמני אם רלוונטי.')}${!ta.confirmed?` <button class="link" data-act="taNone">לא מתרגלת</button>`:''}</div></div>`:''}
-      ${p.mentor?`<div><label for="leadOf">מובילה אחראית</label><select id="leadOf" data-ann="leader" ${S.readOnly?'disabled':''}><option value="">${(()=>{const r=fileLeaderOf(p);return r?'לפי הקובץ: '+esc(leaderFull(r)):(p.leader?'בקובץ: '+esc(p.leader)+' (לא ברשימה)':'לא נקבעה בקובץ');})()}</option>${leaderOptions().map(l=>`<option value="${esc(l.email)}" ${isManualLeader(p)&&A(p.id).leader===l.email?'selected':''}>${esc(leaderFull(l.email))}</option>`).join('')}</select><div class="muted" style="font-size:12px;margin-top:4px">${isManualLeader(p)?'שונתה ידנית במערכת, וזה גובר על הקובץ.':'נקבעת לפי עמודת "מובילה" בקובץ הרישום.'} החניכות שלה עוברות איתה.</div></div>`:''}
+      ${p.mentor?`<div><label for="leadOf">מובילה אחראית</label><select id="leadOf" data-ann="leader" ${S.readOnly?'disabled':''}><option value="">ללא מובילה</option>${leaderOptions().map(l=>`<option value="${esc(l.email)}" ${isManualLeader(p)&&A(p.id).leader===l.email?'selected':''}>${esc(leaderFull(l.email))}</option>`).join('')}</select><div class="muted" style="font-size:12px;margin-top:4px">החניכות שלה באחריות אותה מובילה.</div></div>`:''}
       <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
       <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
     </div>
@@ -984,17 +994,75 @@ function vAlerts(){
       const r1=(a.key==='idle'||a.key==='over'||a.key==='nolead'||a.key==='badlead')?'mentor':(it.e?'mentee':'');
       return `<li><button class="link" data-goto="${esc(pid)}" data-role="${r1}">${esc(fullName(p))}</button>${it.m?` ← <button class="link" data-goto="${esc(it.m)}" data-role="mentor">${esc(fullName(P(it.m)))}</button>`:''}${(it.others||[]).map(o=>` · <button class="link" data-goto="${esc(o)}">${esc(P(o)?.email||'')}</button>`).join('')}<span class="muted">${esc(it.text||'')}</span></li>`;}).join('')}</ul>${a.items.length>8?`<button class="link" data-aopen="${a.key}" style="margin-top:6px">${open?'פחות':'הצגת כל '+a.items.length}</button>`:''}</div>`;}).join('')+`</div>`;
 }
+const PT_COLS=[
+  {k:'name',l:'שם',get:p=>fullName(p)},
+  {k:'role',l:'תפקיד',get:p=>(p.mentor?'חונכת':'')+(p.mentee?' חניכה':'')},
+  {k:'stage',l:'שלב',get:p=>p.rank==null?-1:p.rank},
+  {k:'school',l:'בית ספר',get:p=>SCHOOL_NAME[p.school]||''},
+  {k:'dept',l:'מחלקה',get:p=>(p.dept||'')+(p.dept2?' + '+p.dept2:'')},
+  {k:'track',l:'מסלול מחקר',get:p=>p.track||''},
+  {k:'lead',l:'מובילה אחראית',get:p=>leaderFull(personLeader(p))||'תתתת'},
+  {k:'match',l:'שיבוץ',get:p=>p.mentor?groupOf(p.id).length:(S.matches.has(p.id)?fullName(P(S.matches.get(p.id).mentor)):'')},
+  {k:'email',l:'מייל',get:p=>p.email||''},
+  {k:'phone',l:'טלפון',get:p=>p.phone||''},
+  {k:'prev',l:'השתתפות קודמת',get:p=>p.prev||''},
+  {k:'program',l:'אודיסאה/עתודה',get:p=>p.program||''},
+  {k:'status',l:'סטטוס',get:p=>isActive(p)?'פעילה':'לא פעילה'},
+  {k:'notes',l:'הערות',get:p=>p.notes||''}
+];
+function ptRows(){
+  const F=S.pt, q=F.q.trim();
+  let rows=[...S.people.values()];
+  if(q) rows=rows.filter(p=>[fullName(p),p.email,p.dept,p.dept2,p.track,p.notes,p.phone].some(x=>(x||'').includes(q)));
+  if(F.role==='mentee') rows=rows.filter(p=>p.mentee); else if(F.role==='mentor') rows=rows.filter(p=>p.mentor); else if(F.role==='both') rows=rows.filter(p=>p.mentor&&p.mentee);
+  if(F.school) rows=rows.filter(p=>p.school===F.school);
+  if(F.dept) rows=rows.filter(p=>p.dept===F.dept||p.dept2===F.dept);
+  if(F.stage) rows=rows.filter(p=>stageGroup(p)===F.stage);
+  if(F.lead==='__none') rows=rows.filter(p=>!personLeader(p)); else if(F.lead) rows=rows.filter(p=>personLeader(p)===F.lead);
+  if(F.match==='done') rows=rows.filter(p=>p.mentor?groupOf(p.id).length>0:S.matches.has(p.id));
+  else if(F.match==='open') rows=rows.filter(p=>p.mentor?groupOf(p.id).length===0:!S.matches.has(p.id));
+  if(F.status==='active') rows=rows.filter(isActive); else if(F.status==='inactive') rows=rows.filter(p=>!isActive(p));
+  const col=PT_COLS.find(c=>c.k===F.sort)||PT_COLS[4];
+  rows.sort((a,b)=>{ const x=col.get(a), y=col.get(b); const r=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'he'); return r*F.dir||fullName(a).localeCompare(fullName(b),'he'); });
+  return rows;
+}
 function vPeople(){
   if(!S.people.size) return vEmptyPeople();
-  const q=S.peopleQ.trim();
-  let rows=[...S.people.values()].filter(inScope).filter(p=>!q||fullName(p).includes(q)||(p.email||'').includes(q)||(p.dept||'').includes(q)||(p.notes||'').includes(q));
-  if(S.peopleRole==='mentee') rows=rows.filter(p=>p.mentee); else if(S.peopleRole==='mentor') rows=rows.filter(p=>p.mentor); else if(S.peopleRole==='both') rows=rows.filter(p=>p.mentor&&p.mentee);
-  rows.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||(a.rank||0)-(b.rank||0));
-  return `<div class="row" style="margin-bottom:12px"><input id="peopleQ" type="search" placeholder="חיפוש בשם, מייל, מחלקה או הערות" value="${esc(S.peopleQ)}" style="flex:1;min-width:200px">
-    <div class="seg"><button data-pr="all" aria-pressed="${S.peopleRole==='all'}">כולן</button><button data-pr="mentee" aria-pressed="${S.peopleRole==='mentee'}">חניכות</button><button data-pr="mentor" aria-pressed="${S.peopleRole==='mentor'}">חונכות</button><button data-pr="both" aria-pressed="${S.peopleRole==='both'}">גם וגם</button></div><span class="muted num">${rows.length} נרשמות</span></div>
-  <div class="panel tablewrap"><table><thead><tr><th>שם</th><th>תפקיד</th><th>שלב</th><th>בית ספר</th><th>מחלקה</th><th>מובילה אחראית</th><th>שיבוץ</th><th>הערות</th></tr></thead><tbody>${rows.map(p=>{
-    const mt=S.matches.get(p.id); const g=groupOf(p.id);
-    return `<tr data-goto="${p.id}"><td><b>${esc(fullName(p))}</b>${!isActive(p)?' <span class="chip hard">לא פעילה</span>':''}</td><td>${p.mentee?'<span class="chip mentee">חניכה</span> ':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}</td><td>${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td>${p.mentor?`<select data-setlead="${p.id}" ${S.readOnly?'disabled':''} onclick="event.stopPropagation()"><option value="">${(()=>{const r=fileLeaderOf(p);return r?'לפי הקובץ: '+esc(leaderFull(r)):'ללא מובילה';})()}</option>${leaderOptions().map(l=>`<option value="${esc(l.email)}" ${isManualLeader(p)&&A(p.id).leader===l.email?'selected':''}>${esc(leaderFull(l.email))}</option>`).join('')}</select>`:(S.matches.get(p.id)?esc(leaderFull(leaderOf(P(S.matches.get(p.id).mentor)))||''):'<span class="muted">לפי החונכת</span>')}</td><td>${p.mentee?(mt?'← '+esc(fullName(P(mt.mentor)))+(mt.status==='proposed'?' (הצעה)':''):'<span class="muted">פנויה</span>'):''}${p.mentor?`<div class="num">${g.length}/${capOf(p)}</div>`:''}</td><td style="max-width:280px"><span class="muted" style="font-size:12px">${esc((p.notes||'').slice(0,110))}</span></td></tr>`;}).join('')}</tbody></table></div>`;
+  const F=S.pt; const rows=ptRows(); const ids=new Set(rows.map(p=>p.id));
+  for(const id of [...S.ptSel]) if(!S.people.has(id)) S.ptSel.delete(id);
+  const selN=S.ptSel.size, allOn=rows.length&&rows.every(p=>S.ptSel.has(p.id));
+  const opt=(v,l,cur)=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`;
+  const stages=[...new Set([...S.people.values()].sort(byStage).map(stageGroup))];
+  const leads=leaderOptions();
+  const leadSel=(p)=>{ if(!p.mentor&&S.matches.has(p.id)) return `<span class="muted" title="נקבעת לפי החונכת">${esc(leaderFull(personLeader(p))||'—')}</span>`;
+    const cur=leaderOf(p)||''; return `<select data-setlead="${p.id}" ${S.readOnly?'disabled':''} aria-label="מובילה אחראית ל${esc(fullName(p))}">${opt('','—',cur)}${leads.map(l=>opt(l.email,leaderFull(l.email),cur)).join('')}</select>`; };
+  const th=c=>`<th><button class="thsort" data-ptsort="${c.k}">${esc(c.l)}${F.sort===c.k?(F.dir>0?' ▲':' ▼'):''}</button></th>`;
+  return `<div class="ptbar">
+      <input id="ptq" type="search" placeholder="חיפוש בשם, מייל, מחלקה, מסלול או הערות" value="${esc(F.q)}" style="flex:2;min-width:200px">
+      <select id="pt-role" data-ptf="role">${opt('all','כל התפקידים',F.role)}${opt('mentor','חונכות',F.role)}${opt('mentee','חניכות',F.role)}${opt('both','גם וגם',F.role)}</select>
+      <select id="pt-school" data-ptf="school">${opt('','כל בתי הספר',F.school)}${opt('exact','מדעים מדויקים',F.school)}${opt('eng','הנדסה',F.school)}${opt('both','משולב',F.school)}${opt('mgmt','ניהול',F.school)}</select>
+      <select id="pt-dept" data-ptf="dept">${opt('','כל המחלקות',F.dept)}${knownDepts().map(d=>opt(d,d,F.dept)).join('')}</select>
+      <select id="pt-stage" data-ptf="stage">${opt('','כל השלבים',F.stage)}${stages.map(g=>opt(g,g,F.stage)).join('')}</select>
+      <select id="pt-lead" data-ptf="lead">${opt('','כל המובילות',F.lead)}${opt('__none','ללא מובילה',F.lead)}${leads.map(l=>opt(l.email,leaderFull(l.email),F.lead)).join('')}</select>
+      <select id="pt-match" data-ptf="match">${opt('','שובצו ולא שובצו',F.match)}${opt('done','שובצו / יש קבוצה',F.match)}${opt('open','עוד לא שובצו',F.match)}</select>
+      <select id="pt-status" data-ptf="status">${opt('','כל הסטטוסים',F.status)}${opt('active','פעילות',F.status)}${opt('inactive','לא פעילות',F.status)}</select>
+      <button class="link" data-act="ptClear">ניקוי סינון</button>
+    </div>
+    <div class="ptbar" style="justify-content:space-between">
+      <span class="muted"><b class="num" style="color:var(--ink)">${rows.length}</b> משתתפות מוצגות${selN?` · <b class="num" style="color:var(--ink)">${selN}</b> מסומנות`:''}</span>
+      ${S.readOnly?'':`<span class="row">${selN?`<label for="bulkLead" class="muted">שיוך המסומנות ל:</label><select id="bulkLead">${opt('','—','x')}${leads.map(l=>opt(l.email,leaderFull(l.email),'x')).join('')}<option value="__clear">ללא מובילה</option></select><button class="btn sm primary" data-act="bulkLead">שיוך</button><button class="link" data-act="ptSelNone">ביטול סימון</button>`:'<span class="muted" style="font-size:12px">אפשר לסמן כמה שורות ולשייך את כולן בבת אחת</span>'}</span>`}
+    </div>
+    <div class="panel tablewrap pt"><table><thead><tr>${S.readOnly?'':`<th style="width:32px"><input type="checkbox" id="ptAll" aria-label="סימון כל השורות המוצגות" ${allOn?'checked':''}></th>`}${PT_COLS.map(th).join('')}</tr></thead><tbody>${rows.map(p=>{
+      const mt=S.matches.get(p.id); const g=groupOf(p.id);
+      return `<tr class="${S.ptSel.has(p.id)?'on':''}">${S.readOnly?'':`<td><input type="checkbox" data-ptsel="${p.id}" ${S.ptSel.has(p.id)?'checked':''} aria-label="סימון ${esc(fullName(p))}"></td>`}
+        <td><button class="link" data-goto="${p.id}" data-role="${p.mentor?'mentor':'mentee'}" style="font-weight:600;text-decoration:none;color:var(--ink)">${esc(fullName(p))}</button></td>
+        <td>${p.mentor?'<span class="chip mentor">חונכת</span> ':''}${p.mentee?'<span class="chip mentee">חניכה</span>':''}</td>
+        <td style="white-space:nowrap">${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td title="${esc(p.track)}">${esc(p.track)}</td>
+        <td>${leadSel(p)}</td>
+        <td>${p.mentor?`<span class="num">${g.length}/4</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
+        <td dir="ltr" style="text-align:right">${esc(p.email)}</td><td dir="ltr" style="text-align:right;white-space:nowrap">${esc(p.phone)}</td><td title="${esc(p.prev)}">${esc(p.prev)}</td><td>${esc(p.program)}</td>
+        <td>${isActive(p)?'פעילה':'<span class="chip hard">לא פעילה</span>'}</td>
+        <td class="ptnotes" title="${esc(p.notes)}">${esc(p.notes)}</td></tr>`;}).join('')||`<tr><td colspan="15" class="empty">אין משתתפות שמתאימות לסינון.</td></tr>`}</tbody></table></div>`;
 }
 function vAreas(){
   const admin=!S.readOnly;
@@ -1099,6 +1167,7 @@ function logText(l){
     case 'import': return `ייבאה ${l.n} נרשמות${l.replace?' (החלפה מלאה)':''}`;
     case 'clear': return 'מחקה את כל הנתונים';
     case 'split': return `חילקה ${l.n} חונכות בתחום ${esc(l.area||'')}`;
+    case 'bulklead': return `שייכה ${l.n} משתתפות ל${esc(l.to?leaderFull(l.to):'"ללא מובילה"')}`;
     case 'lead': return `העבירה את ${n(l.m)} לאחריות ${esc(leaderFull(l.to)||'החלוקה לפי מחלקה')}`;
     default: return esc(l.kind||'');
   }
@@ -1168,6 +1237,7 @@ document.addEventListener('click',async ev=>{
   if(d.mf){ S.mentorFilter=d.mf; render(); return; }
   if(d.cs){ S.candScope=d.cs; render(); return; }
   if(d.gotoAlert){ S.tab='alerts'; S.alertsOpen[d.gotoAlert]=true; render(); window.scrollTo(0,0); return; }
+  if(d.ptsort){ if(S.pt.sort===d.ptsort) S.pt.dir*=-1; else { S.pt.sort=d.ptsort; S.pt.dir=1; } render(); return; }
   if(d.srole){ S.selRole=d.srole; S.pending=null; S.overrideFor=null; render(); return; }
   if(d.sel!==undefined&&d.sel){ S.selRole=roleFor(P(d.sel),d.role); S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   if(d.goto){ S.selRole=roleFor(P(d.goto),d.role); S.sel=d.goto; S.tab='board'; pushPresence(); render(); window.scrollTo(0,0); return; }
@@ -1201,6 +1271,9 @@ document.addEventListener('click',async ev=>{
     case 'settings': S.settingsOpen=true; render(); break;
     case 'closeSettings': S.settingsOpen=false; S.clearStep=0; render(); break;
     case 'closeSettingsBg': if(ev.target===t){ S.settingsOpen=false; S.clearStep=0; render(); } break;
+    case 'ptClear': S.pt={...S.pt,q:'',role:'all',school:'',dept:'',stage:'',lead:'',match:'',status:''}; render(); break;
+    case 'ptSelNone': S.ptSel.clear(); render(); break;
+    case 'bulkLead': { const v=$('#bulkLead')?.value; if(!v){ toast('בחרי מובילה מהרשימה',true); break; } const ids=[...S.ptSel]; const lead=v==='__clear'?'':v; const now=new Date().toISOString(); const rows=ids.map(id=>{ const {by,at,...cur}=S.ann.get(id)||{}; return {person_id:id,data:{...cur,leader:lead},by_email:S.uid,at:now}; }); try{ for(let i=0;i<rows.length;i+=100) await W(()=>sb.from('ann').upsert(rows.slice(i,i+100))); toast(`${ids.length} משתתפות שויכו ל${lead?leaderFull(lead):'"ללא מובילה"'}`); logAct('bulklead',{n:ids.length,to:lead||null}); S.ptSel.clear(); render(); }catch(e){} break; }
     case 'auto': autoSuggest(); break;
     case 'approveAll': { const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); if(ids.length) await approve(ids).catch(()=>{}); break; }
     case 'confirmPending': { const p=S.pending; S.pending=null; await assign(p.eid,p.mid,{status:p.status,override:p.override,force:true}).catch(()=>{}); break; }
@@ -1232,9 +1305,13 @@ let qTimer;
 document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.id==='listQ'||t.id==='mentorQ'||t.id==='peopleQ'){ S[t.id]=t.value; clearTimeout(qTimer); qTimer=setTimeout(render,150); }
+  if(t.id==='ptq'){ S.pt.q=t.value; clearTimeout(qTimer); qTimer=setTimeout(render,200); }
 });
 document.addEventListener('change',async ev=>{
   const t=ev.target;
+  if(t.dataset.ptf){ S.pt[t.dataset.ptf]=t.value; render(); return; }
+  if(t.dataset.ptsel){ if(t.checked) S.ptSel.add(t.dataset.ptsel); else S.ptSel.delete(t.dataset.ptsel); render(); return; }
+  if(t.id==='ptAll'){ const rows=ptRows(); if(t.checked) rows.forEach(p=>S.ptSel.add(p.id)); else rows.forEach(p=>S.ptSel.delete(p.id)); render(); return; }
   if(t.dataset.setlead){ await setAnn(t.dataset.setlead,{leader:t.value}).catch(()=>{}); logAct('lead',{m:t.dataset.setlead,to:t.value||null}); return; }
   if(t.dataset.lrole){ await W(()=>sb.from('leaders').update({role:t.value}).eq('email',t.dataset.lrole)).catch(()=>{}); return; }
   if(t.dataset.lname){ await W(()=>sb.from('leaders').update({name:t.value.trim()}).eq('email',t.dataset.lname)).catch(()=>{}); return; }

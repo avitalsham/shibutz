@@ -904,7 +904,7 @@ function vBoard(){
   for(const m of mentors){ const g=stageGroup(m); if(g!==last){ const n=mentors.filter(x=>stageGroup(x)===g).length; list+=`<div class="stage-h"><span>${esc(g)}</span><span class="num">${n}</span></div>`; last=g; } list+=mentorItem(m); }
   return `<div class="toolbar"><span><b class="num">${openN}</b> <span class="muted">${S.area==='__all'?'חניכות בלי חונכת':'חניכות פנויות במחלקות של החונכות שלך'}</span></span>
       <button class="btn sm" data-act="auto" ${S.readOnly||S.busy?'disabled':''} title="מציע חונכת לכל חניכה פנויה בתחום, לפי האילוצים. ההצעות ממתינות לאישור.">הצעת שיבוץ אוטומטית</button>
-      ${propN?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות (${propN})</button>`:''}
+      ${propN?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות (${propN})</button>${S.clearStep==='props'?`<span class="row"><b style="color:var(--hard)">לבטל ${propN} הצעות?</b><button class="btn sm danger" data-act="rejectAll">כן, לבטל</button><button class="btn sm" data-act="cancelClear">לא</button></span>`:`<button class="btn sm" data-act="askRejectAll" ${S.readOnly?'disabled':''}>ביטול כל ההצעות</button>`}`:''}
       <button class="link" data-goto-alert="unassigned">רשימת החניכות הפנויות</button></div>
   <div class="board">
     <section class="panel col col-mentors" aria-label="חונכות">
@@ -1253,6 +1253,7 @@ function logText(l){
     case 'bulklead': return `שייכה ${l.n} משתתפות ל${esc(l.to?leaderFull(l.to):'"ללא מובילה"')}`;
     case 'role': return `${l.v?'הוסיפה':'הסירה'} את התפקיד ${l.k==='roleMentor'?'"חונכת"':'"חניכה"'} ${l.v?'ל':'מ'}${n(l.m)}`;
     case 'phd': return l.what==='create'?`יצרה קבוצת דוקטורנטיות (${l.n})`:l.what==='mentor'?`שיבצה את ${n(l.m)} כחונכת לקבוצת דוקטורנטיות`:'פירקה קבוצת דוקטורנטיות';
+    case 'rejectAll': return `ביטלה ${l.n} הצעות שיבוץ אוטומטיות`;
     case 'lead': return `העבירה את ${n(l.m)} לאחריות ${esc(leaderFull(l.to)||'החלוקה לפי מחלקה')}`;
     default: return esc(l.kind||'');
   }
@@ -1392,6 +1393,8 @@ document.addEventListener('click',async ev=>{
     case 'cancelImport': S.importPreview=null; render(); break;
     case 'exportCsv': exportCsv(); break;
     case 'copyTsv': copyTsv(); break;
+    case 'askRejectAll': S.clearStep='props'; render(); break;
+    case 'rejectAll': { S.clearStep=0; const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); try{ for(let i=0;i<ids.length;i+=100) await W(()=>sb.from('matches').delete().in('mentee_id',ids.slice(i,i+100)).eq('status','proposed')); toast(`${ids.length} הצעות בוטלו`); logAct('rejectAll',{n:ids.length}); }catch(e){} render(); break; }
     case 'askClear': S.clearStep='data'; render(); break;
     case 'cancelClear': S.clearStep=0; render(); break;
     case 'doClear': doClear(); break;

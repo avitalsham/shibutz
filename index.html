@@ -18,20 +18,20 @@
   --f-body:"IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
   --f-display:"Suez One", "IBM Plex Sans Hebrew", Georgia, serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
-  --open:#CBD5D3; --mentor-tint:#FBF3EC;
+  --open:#CBD5D3; --mentor-tint:#EEF5FC; --mentor-tint-line:#CFE0F3;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#231C17;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#231C17;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
@@ -131,7 +131,7 @@ h3{font-size:15px;margin:0 0 8px}
 .dots i.x{border-color:var(--hard);background:var(--hard)}
 .center{min-width:0}
 .card{padding:16px}
-.card-mentor{background:var(--mentor-tint);border-color:var(--mentor-soft)}
+.card-mentor{background:var(--mentor-tint);border-color:var(--mentor-tint-line)}
 .pname{font-size:22px;font-weight:700;margin:0}
 .facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 16px;margin:12px 0}
 .facts div{min-width:0}
@@ -203,6 +203,9 @@ tbody tr:hover{background:var(--sunk)}
 .pt tbody tr.on{background:var(--accent-soft)}
 .pt td{padding:6px 10px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 .pt select{padding:3px 6px;font-size:13px;max-width:150px}
+.rtog{border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:0 8px;font-size:12px;line-height:20px;margin-inline-end:3px}
+.rtog.m[aria-pressed=true]{background:var(--mentor-soft);color:var(--mentor);border:1px solid transparent}
+.rtog.e[aria-pressed=true]{background:var(--accent-soft);color:var(--accent);border:1px solid transparent}
 .ptnotes{max-width:320px;min-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
 /* areas */
 .areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
@@ -515,7 +518,9 @@ const STAGE_ORDER=r=>r==null?-1:r;
 function stageGroup(p){ const r=p.rank; if(r==null) return 'שלב לא ידוע'; if(r>=50) return 'חברת סגל'; if(r>=40) return 'פוסט דוקטורט'; if(r>=30) return 'תואר שלישי'; if(r>=20) return 'תואר שני'; return 'תואר ראשון · שנה '+HEB_YEAR[r-10]; }
 const byStage=(a,b)=>STAGE_ORDER(b.rank)-STAGE_ORDER(a.rank);
 function roleFor(p,hint){ if(!p) return null; if(hint==='mentor'&&p.mentor) return 'mentor'; if(hint==='mentee'&&p.mentee) return 'mentee'; if(p.mentee&&!p.mentor) return 'mentee'; if(p.mentor&&!p.mentee) return 'mentor'; if(groupOf(p.id).length&&!S.matches.has(p.id)) return 'mentor'; return p.mentor&&!p.mentee?'mentor':(p.mentee?'mentee':null); }
+const ADMIN_TABS=['people','data','team'];
 function rebuild(){
+  for(const p of S.people.values()){ if(p._mentee0===undefined){ p._mentee0=!!p.mentee; p._mentor0=!!p.mentor; } const a=A(p.id); p.mentee=typeof a.roleMentee==='boolean'?a.roleMentee:p._mentee0; p.mentor=typeof a.roleMentor==='boolean'?a.roleMentor:p._mentor0; }
   IDX.byMentor=new Map();
   for(const [eid,m] of S.matches){ if(!m.mentor) continue; if(!IDX.byMentor.has(m.mentor)) IDX.byMentor.set(m.mentor,[]); IDX.byMentor.get(m.mentor).push(eid); }
   IDX.deptArea=new Map();
@@ -787,6 +792,7 @@ async function autoSuggest(){
 /* ================= render ================= */
 function render(){
   if(!S.loaded.people) return;
+  if(S.role!=='admin'&&ADMIN_TABS.includes(S.tab)) S.tab='progress';
   rebuild();
   $('#tabs').hidden=false; document.querySelector('.area-pick').hidden=false;
   renderAreaSel(); renderTabs(); renderMe();
@@ -812,7 +818,7 @@ function renderTabs(){
   const al=S.loaded.people?computeAlerts():[];
   const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
   const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
-  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['groups','קבוצות'],['alerts','התראות'],['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']];
+  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],...(S.role==='admin'?[['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']]:[])];
   $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
 }
 function renderPeers(){
@@ -1026,6 +1032,11 @@ function ptRows(){
   rows.sort((a,b)=>{ const x=col.get(a), y=col.get(b); const r=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'he'); return r*F.dir||fullName(a).localeCompare(fullName(b),'he'); });
   return rows;
 }
+function roleToggles(p){
+  const a=A(p.id); const chg=k=>typeof a[k]==='boolean'&&a[k]!==p[k==='roleMentor'?'_mentor0':'_mentee0'];
+  const b=(k,on,l,cls)=>`<button class="rtog ${cls}" data-trole="${p.id}|${k}" aria-pressed="${on}" ${S.readOnly?'disabled':''} title="${on?'לחצי כדי להסיר':'לחצי כדי להוסיף'}${chg(k)?' · שונה ידנית (בטופס: '+((k==='roleMentor'?p._mentor0:p._mentee0)?'כן':'לא')+')':''}">${l}${chg(k)?'*':''}</button>`;
+  return b('roleMentor',p.mentor,'חונכת','m')+b('roleMentee',p.mentee,'חניכה','e');
+}
 function vPeople(){
   if(!S.people.size) return vEmptyPeople();
   const F=S.pt; const rows=ptRows(); const ids=new Set(rows.map(p=>p.id));
@@ -1056,7 +1067,7 @@ function vPeople(){
       const mt=S.matches.get(p.id); const g=groupOf(p.id);
       return `<tr class="${S.ptSel.has(p.id)?'on':''}">${S.readOnly?'':`<td><input type="checkbox" data-ptsel="${p.id}" ${S.ptSel.has(p.id)?'checked':''} aria-label="סימון ${esc(fullName(p))}"></td>`}
         <td><button class="link" data-goto="${p.id}" data-role="${p.mentor?'mentor':'mentee'}" style="font-weight:600;text-decoration:none;color:var(--ink)">${esc(fullName(p))}</button></td>
-        <td>${p.mentor?'<span class="chip mentor">חונכת</span> ':''}${p.mentee?'<span class="chip mentee">חניכה</span>':''}</td>
+        <td style="white-space:nowrap">${roleToggles(p)}</td>
         <td style="white-space:nowrap">${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td title="${esc(p.track)}">${esc(p.track)}</td>
         <td>${leadSel(p)}</td>
         <td>${p.mentor?`<span class="num">${g.length}/4</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
@@ -1168,6 +1179,7 @@ function logText(l){
     case 'clear': return 'מחקה את כל הנתונים';
     case 'split': return `חילקה ${l.n} חונכות בתחום ${esc(l.area||'')}`;
     case 'bulklead': return `שייכה ${l.n} משתתפות ל${esc(l.to?leaderFull(l.to):'"ללא מובילה"')}`;
+    case 'role': return `${l.v?'הוסיפה':'הסירה'} את התפקיד ${l.k==='roleMentor'?'"חונכת"':'"חניכה"'} ${l.v?'ל':'מ'}${n(l.m)}`;
     case 'lead': return `העבירה את ${n(l.m)} לאחריות ${esc(leaderFull(l.to)||'החלוקה לפי מחלקה')}`;
     default: return esc(l.kind||'');
   }
@@ -1233,10 +1245,15 @@ async function addArea(name,depts=[]){ const ord=Math.max(0,...[...S.areas.value
 document.addEventListener('click',async ev=>{
   const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto],[data-act]'); if(!t) return;
   const d=t.dataset;
-  if(d.tab){ S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
+  if(d.tab){ if(S.role!=='admin'&&ADMIN_TABS.includes(d.tab)){ toast('הלשונית הזאת זמינה למנהלת בלבד'); return; } S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
   if(d.mf){ S.mentorFilter=d.mf; render(); return; }
   if(d.cs){ S.candScope=d.cs; render(); return; }
   if(d.gotoAlert){ S.tab='alerts'; S.alertsOpen[d.gotoAlert]=true; render(); window.scrollTo(0,0); return; }
+  if(d.trole){ const [pid,k]=d.trole.split('|'); const p=P(pid); if(!p) return; const now=k==='roleMentor'?p.mentor:p.mentee; const orig=k==='roleMentor'?p._mentor0:p._mentee0; const nv=!now;
+    if(!nv&&k==='roleMentor'&&groupOf(pid).length){ toast(`ל${fullName(p)} יש חניכות בקבוצה. הסירי אותן קודם, ואז אפשר לבטל את התפקיד "חונכת".`,true); return; }
+    if(!nv&&k==='roleMentee'&&S.matches.has(pid)){ toast(`${fullName(p)} משובצת כחניכה. בטלי קודם את השיבוץ, ואז אפשר לבטל את התפקיד "חניכה".`,true); return; }
+    const {by,at,...cur}=S.ann.get(pid)||{}; const data={...cur}; if(nv===orig) delete data[k]; else data[k]=nv;
+    try{ await W(()=>sb.from('ann').upsert({person_id:pid,data,by_email:S.uid,at:new Date().toISOString()})); logAct('role',{m:pid,k,v:nv}); }catch(e){} return; }
   if(d.ptsort){ if(S.pt.sort===d.ptsort) S.pt.dir*=-1; else { S.pt.sort=d.ptsort; S.pt.dir=1; } render(); return; }
   if(d.srole){ S.selRole=d.srole; S.pending=null; S.overrideFor=null; render(); return; }
   if(d.sel!==undefined&&d.sel){ S.selRole=roleFor(P(d.sel),d.role); S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }

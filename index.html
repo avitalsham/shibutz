@@ -193,10 +193,14 @@ tbody tr{cursor:pointer}
 tbody tr:hover{background:var(--sunk)}
 
 /* phd tab */
-.step{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:18px 0 8px}
+.step{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:10px 0 6px}
 .step i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
 .step b{font-size:15px}
 .upper{display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,2.2fr);gap:12px;align-items:start}
+.phd-top .phd-scroll{max-height:calc(50vh - 90px);overflow-y:auto}
+.phd-top .grp-grid.phd-scroll{align-content:start;padding:2px}
+.phd-bottom{max-height:calc(50vh - 120px);overflow-y:auto}
+.phd-col h3{position:sticky;top:-12px;background:var(--surface);padding-block:4px;margin-top:-4px;z-index:1}
 .phd-col{padding:12px}
 .phd-col h3{display:flex;justify-content:space-between;align-items:baseline}
 .pcard{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:6px;background:var(--surface);cursor:pointer}
@@ -1009,16 +1013,16 @@ function vPhd(){
   let h=`<div class="step"><i>1</i><b>בחרי מחלקה</b><div class="seg" style="margin-inline-start:10px">${Object.entries(PHD_FAC).map(([k,l])=>`<button data-phdfac="${k}" aria-pressed="${S.phdFac===k}">${l} · ${cnt(k)}</button>`).join('')}</div></div>`;
   if(!S.phdFac) return h+`<div class="panel empty"><b>בחרי מחלקה כדי להתחיל</b>במחלקה שנבחרת יוצגו הדוקטורנטיות והפוסט־דוקטורנטיות שנרשמו כחניכות, הקבוצות שלהן, וחברות הסגל שאפשר לשבץ.</div>`;
   const f=S.phdFac;
-  const free=all.filter(p=>isPhdMentee(p)&&isActive(p)&&inFac(p,f)&&!phdGroupOf(p.id)&&!phdMentorGroup(p.id)).sort((a,b)=>byStage(a,b)||(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
+  const free=all.filter(p=>isPhdMentee(p)&&isActive(p)&&inFac(p,f)&&!phdGroupOf(p.id)&&!phdMentorGroup(p.id)).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
   for(const id of [...S.phdSel]) if(!free.some(p=>p.id===id)) S.phdSel.delete(id);
   const groups=[...S.phd.values()].filter(g=>g.faculty===f).sort((a,b)=>(a.order||0)-(b.order||0)||String(a.id).localeCompare(String(b.id)));
   const g0=S.phd.get(S.phdGroup); const g0ok=g0&&g0.faculty===f?g0:null;
   const n=S.phdSel.size;
-  h+=`<div class="step"><i>2</i><b>מקבצים לקבוצות</b><span class="muted" style="font-size:13px">מסמנים 1–3 ולוחצים "יצירת קבוצה". לחיצה על קבוצה בוחרת אותה לשיבוץ חונכת.</span></div>
-  <div class="upper"><section class="panel phd-col"><h3>בלי קבוצה <span class="muted num" style="font-size:12px">${free.length}</span></h3>
+  h+=`<div class="step"><i>2</i><b>מקבצים לקבוצות</b><span class="muted" style="font-size:13px">מסמנים 1–3 ומשבצים להן חונכת למטה (או "יצירת קבוצה" בלי חונכת). לחיצה על קבוצה קיימת בוחרת אותה.</span></div>
+  <div class="upper phd-top"><section class="panel phd-col phd-scroll"><h3>בלי קבוצה <span class="muted num" style="font-size:12px">${free.length}</span></h3>
     ${free.map(p=>`<label class="pcard${S.phdSel.has(p.id)?' on':''}"><input type="checkbox" data-phdsel="${p.id}" ${S.phdSel.has(p.id)?'checked':''} ${S.readOnly?'disabled':''}><b>${esc(fullName(p))}</b><span class="sub">${esc(stageShort(p))} · ${esc(p.dept||'')}${p.track?' · '+esc(p.track):''}${notesPending(p)?' · <span style="color:var(--warn)">יש הערות</span>':''}</span></label>`).join('')||'<p class="muted">כל הדוקטורנטיות במחלקה כבר בקבוצות.</p>'}
     ${n&&!S.readOnly?`<div class="row" style="margin-top:8px">${n<=3?`<button class="btn primary sm" data-act="phdCreate">יצירת קבוצה (${n} מסומנות)</button>`:'<span class="chip warn">אפשר עד 3 בקבוצה</span>'}${g0ok&&g0ok.members.length+n<=3?`<button class="btn sm" data-act="phdAdd">הוספה ל${phdLabel(g0ok)}</button>`:''}</div>`:''}
-  </section><div class="grp-grid">${groups.map(g=>{ const m=P(g.mentor); const sel=g0ok&&g0ok.id===g.id;
+  </section><div class="grp-grid phd-scroll">${groups.map(g=>{ const m=P(g.mentor); const sel=g0ok&&g0ok.id===g.id;
     return `<div class="panel grp${sel?' sel':''}" data-phdgrp="${g.id}" style="cursor:pointer"><div class="row" style="justify-content:space-between"><b>${phdLabel(g)}</b>${sel?'<span class="chip ok">נבחרה לשיבוץ</span>':`<span class="muted num">${g.members.length}/3</span>`}</div>
       ${g.members.map(id=>{const p=P(id); return `<div class="mem"><span><b>${esc(fullName(p))}</b> <span class="muted">· ${esc(p?stageShort(p):'')} · ${esc(p?.dept||'')}</span></span>${S.readOnly?'':`<button class="link" data-phdrm="${g.id}|${id}">הוצאה</button>`}</div>`;}).join('')}
       ${m?`<div class="mslot full"><div class="row" style="justify-content:space-between"><span><span class="muted" style="font-size:12px">חונכת: </span><b>${esc(fullName(m))}</b> <span class="muted">· ${esc(stageShort(m))} · ${esc(m.dept||'')}</span></span>${S.readOnly?'':`<button class="link" data-phdunm="${g.id}">הסרה</button>`}</div></div>`:`<div class="mslot"><span class="muted">${sel?'בחרי חונכת למטה':'עדיין בלי חונכת · לחצי כדי לבחור את הקבוצה'}</span></div>`}
@@ -1026,11 +1030,12 @@ function vPhd(){
     </div>`;}).join('')||'<div class="panel empty">עדיין אין קבוצות במחלקה. סמני דוקטורנטיות מימין וצרי קבוצה.</div>'}</div></div>`;
   const mentors=all.filter(p=>isPhdMentor(p)&&isActive(p)&&!phdGroupOf(p.id)&&(S.phdMScope==='all'||inFac(p,f))).sort((a,b)=>byStage(a,b)||fullName(a).localeCompare(fullName(b),'he'));
   const maxRank=g0ok?Math.max(0,...g0ok.members.map(id=>P(id)?.rank||0)):0;
-  h+=`<div class="step"><i>3</i><b>משבצים חברות סגל ופוסט־דוקטורנטיות</b><div class="seg" style="margin-inline-start:10px"><button data-phdms="fac" aria-pressed="${S.phdMScope!=='all'}">מ${PHD_FAC[f]}</button><button data-phdms="all" aria-pressed="${S.phdMScope==='all'}">מכל המחלקות</button></div>${g0ok?`<span class="chip ok">משבצים ל${phdLabel(g0ok)}</span>`:'<span class="muted" style="font-size:13px">קודם בחרי קבוצה למעלה</span>'}</div>
-  <section class="panel">${mentors.map(m=>{ const mg=phdMentorGroup(m.id); let act;
+  h+=`<div class="step"><i>3</i><b>משבצים חברות סגל ופוסט־דוקטורנטיות</b><div class="seg" style="margin-inline-start:10px"><button data-phdms="fac" aria-pressed="${S.phdMScope!=='all'}">מ${PHD_FAC[f]}</button><button data-phdms="all" aria-pressed="${S.phdMScope==='all'}">מכל המחלקות</button></div>${g0ok?`<span class="chip ok">משבצים ל${phdLabel(g0ok)}</span>`:n?`<span class="chip ok">משבצים ל־${n} המסומנות (תיווצר קבוצה)</span>`:'<span class="muted" style="font-size:13px">סמני חניכות למעלה, או לחצי על קבוצה קיימת</span>'}</div>
+  <section class="panel phd-bottom">${mentors.map(m=>{ const mg=phdMentorGroup(m.id); let act;
       if(mg) act=`<span class="muted">משובצת ל${phdLabel(mg)}${mg.faculty!==f?' ('+PHD_FAC[mg.faculty]+')':''}</span>`;
       else if(S.readOnly) act='<span class="muted">פנויה</span>';
-      else if(!g0ok) act='<button class="btn sm" disabled>בחרי קבוצה</button>';
+      else if(!g0ok&&n>=1&&n<=3){ const mr=Math.max(0,...[...S.phdSel].map(id=>P(id)?.rank||0)); act=m.rank<=mr?'<span class="chip warn">בין המסומנות יש פוסט־דוקטורנטית, נדרשת חברת סגל</span>':`<button class="btn sm primary" data-phdnew="${m.id}">שיבוץ עם ${n} המסומנות</button>`; }
+      else if(!g0ok) act='<button class="btn sm" disabled>סמני חניכות או בחרי קבוצה</button>';
       else if(m.rank<=maxRank) act='<span class="chip warn">בקבוצה יש פוסט־דוקטורנטית, נדרשת חברת סגל</span>';
       else act=`<button class="btn sm primary" data-phdas="${g0ok.id}|${m.id}">${g0ok.mentor?'החלפה ל':'שיבוץ ל'}${phdLabel(g0ok)}</button>`;
       return `<div class="mrow"><span><b>${esc(fullName(m))}</b>${notesPending(m)?' <span class="chip warn">הערות</span>':''}</span><span class="muted">${esc(stageShort(m))} · ${esc(m.dept||'')}</span><span class="muted">${esc(PHD_FAC[m.school]||SCHOOL_NAME[m.school]||'')}</span>${act}</div>`; }).join('')||`<div class="empty">אין חברות סגל או פוסט־דוקטורנטיות ${S.phdMScope==='all'?'':'מ'+PHD_FAC[f]} שנרשמו כחונכות.</div>`}</section>`;
@@ -1338,6 +1343,7 @@ document.addEventListener('click',async ev=>{
     if(!mem.length){ await phdWrite(()=>sb.from('phd_groups').delete().eq('id',gid),'הקבוצה התרוקנה ופורקה'); if(S.phdGroup===gid) S.phdGroup=null; }
     else await phdWrite(()=>sb.from('phd_groups').update({members:mem,by_email:S.uid,at:new Date().toISOString()}).eq('id',gid)); return; }
   if(d.phdunm){ await phdWrite(()=>sb.from('phd_groups').update({mentor_id:null,by_email:S.uid,at:new Date().toISOString()}).eq('id',d.phdunm),'החונכת הוסרה מהקבוצה'); return; }
+  if(d.phdnew){ const ids=[...S.phdSel]; if(!ids.length||ids.length>3) return; if(phdMentorGroup(d.phdnew)){ toast('החונכת הזאת כבר משובצת לקבוצה אחרת',true); return; } const ord=Math.max(0,...[...S.phd.values()].map(g=>g.order||0))+1; await phdWrite(()=>sb.from('phd_groups').insert({faculty:S.phdFac,members:ids,mentor_id:d.phdnew,ord,by_email:S.uid}),`נוצרה קבוצה עם ${fullName(P(d.phdnew))}`); S.phdSel.clear(); logAct('phd',{what:'mentor',m:d.phdnew}); render(); return; }
   if(d.phdas){ const [gid,mid]=d.phdas.split('|'); const other=phdMentorGroup(mid); if(other&&other.id!==gid){ toast('החונכת הזאת כבר משובצת לקבוצה אחרת',true); return; }
     await phdWrite(()=>sb.from('phd_groups').update({mentor_id:mid,by_email:S.uid,at:new Date().toISOString()}).eq('id',gid),`${fullName(P(mid))} שובצה ל${phdLabel(S.phd.get(gid))}`); logAct('phd',{what:'mentor',m:mid}); return; }
   if(d.ptsort){ if(S.pt.sort===d.ptsort) S.pt.dir*=-1; else { S.pt.sort=d.ptsort; S.pt.dir=1; } render(); return; }

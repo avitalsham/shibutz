@@ -18,20 +18,20 @@
   --f-body:"IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
   --f-display:"Suez One", "IBM Plex Sans Hebrew", Georgia, serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
-  --open:#CBD5D3;
+  --open:#CBD5D3; --mentor-tint:#FBF3EC;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#231C17;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#231C17;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
@@ -131,6 +131,7 @@ h3{font-size:15px;margin:0 0 8px}
 .dots i.x{border-color:var(--hard);background:var(--hard)}
 .center{min-width:0}
 .card{padding:16px}
+.card-mentor{background:var(--mentor-tint);border-color:var(--mentor-soft)}
 .pname{font-size:22px;font-weight:700;margin:0}
 .facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 16px;margin:12px 0}
 .facts div{min-width:0}
@@ -840,8 +841,8 @@ function personItem(p,{showMatch=true}={}){
 function mentorItem(m){
   const g=groupOf(m.id), cap=capOf(m);
   const dots=Array.from({length:4},(_,i)=>{ if(i>=Math.max(cap,g.length)) return ''; if(i<g.length){ const st=S.matches.get(g[i])?.status; return `<i class="${i>=cap?'x':st==='proposed'?'p':'f'}"></i>`;} return '<i></i>'; }).join('');
-  const flags=[]; if(notesPending(m)) flags.push('<span class="chip warn">הערות</span>'); if(m.taFlag&&!A(m.id).taSet) flags.push('<span class="chip warn">מתרגלת?</span>'); if(!isActive(m)) flags.push('<span class="chip hard">לא פעילה</span>'); if(m.mentee) flags.push('<span class="chip">גם חניכה</span>'); if(S.area==='__all'||S.mentorScope==='all'){ const L=leaderOf(m); flags.push(L?`<span class="chip mentor">${esc(leaderFull(L))}</span>`:'<span class="chip warn">ללא מובילה</span>'); }
-  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}"><span class="nm">${esc(fullName(m))}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+  const flags=[];
+  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}" ${isActive(m)?'':'style="opacity:.5" title="לא פעילה"'}><span class="nm">${esc(fullName(m))}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
 }
 function vEmptyPeople(){
   return `<div class="panel empty"><b>עדיין אין נרשמות במערכת</b>ייבאי את קובץ האקסל מטופס הרישום, והחניכות והחונכות יופיעו כאן לכל המובילות.<div style="margin-top:12px"><button class="btn primary" data-tab="data">לייבוא קובץ</button></div></div>`;
@@ -887,7 +888,7 @@ function vDetail(p){
   const watchers=room?room.peers().filter(x=>!x.isMe&&x.presence?.sel===p.id):[];
   const fact=(l,v)=>v?`<div><dt>${l}</dt><dd>${esc(v)}</dd></div>`:'';
   const prefTxt=(k,s)=>({mine:'מבית הספר שלי',any:'לא משנה לי',specific:'ספציפי: '+(s||'')}[k]||'');
-  let h=`<div class="panel card">
+  let h=`<div class="panel card${roleFor(p,S.selRole)==='mentor'?' card-mentor':''}">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div><p class="pname">${esc(fullName(p))}</p>
         <div class="row" style="margin-top:4px">${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(p.dept||'מחלקה חסרה')}${p.dept2?' + '+esc(p.dept2):''}</span>${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
@@ -912,7 +913,6 @@ function vDetail(p){
   </div>`;
   if(S.pending&&(S.pending.eid===p.id||S.pending.mid===p.id)) h+=`<div class="confirm"><b>שימי לב:</b> ${esc(S.pending.msg)} <button class="btn sm primary" data-act="confirmPending">כן, להחליף</button><button class="btn sm" data-act="cancelPending">ביטול</button></div>`;
   const role=roleFor(p,S.selRole);
-  if(p.mentee&&p.mentor) h+=`<div class="panel block row" style="justify-content:space-between"><span>נרשמה גם כחניכה וגם כחונכת. ${role==='mentor'?'מוצגות החניכות שאפשר לצרף אליה.':'מוצגות החונכות שמתאימות לה.'}</span><div class="seg"><button data-srole="mentor" aria-pressed="${role==='mentor'}">כחונכת</button><button data-srole="mentee" aria-pressed="${role==='mentee'}">כחניכה</button></div></div>`;
   if(role==='mentee') h+=vMenteeBlock(p);
   if(role==='mentor') h+=vMentorBlock(p);
   return h;

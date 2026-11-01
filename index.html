@@ -551,7 +551,7 @@ const STAGE_ORDER=r=>r==null?-1:r;
 function stageGroup(p){ const r=p.rank; if(r==null) return 'שלב לא ידוע'; if(r>=50) return 'חברת סגל'; if(r>=40) return 'פוסט דוקטורט'; if(r>=30) return 'תואר שלישי'; if(r>=20) return 'תואר שני'; return 'תואר ראשון · שנה '+HEB_YEAR[r-10]; }
 const byStage=(a,b)=>STAGE_ORDER(b.rank)-STAGE_ORDER(a.rank);
 function roleFor(p,hint){ if(!p) return null; if(hint==='mentor'&&p.mentor) return 'mentor'; if(hint==='mentee'&&p.mentee) return 'mentee'; if(p.mentee&&!p.mentor) return 'mentee'; if(p.mentor&&!p.mentee) return 'mentor'; if(groupOf(p.id).length&&!S.matches.has(p.id)) return 'mentor'; return p.mentor&&!p.mentee?'mentor':(p.mentee?'mentee':null); }
-const ADMIN_TABS=['people','data','team'];
+const ADMIN_TABS=['people','data'];
 function rebuild(){
   for(const p of S.people.values()){ if(p._mentee0===undefined){ p._mentee0=!!p.mentee; p._mentor0=!!p.mentor; } const a=A(p.id); p.mentee=typeof a.roleMentee==='boolean'?a.roleMentee:p._mentee0; p.mentor=typeof a.roleMentor==='boolean'?a.roleMentor:p._mentor0; }
   IDX.byMentor=new Map();
@@ -698,15 +698,13 @@ async function loadAll(){
 function showScreen(html){ $('#tabs').hidden=true; document.querySelector('.area-pick').hidden=true; $('#main').innerHTML=html; }
 function loginScreen(msg){
   showScreen(`<div class="panel login"><h2>כניסה למערכת השיבוץ</h2><p class="muted" style="margin:0">הכניסה מיועדת למובילות התוכנית בלבד.</p>
-    <button class="btn primary" data-act="google" type="button">כניסה עם Google</button>
-    <div class="or">או עם מייל וסיסמה</div>
     <form id="loginForm" class="login" style="margin:0;padding:0;gap:8px">
       <label for="lemail" class="muted">מייל</label><input id="lemail" type="text" inputmode="email" autocomplete="username" dir="ltr">
       <label for="lpass" class="muted">סיסמה</label><input id="lpass" type="password" autocomplete="current-password" dir="ltr" style="background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:6px 9px">
-      <button class="btn" type="submit">כניסה</button>
+      <button class="btn primary" type="submit">כניסה</button>
     </form>
     ${msg?`<p class="chip hard" style="white-space:normal">${esc(msg)}</p>`:''}
-    <p class="muted" style="font-size:12px;margin:0">אין לך גישה? בקשי מהמנהלת להוסיף את המייל שלך לרשימת המובילות.</p></div>`);
+    <p class="muted" style="font-size:12px;margin:0">אין לך גישה או ששכחת את הסיסמה? פני למנהלת.</p></div>`);
 }
 async function start(){
   const cfg=window.SHIBUTZ_CONFIG||{};
@@ -857,7 +855,7 @@ function renderTabs(){
   const al=S.loaded.people?computeAlerts():[];
   const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
   const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
-  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['phd','דוקטורנטיות'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],...(S.role==='admin'?[['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']]:[])];
+  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['phd','דוקטורנטיות'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],...(S.role==='admin'?[['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']]:[['team','החשבון שלי']])];
   $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
 }
 function renderPeers(){
@@ -1228,7 +1226,7 @@ function vTeam(){
   const admin=S.role==='admin';
   const L=[...S.leaders.values()].sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||(a.name||a.email).localeCompare(b.name||b.email,'he'));
   const ROLE={admin:'מנהלת',leader:'מובילה',viewer:'צפייה בלבד'};
-  let h=`<div class="two"><div class="panel card"><h2>מובילות עם גישה</h2>
+  let h=`<div class="two">${admin?`<div class="panel card"><h2>מובילות עם גישה</h2>
     <p class="muted">רק כתובות מהרשימה הזאת יכולות להיכנס ולראות נתונים. <b>מובילה</b> משבצת ומעדכנת. <b>צפייה בלבד</b> רואה הכול בלי לשנות. <b>מנהלת</b> גם מוסיפה ומסירה מובילות.</p>
     <div class="tablewrap"><table style="min-width:520px"><thead><tr><th>שם</th><th>מייל</th><th>הרשאה</th><th></th></tr></thead><tbody>${L.map(l=>`<tr style="cursor:default">
       <td>${admin?`<input type="text" id="ln-${esc(l.email)}" data-lname="${esc(l.email)}" value="${esc(l.name||'')}" placeholder="שם" style="width:130px">`:esc(l.name||'')}</td>
@@ -1236,8 +1234,8 @@ function vTeam(){
       <td>${admin&&l.email!==S.uid?`<select data-lrole="${esc(l.email)}">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${l.role===k?'selected':''}>${v}</option>`).join('')}</select>`:esc(ROLE[l.role]||l.role)}</td>
       <td>${admin&&l.email!==S.uid?(S.clearStep==='lead-'+l.email?`<button class="btn sm danger" data-rmleader="${esc(l.email)}">להסיר?</button>`:`<button class="btn sm" data-askrm="${esc(l.email)}">הסרה</button>`):''}</td></tr>`).join('')}</tbody></table></div>
     ${admin?`<h3 style="margin-top:16px">הוספת מובילה</h3><div class="row"><input id="newEmail" type="text" dir="ltr" placeholder="name@gmail.com" style="flex:2;min-width:180px"><input id="newName" type="text" placeholder="שם" style="flex:1;min-width:100px"><select id="newRole"><option value="leader">מובילה</option><option value="viewer">צפייה בלבד</option><option value="admin">מנהלת</option></select><button class="btn primary" data-act="addLeader">הוספה</button></div>
-    <p class="muted" style="font-size:12px">אחרי ההוספה, המובילה נכנסת עם "כניסה עם Google" באותה כתובת. למובילה בלי חשבון Google, צרי משתמש עם סיסמה ב־Supabase (ראי במדריך).</p>`:''}
-  </div>
+    <p class="muted" style="font-size:12px">אחרי ההוספה כאן, צרי לה משתמש ב־Supabase: Authentication ← Users ← Add user ← Create new user, עם אותו מייל, סיסמה, וסימון Auto Confirm User. אחר כך שלחי לה את הסיסמה.</p>`:''}
+  </div>`:''}
   <div class="panel card"><h2>החשבון שלי</h2><p>מחוברת בתור <b dir="ltr">${esc(S.uid||'')}</b> · ${esc(ROLE[S.role]||'')}</p>
     <label for="newPw" class="muted">החלפת סיסמה (לכניסה עם מייל וסיסמה)</label>
     <div class="row"><input id="newPw" type="password" dir="ltr" style="flex:1;min-width:160px;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:6px 9px" autocomplete="new-password"><button class="btn" data-act="changePw">שמירה</button></div>

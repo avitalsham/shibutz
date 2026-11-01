@@ -291,6 +291,8 @@ tbody tr:hover{background:var(--sunk)}
 .seg-final{background:var(--accent)}
 .seg-prop{background:repeating-linear-gradient(135deg,var(--accent) 0 3px,var(--accent-soft) 3px 6px)}
 .seg-open{background:var(--open)}
+.seg-placed{background:#4F8FE0}
+.seg-mailed{background:#2E9E5B}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:14px;height:10px;border-radius:2px;display:inline-block}
@@ -1117,7 +1119,8 @@ function htmlToText(html){ const d=document.createElement('div'); d.innerHTML=ht
 function degreeWord(list){ const w=[]; for(const e of list){ const x=e.rank==null?null:e.rank<20?'ראשון':e.rank<30?'שני':e.rank<40?'שלישי':'פוסט־דוקטורט'; if(x&&!w.includes(x)) w.push(x); } return w.length>1?w.slice(0,-1).join(', ')+' ו'+w[w.length-1]:(w[0]||''); }
 function buildEmail(mid){
   const m=P(mid); const co=coOf(mid)?P(coOf(mid)):null;
-  const ms=groupOf(mid).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
+  const pg=phdMentorGroup(mid);
+  const ms=(pg?pg.members:groupOf(mid)).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
   const t=tplNow();
   const name=co?`${m.first||''} ו${co.first||''}`:(m.first||'');
   const cols=['שנת לימודים','אימייל','מספר טלפון','שם משפחה','שם פרטי'];
@@ -1215,6 +1218,19 @@ function vGroups(){
       ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}" data-role="mentee">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
     </div>`;}).join('')+`</div>`;
   if(!mentors.length) h+=`<div class="panel empty"><b>אין עדיין קבוצות בתחום</b>שבצי בלוח השיבוץ, או השתמשי ב"הצעת שיבוץ אוטומטית".</div>`;
+  h+=vPhdGroupsList();
+  return h;
+}
+function vPhdGroupsList(){
+  if(S.phdMissing) return '';
+  const gs=[...S.phd.values()].sort((a,b)=>Object.keys(PHD_FAC).indexOf(a.faculty)-Object.keys(PHD_FAC).indexOf(b.faculty)||(a.order||0)-(b.order||0));
+  let h=`<div class="row" style="justify-content:space-between;margin:24px 0 8px"><div><h3 style="margin:0">דוקטורנטיות</h3><p class="muted" style="margin:2px 0 0;font-size:12px">כל קבוצות הדוקטורנטיות בתוכנית. יוצרים ומשבצים אותן בלשונית דוקטורנטיות.</p></div><button class="btn sm" data-tab="phd">ללשונית דוקטורנטיות</button></div>`;
+  if(!gs.length) return h+`<div class="panel empty"><b>אין עדיין קבוצות דוקטורנטיות</b></div>`;
+  h+=`<div class="groups">`+gs.map(g=>{ const m=P(g.mentor);
+    return `<div class="panel gcard"><div class="ghead"><div><b>${phdLabel(g)} · ${esc(PHD_FAC[g.faculty]||'')}</b><div class="row">${m?`<span>חונכת: <b>${esc(fullName(m))}</b></span> <span class="muted" style="font-size:12px">${esc(stageShort(m))} · ${esc(m.dept||'')}</span>`:'<span class="chip warn">עדיין בלי חונכת</span>'}</div></div><span class="muted num">${g.members.length}/3</span></div>
+      ${m?`<div class="row" style="justify-content:space-between"><button class="btn sm" data-email="${m.id}">✉ תבנית מייל</button>${A(m.id).emailSent?`<span class="chip ok">מייל נשלח</span>`:''}</div>`:''}
+      ${g.members.map(id=>{ const e=P(id); return `<div class="gm"><div class="l"><b>${esc(fullName(e))}</b> <span class="muted" style="font-size:12px">${esc(e?stageShort(e):'')} · ${esc(e?.dept||'')}</span></div></div>`; }).join('')}
+    </div>`; }).join('')+`</div>`;
   return h;
 }
 function mentorItemDots(m){ const g=groupOf(m.id), cap=capOf(m); return `<span class="dots" title="${g.length}/${cap}">${Array.from({length:Math.max(cap,g.length)},(_,i)=>`<i class="${i<g.length?(i>=cap?'x':S.matches.get(g[i])?.status==='proposed'?'p':'f'):''}"></i>`).join('')}</span>`; }
@@ -1380,17 +1396,17 @@ function vProgress(){
       <div class="mini muted" style="font-size:13px"><span><b class="num" style="color:var(--ink)">${o.fin}</b> מאושרים</span><span><b class="num" style="color:var(--ink)">${o.prop}</b> הצעות</span><span><b class="num" style="color:var(--ink)">${o.open}</b> ללא חונכת</span><span>·</span><span><b class="num" style="color:var(--ink)">${o.withGroup}/${o.mentors}</b> חונכות עם קבוצה</span><span><b class="num" style="color:var(--ink)">${o.seats}</b> מקומות פנויים</span><span>קבוצות של 1–6: <b class="num" style="color:var(--ink)">${sizes.join(' · ')}</b></span></div></div></div>`;
   const lstat=ms=>{ ms=ms.filter(m=>isActive(m)&&!isCo(m.id)); let fin=0,prop=0,me=0,mp=0,seats=0; for(const m of ms){ const g=groupOf(m.id); const sts=g.map(id=>S.matches.get(id)?.status); if(sts.includes('final')) fin++; else if(g.length) prop++; me+=sts.filter(x=>x==='final').length; mp+=sts.filter(x=>x==='proposed').length; seats+=Math.max(0,capOf(m)-g.length); } return {total:ms.length,fin,prop,open:ms.length-fin-prop,me,mp,seats}; };
   const mentorsAll=all.filter(p=>regMentor(p));
-  const pcount=L=>{ const ms=mentorsAll.filter(m=>isActive(m)&&!isCo(m.id)&&leaderOf(m)===L); let me=0,co=0; for(const m of ms){ me+=groupOf(m.id).length; if(coOf(m.id)) co++; } const free=all.filter(p=>regMentee(p)&&!p.mentor&&isActive(p)&&!S.matches.has(p.id)&&L&&leaderOf(p)===L).length; return {mentors:ms.length+co,mentees:me+free,total:ms.length+co+me+free}; };
+  const pcount=L=>{ const ms=mentorsAll.filter(m=>isActive(m)&&!isCo(m.id)&&leaderOf(m)===L); let me=0,co=0,placed=0,mailed=0; for(const m of ms){ const n=groupOf(m.id).length; me+=n; if(coOf(m.id)) co++; if(n){ const k=1+(coOf(m.id)?1:0)+n; placed+=k; if(A(m.id).emailSent) mailed+=k; } } const free=all.filter(p=>regMentee(p)&&!p.mentor&&isActive(p)&&!S.matches.has(p.id)&&L&&leaderOf(p)===L).length; const total=ms.length+co+me+free; return {mentors:ms.length+co,mentees:me+free,total,placed,mailed,open:total-placed}; };
   let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),st:lstat(mentorsAll.filter(m=>leaderOf(m)===k)),pc:pcount(k)}));
   const nol=mentorsAll.filter(m=>!leaderOf(m)&&isActive(m));
   if(nol.length) rows.push({id:'__none',name:'ללא מובילה',st:lstat(nol),pc:pcount(null)});
-  if(S.progSort==='low') rows.sort((x,y)=>pct(x.st.fin+x.st.prop,x.st.total)-pct(y.st.fin+y.st.prop,y.st.total)||y.st.open-x.st.open);
-  const lbar=st=>{ if(!st.total) return `<div class="sbar"><i class="seg-open" style="flex:1" title="אין חונכות"></i></div>`; const seg=(n,c,l)=>n?`<i class="${c}" style="flex:${n}" title="${l}: ${n} (${pct(n,st.total)}%)"></i>`:''; return `<div class="sbar">${seg(st.fin,'seg-final','חונכות עם שיבוץ מאושר')}${seg(st.prop,'seg-prop','חונכות עם הצעה בלבד')}${seg(st.open,'seg-open','חונכות בלי חניכות')}</div>`; };
-  h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><div><h3 style="margin:0">לפי מובילה</h3><p class="muted" style="margin:2px 0 0;font-size:12px">כמה מהחונכות של כל מובילה כבר קיבלו חניכות</p></div><div class="seg"><button data-psort="order" aria-pressed="${S.progSort==='order'}">לפי שם</button><button data-psort="low" aria-pressed="${S.progSort==='low'}">הכי פחות מתקדמות קודם</button></div></div>
-    <div class="legend" style="margin-bottom:6px"><span><i class="seg-final"></i>חונכת עם שיבוץ מאושר</span><span><i class="seg-prop"></i>רק הצעות</span><span><i class="seg-open"></i>חונכת בלי חניכות</span></div>
+  if(S.progSort==='low') rows.sort((x,y)=>pct(x.pc.placed,x.pc.total)-pct(y.pc.placed,y.pc.total)||y.pc.open-x.pc.open);
+  const lbar=pc=>{ if(!pc.total) return `<div class="sbar"><i class="seg-open" style="flex:1" title="אין משתתפות"></i></div>`; const seg=(n,c,l)=>n?`<i class="${c}" style="flex:${n}" title="${l}: ${n} (${pct(n,pc.total)}%)"></i>`:''; return `<div class="sbar">${seg(pc.mailed,'seg-mailed','משובצות שכבר נשלח להן מייל')}${seg(pc.placed-pc.mailed,'seg-placed','משובצות, עוד לא נשלח מייל')}${seg(pc.open,'seg-open','עדיין לא משובצות')}</div>`; };
+  h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><div><h3 style="margin:0">לפי מובילה</h3><p class="muted" style="margin:2px 0 0;font-size:12px">כמה מהמשתתפות של כל מובילה (חונכות וחניכות) כבר בקבוצה</p></div><div class="seg"><button data-psort="order" aria-pressed="${S.progSort==='order'}">לפי שם</button><button data-psort="low" aria-pressed="${S.progSort==='low'}">הכי פחות מתקדמות קודם</button></div></div>
+    <div class="legend" style="margin-bottom:6px"><span><i class="seg-mailed"></i>משובצות, נשלח מייל</span><span><i class="seg-placed"></i>משובצות, עוד לא נשלח מייל</span><span><i class="seg-open"></i>עדיין לא משובצות</span></div>
     <div class="panel prog">${rows.map(r=>{ const st=r.st;
-      return `<div class="prow"><button class="an" data-golead="${esc(r.id)}" title="מעבר לשיבוצים של המובילה">${esc(r.name)}<span class="muted num" style="display:block;font-weight:400;font-size:12px">${r.pc.total} משתתפות</span></button>${lbar(st)}<span class="cnt muted num" style="font-size:13px">${st.fin+st.prop}/${st.total}</span><span class="pct">${pct(st.fin+st.prop,st.total)}%</span>
-        <div class="sub"><span><b style="color:var(--ink)">סה״כ ${r.pc.total} משתתפות:</b> ${r.pc.mentors} חונכות, ${r.pc.mentees} חניכות</span><span>${st.open} חונכות עדיין בלי חניכות</span><span>${st.me} חניכות מאושרות · ${st.mp} הצעות</span><span>${st.seats} מקומות פנויים</span></div></div>`; }).join('')||'<div class="empty">עדיין אין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</div>'}</div>`;
+      return `<div class="prow"><button class="an" data-golead="${esc(r.id)}" title="מעבר לשיבוצים של המובילה">${esc(r.name)}<span class="muted num" style="display:block;font-weight:400;font-size:12px">${r.pc.total} משתתפות</span></button>${lbar(r.pc)}<span class="cnt muted num" style="font-size:13px" title="משתתפות משובצות מתוך כל המשתתפות של המובילה">${r.pc.placed}/${r.pc.total}</span><span class="pct">${pct(r.pc.placed,r.pc.total)}%</span>
+        <div class="sub"><span><b style="color:var(--ink)">סה״כ ${r.pc.total} משתתפות:</b> ${r.pc.mentors} חונכות, ${r.pc.mentees} חניכות</span><span>${st.open} חונכות עדיין בלי חניכות</span><span>${st.me} חניכות מאושרות · ${st.mp} הצעות</span><span>${st.seats} מקומות פנויים</span><span style="color:#2E9E5B">${r.pc.mailed} משתתפות בקבוצות שנשלח להן מייל</span></div></div>`; }).join('')||'<div class="empty">עדיין אין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</div>'}</div>`;
   if(!S.phdMissing){ const pm=all.filter(p=>isPhdMentee(p)&&isActive(p)); const inG=pm.filter(p=>phdGroupOf(p.id)).length; const gs=[...S.phd.values()]; const gm=gs.filter(g=>g.mentor).length;
     h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><h3 style="margin:0">דוקטורנטיות</h3></div><div class="panel prog"><div class="prow"><button class="an" data-tab="phd">דוקטורנטיות</button><div class="sbar">${gm?`<i class="seg-final" style="flex:${gm}" title="קבוצות עם חונכת: ${gm}"></i>`:''}${gs.length-gm?`<i class="seg-prop" style="flex:${gs.length-gm}" title="קבוצות בלי חונכת: ${gs.length-gm}"></i>`:''}${pm.length-inG?`<i class="seg-open" style="flex:${(pm.length-inG)/2}" title="בלי קבוצה: ${pm.length-inG}"></i>`:''}${!pm.length?'<i class="seg-open" style="flex:1"></i>':''}</div><span class="cnt muted num" style="font-size:13px">${inG}/${pm.length}</span><span class="pct">${pm.length?Math.round(inG*100/pm.length):0}%</span><div class="sub"><span>${inG} מתוך ${pm.length} בקבוצות</span><span>${gs.length} קבוצות · ${gm} עם חונכת</span></div></div></div>`; }
   return h;

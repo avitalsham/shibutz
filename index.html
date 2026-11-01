@@ -215,6 +215,14 @@ tbody tr:hover{background:var(--sunk)}
 .mrow{display:grid;grid-template-columns:1.4fr 1.2fr .8fr auto;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--line)}
 .mrow:first-child{border-top:0}
 @media (max-width:800px){.upper{grid-template-columns:1fr}.mrow{grid-template-columns:1fr auto}.mrow>span:nth-child(2),.mrow>span:nth-child(3){grid-column:1}}
+/* email modal */
+.overlay.center-modal{justify-content:center;align-items:flex-start;overflow-y:auto;padding:24px 16px}
+.modal{width:min(820px,100%);padding:18px 20px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.mf{display:grid;grid-template-columns:50px 1fr auto;gap:10px;align-items:center;padding:6px 10px;background:var(--sunk);border-radius:6px}
+.mailprev{border:1px solid var(--line);border-radius:8px;padding:14px 16px;max-height:55vh;overflow:auto;background:#fff;color:#111}
+.mailprev table{margin:6px 0;min-width:0}
+.mailprev th{position:static;color:#111}
+.mailprev th,.mailprev td{font-size:13px}
 /* add participant */
 .addgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 14px}
 .addgrid label,.addgrid .lbl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -461,7 +469,7 @@ function normalizeRows(header, rows){
 
 /* ================= state ================= */
 const S={
-  people:new Map(), phd:new Map(), phdMissing:false, phdFac:null, phdSel:new Set(), phdGroup:null, phdMScope:'fac', leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
+  people:new Map(), metaKV:{}, emailFor:null, phd:new Map(), phdMissing:false, phdFac:null, phdSel:new Set(), phdGroup:null, phdMScope:'fac', leaders:new Map(), role:null, ann:new Map(), matches:new Map(), areas:new Map(), log:[], meta:null,
   uid:null, readOnly:false, live:false, loaded:{people:false,matches:false},
   tab:'progress', area:'__all', areaStored:false, sel:null, selRole:null, pt:{q:'',role:'all',school:'',dept:'',stage:'',lead:'',match:'',status:'',sort:'dept',dir:1}, ptSel:new Set(), mentorFilter:'all', candScope:'area', factsOpen:false, settingsOpen:false, settingsSec:'areas', progSort:'order',
   listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
@@ -683,7 +691,7 @@ const MAP={
   matches:{key:'mentee_id',set:r=>S.matches.set(r.mentee_id,{mentor:r.mentor_id,status:r.status,override:r.override||'',by:r.by_email,at:toMs(r.at)}),del:k=>S.matches.delete(k)},
   areas:{key:'id',set:r=>S.areas.set(r.id,{id:r.id,name:r.name,depts:r.depts||[],leaders:r.leaders||[],order:r.ord}),del:k=>S.areas.delete(k)},
   leaders:{key:'email',set:r=>S.leaders.set(r.email,r),del:k=>S.leaders.delete(k)},
-  meta:{key:'key',set:r=>{ if(r.key==='import') S.meta=r.data; },del:k=>{ if(k==='import') S.meta=null; }},
+  meta:{key:'key',set:r=>{ S.metaKV[r.key]=r.data; if(r.key==='import') S.meta=r.data; },del:k=>{ delete S.metaKV[k]; if(k==='import') S.meta=null; }},
   activity:{key:'id',set:r=>{ S.log=[mapLog(r),...S.log.filter(l=>l.id!==r.id)].sort((a,b)=>b.t-a.t).slice(0,150); },del:k=>{ S.log=S.log.filter(l=>l.id!==k); }}
 };
 const mapLog=r=>({...(r.data||{}),id:r.id,t:toMs(r.t),by:r.by_email,kind:r.kind});
@@ -848,7 +856,7 @@ function render(){
   const active=document.activeElement; const aid=active&&active.id; let ss=null,se=null; try{ss=active.selectionStart;se=active.selectionEnd;}catch(e){}
   const keepVal=active&&(active.tagName==='TEXTAREA'||(active.tagName==='INPUT'&&active.type==='text'))?active.value:null;
   const scrolls={}; m.querySelectorAll('[data-keep-scroll]').forEach(el=>scrolls[el.dataset.keepScroll]=el.scrollTop);
-  m.innerHTML=banners()+(S.loaded.people?({progress:vProgress,board:vBoard,phd:vPhd,groups:vGroups,alerts:vAlerts,people:vPeople,data:vData,team:vTeam}[S.tab]||vProgress)():'<div class="empty"><b>טוען…</b></div>')+(S.settingsOpen&&S.loaded.people?vSettings():'');
+  m.innerHTML=banners()+(S.loaded.people?({progress:vProgress,board:vBoard,phd:vPhd,groups:vGroups,alerts:vAlerts,people:vPeople,data:vData,team:vTeam}[S.tab]||vProgress)():'<div class="empty"><b>טוען…</b></div>')+(S.settingsOpen&&S.loaded.people?vSettings():'')+(S.emailFor&&S.loaded.people?vEmail():'');
   m.querySelectorAll('[data-keep-scroll]').forEach(el=>{ if(scrolls[el.dataset.keepScroll]!=null) el.scrollTop=scrolls[el.dataset.keepScroll]; });
   if(aid){ const el=document.getElementById(aid); if(el){ if(keepVal!=null) el.value=keepVal; el.focus(); try{ if(ss!=null) el.setSelectionRange(ss,se);}catch(e){} } }
   $('#season').textContent=S.meta?(S.meta.demo?'נתוני הדגמה':`${S.people.size} נרשמות`):'';
@@ -1070,6 +1078,53 @@ function vPhd(){
   return h;
 }
 async function phdWrite(fn,ok){ try{ await W(fn); if(ok) toast(ok); }catch(e){} }
+const DEFAULT_TPL={subject:"תכנית 'מדויקות' - פרטי השיבוצים",body:"שלום {שם_החונכת}, ברכות על הצטרפותך כחונכת לתוכנית 'מדויקות'.\n\nאז, מה בעצם קורה עכשיו?\nאת מקבלת קבוצת חניכה, מגיעה למפגש הכנה לחונכות, יוצרת קשר עם החניכות ומתחילה את התוכנית!\nאת הולכת לחנוך {כמות_החניכות} סטודנטיות לתואר {תואר_החניכות}. הנה פרטי החניכות:\n\n{טבלת_החניכות}\n\nחשוב להשיב במייל חוזר למייל זה שאכן קיבלת את השיבוצים לתוכנית.\n\nמפגש הדרכה לחונכות:\nקיימים שני מועדים למפגש ההכנה, בהם נספק פרטים נוספים על התוכנית, נשתף את מערכי החניכה ונקיים הדגמה. יהיה אוכל טוב וגם מתנות של התוכנית. משך המפגש יהיה שעה.\nאנו מזמינות אותך לבחור מועד אחד נוח ולסמן בקישור את המועד אליו תגיעי:\n• יום שני (16.12.24) בשעה 12:00. בניין וולפסון הנדסה 206\n• יום שלישי (17.12.24) בשעה 12:00. בניין ציק פויינט כיתה 480\nשימו לב, נוכחותך במפגש ההכנה לחונכות לשנה הנוכחית חשוב במיוחד, גם אם הינך חונכת ותיקה.\n\nבכל שאלה והתייעצות, את מוזמנת לפנות למובילה מבית הספר שלך. רשימת המובילות והמיילים נמצא בלינק מובילות - פרטי קשר. כל הפרטים לגבי השיבוצים ישלחו בהמשך.\n\nבנוסף לשיבוצים, ריכזנו לך כאן את הנקודות המשמעותיות שצריך לזכור לקראת השנה.\n• עלייך לדווח על מפגשי החניכה (קישור) באתר מדויקות על מנת שתוענק לך מלגה. המלגה תינתן לשתי פעימות: 1000 ₪ בסיום סמסטר א' ו-1000 ₪ בסיום סמסטר ב'.\n• עלייך להעביר שני מפגשים בסמסטר א' ועוד שלושה מפגשים בסמסטר ב' ולהיות זמינה לארבע שעות קבלה במהלך השנה (במידת הצורך).\n   ◦ במידה ותחנכי סטודנטיות בשנה א׳ בתואר ראשון, עלייך להעביר מפגש קבוצתי ומפגש אישי אחד בכל סמסטר.\n   ◦ במקרים של קבוצות גדולות בשנה א' (4+ חניכות), יש לשקול מעבר למפגשים קבוצתיים בלבד.\n• את התוכנית מלווה המעבדה לקידום קריירה. נבקש למלא את השאלון, גם את וגם החניכות טרם מהמפגש הראשון על מנת להבין את השפעות התוכנית. קישור לשאלון המחקר.\n• חשוב מאוד ליידע את רכזת חונכות בר גבסו (bargabso@mail.tau.ac.il) על כל קושי שעולה במפגשים (בתיאום מפגשים, חניכות שלא מגיבות, במציאת מקום או כל קושי לוגיסטי אחר), כך שתוכל לתת מענה.\n• זכרי כי אין זה מתפקידך להיות מורה פרטית ולתת עזרה אקדמית בקורסים.\n\nמאחלות לכולנו שתהיה לנו שנה מדהימה יחד,\nצוות 'מדויקות'."};
+const tplNow=()=>{ const t=S.metaKV.emailTemplate||{}; return {subject:t.subject||DEFAULT_TPL.subject,body:t.body||DEFAULT_TPL.body}; };
+function degreeWord(list){ const w=[]; for(const e of list){ const x=e.rank==null?null:e.rank<20?'ראשון':e.rank<30?'שני':e.rank<40?'שלישי':'פוסט־דוקטורט'; if(x&&!w.includes(x)) w.push(x); } return w.length>1?w.slice(0,-1).join(', ')+' ו'+w[w.length-1]:(w[0]||''); }
+function buildEmail(mid){
+  const m=P(mid); const co=coOf(mid)?P(coOf(mid)):null;
+  const ms=groupOf(mid).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
+  const t=tplNow();
+  const name=co?`${m.first||''} ו${co.first||''}`:(m.first||'');
+  const cols=['שנת לימודים','אימייל','מספר טלפון','שם משפחה','שם פרטי'];
+  const rowsP=ms.map(e=>[stageShort(e),e.email||'',e.phone||'',e.last||'',e.first||'']);
+  const tablePlain=[cols.join('\t'),...rowsP.map(r=>r.join('\t'))].join('\n');
+  const td='border:1px solid #999;padding:4px 8px;text-align:right';
+  const tableHtml=`<table dir="rtl" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;width:100%"><tr>${cols.map(c=>`<th style="${td};background:#eee">${esc(c)}</th>`).join('')}</tr>${rowsP.map(r=>`<tr>${r.map(c=>`<td style="${td}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+  const fill=x=>x.replace(/\{שם_החונכת\}/g,name).replace(/\{כמות_החניכות\}/g,String(ms.length)).replace(/\{תואר_החניכות\}/g,degreeWord(ms));
+  const plain=fill(t.body).replace(/\{טבלת_החניכות\}/g,tablePlain);
+  const parts=fill(t.body).split('{טבלת_החניכות}');
+  const html=`<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${parts.map(p=>esc(p).replace(/\n/g,'<br>')).join(tableHtml)}</div>`;
+  const to=[m.email,co&&co.email].filter(Boolean).join(', ');
+  return {to,subject:fill(t.subject),plain,html,n:ms.length};
+}
+async function copyRich(html,plain){
+  try{ if(window.ClipboardItem&&navigator.clipboard.write){ await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([plain],{type:'text/plain'})})]); return true; } }catch(e){}
+  try{ await navigator.clipboard.writeText(plain); return true; }catch(e){ return false; }
+}
+function vEmail(){
+  const mid=S.emailFor; const m=P(mid); if(!m) return '';
+  const em=buildEmail(mid); const sent=A(mid).emailSent;
+  return `<div class="overlay center-modal" data-act="emailCloseBg"><div class="panel modal" role="dialog" aria-label="תבנית מייל">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">מייל לחונכת · ${esc(fullName(m))}</h2><button class="btn" data-act="emailClose">סגירה</button></div>
+    ${em.n?'':'<p class="chip warn" style="white-space:normal">אין עדיין חניכות בקבוצה. המייל ייצא עם טבלה ריקה.</p>'}
+    <div class="mf"><span class="muted">אל</span><b dir="ltr">${esc(em.to||'אין מייל לחונכת')}</b><button class="btn sm" data-act="copyTo">העתקה</button></div>
+    <div class="mf"><span class="muted">נושא</span><b>${esc(em.subject)}</b><button class="btn sm" data-act="copySubj">העתקה</button></div>
+    <div class="mailprev">${em.html}</div>
+    <div class="row" style="justify-content:space-between;margin-top:10px">
+      <div class="row"><button class="btn primary" data-act="copyBody">העתקת גוף המייל</button><a class="btn" href="mailto:${encodeURIComponent(em.to)}?subject=${encodeURIComponent(em.subject)}" target="_blank" rel="noopener">פתיחת מייל חדש</a></div>
+      <div class="row">${sent?`<span class="chip ok">סומן כנשלח ${new Date(sent).toLocaleDateString('he-IL')}</span><button class="link" data-act="emailUnsent">ביטול סימון</button>`:(S.readOnly?'':`<button class="btn" data-act="emailSent">סימנתי שנשלח</button>`)}</div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0">"פתיחת מייל חדש" ממלא את הנמען והנושא. אחר כך מדביקים את גוף המייל (Ctrl+V), והטבלה נשמרת. את נוסח המייל אפשר לערוך בתפריט ההגדרות (☰).</p>
+  </div></div>`;
+}
+function vEmailTpl(){
+  const t=tplNow(); const dis=S.readOnly?'disabled':'';
+  return `<div><h3 style="margin:0">תבנית המייל לחונכות</h3><p class="muted" style="margin:4px 0 8px">הנוסח שנשלח לכל חונכת מלשונית "הקבוצות שלי". את התגיות בסוגריים המסולסלים המערכת ממלאת לבד: <b>{שם_החונכת}</b>, <b>{כמות_החניכות}</b>, <b>{תואר_החניכות}</b>, <b>{טבלת_החניכות}</b>.</p>
+    <label class="muted" for="tplSubj" style="font-size:12px">נושא</label><input id="tplSubj" type="text" value="${esc(t.subject)}" style="width:100%;margin-bottom:8px" ${dis}>
+    <label class="muted" for="tplBody" style="font-size:12px">גוף המייל</label><textarea id="tplBody" style="min-height:420px;font-size:13px" ${dis}>${esc(t.body)}</textarea>
+    ${S.readOnly?'':`<div class="row" style="margin-top:8px"><button class="btn primary" data-act="tplSave">שמירה</button><button class="btn" data-act="tplReset">חזרה לנוסח המקורי</button></div>`}</div>`;
+}
 function vGroups(){
   if(!S.people.size) return vEmptyPeople();
   const scoped=[...S.people.values()].filter(inScope);
@@ -1080,12 +1135,14 @@ function vGroups(){
   mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
   const sizes=[1,2,3,4,5,6].map(n=>mentors.filter(m=>groupOf(m.id).length===n).length);
   const stat=(v,l)=>`<div class="panel stat"><b>${v}</b><span>${l}</span></div>`;
-  let h=`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
+  const lsel=`<div class="row" style="margin-bottom:12px"><label for="grpLead" class="muted">הקבוצות של</label><select id="grpLead">${S.uid&&leaderKeysAll().includes(S.uid)?`<option value="${esc(S.uid)}" ${S.area===S.uid?'selected':''}>שלי</option>`:''}${leaderKeysAll().filter(k=>k!==S.uid).map(k=>`<option value="${esc(k)}" ${S.area===k?'selected':''}>${esc(leaderFull(k))}</option>`).join('')}<option value="__all" ${S.area==='__all'?'selected':''}>כל התוכנית</option><option value="__none" ${S.area==='__none'?'selected':''}>ללא מובילה</option></select></div>`;
+  let h=lsel+`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
   <div class="row" style="margin-bottom:12px"><label class="row"><input type="checkbox" id="showIdle" ${S.showAllMentorsInGroups?'checked':''}> להציג גם חונכות בלי חניכות</label>${prop?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות בתחום</button>`:''}</div>`;
   h+=`<div class="groups">`+mentors.map(m=>{
     const g=groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
     const bad=evs.some(x=>x.ev.hard.length&&!x.mt.override)||g.length>capOf(m);
-    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b>${coOf(m.id)?` <span class="muted">+ ${esc(fullName(P(coOf(m.id))))}</span>`:''}<div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div>${mentorItemDots(m)}</div>
+    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b>${coOf(m.id)?` <span class="muted">+ ${esc(fullName(P(coOf(m.id))))}</span>`:''}<div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div><div class="row" style="gap:6px">${mentorItemDots(m)}</div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn sm" data-email="${m.id}">✉ תבנית מייל</button>${A(m.id).emailSent?`<span class="chip ok">מייל נשלח</span>`:''}</div>
       ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}" data-role="mentee">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
     </div>`;}).join('')+`</div>`;
   if(!mentors.length) h+=`<div class="panel empty"><b>אין עדיין קבוצות בתחום</b>שבצי בלוח השיבוץ, או השתמשי ב"הצעת שיבוץ אוטומטית".</div>`;
@@ -1233,11 +1290,11 @@ function vAreas(){
   return h;
 }
 function vSettings(){
-  const SECS=[['areas','קבוצות מחלקות']];
+  const SECS=[['areas','קבוצות מחלקות'],['email','תבנית מייל']];
   return `<div class="overlay" data-act="closeSettingsBg"><aside class="drawer" role="dialog" aria-label="הגדרות">
     <div class="drawer-head"><h2 style="margin:0">הגדרות</h2><button class="btn" data-act="closeSettings">סגירה</button></div>
     <div class="drawer-nav">${SECS.map(([k,l])=>`<button data-ssec="${k}" aria-pressed="${S.settingsSec===k}">${l}</button>`).join('')}</div>
-    ${({areas:vAreas})[S.settingsSec]()}
+    ${({areas:vAreas,email:vEmailTpl})[S.settingsSec]()}
   </aside></div>`;
 }
 function vProgress(){
@@ -1254,16 +1311,17 @@ function vProgress(){
       <div class="mini muted" style="font-size:13px"><span><b class="num" style="color:var(--ink)">${o.fin}</b> מאושרים</span><span><b class="num" style="color:var(--ink)">${o.prop}</b> הצעות</span><span><b class="num" style="color:var(--ink)">${o.open}</b> ללא חונכת</span><span>·</span><span><b class="num" style="color:var(--ink)">${o.withGroup}/${o.mentors}</b> חונכות עם קבוצה</span><span><b class="num" style="color:var(--ink)">${o.seats}</b> מקומות פנויים</span><span>קבוצות של 1–6: <b class="num" style="color:var(--ink)">${sizes.join(' · ')}</b></span></div></div></div>`;
   const lstat=ms=>{ ms=ms.filter(m=>isActive(m)&&!isCo(m.id)); let fin=0,prop=0,me=0,mp=0,seats=0; for(const m of ms){ const g=groupOf(m.id); const sts=g.map(id=>S.matches.get(id)?.status); if(sts.includes('final')) fin++; else if(g.length) prop++; me+=sts.filter(x=>x==='final').length; mp+=sts.filter(x=>x==='proposed').length; seats+=Math.max(0,capOf(m)-g.length); } return {total:ms.length,fin,prop,open:ms.length-fin-prop,me,mp,seats}; };
   const mentorsAll=all.filter(p=>regMentor(p));
-  let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),st:lstat(mentorsAll.filter(m=>leaderOf(m)===k))}));
+  const pcount=L=>{ const ms=mentorsAll.filter(m=>isActive(m)&&!isCo(m.id)&&leaderOf(m)===L); let me=0,co=0; for(const m of ms){ me+=groupOf(m.id).length; if(coOf(m.id)) co++; } const free=all.filter(p=>regMentee(p)&&!p.mentor&&isActive(p)&&!S.matches.has(p.id)&&L&&leaderOf(p)===L).length; return {mentors:ms.length+co,mentees:me+free,total:ms.length+co+me+free}; };
+  let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),st:lstat(mentorsAll.filter(m=>leaderOf(m)===k)),pc:pcount(k)}));
   const nol=mentorsAll.filter(m=>!leaderOf(m)&&isActive(m));
-  if(nol.length) rows.push({id:'__none',name:'ללא מובילה',st:lstat(nol)});
+  if(nol.length) rows.push({id:'__none',name:'ללא מובילה',st:lstat(nol),pc:pcount(null)});
   if(S.progSort==='low') rows.sort((x,y)=>pct(x.st.fin+x.st.prop,x.st.total)-pct(y.st.fin+y.st.prop,y.st.total)||y.st.open-x.st.open);
   const lbar=st=>{ if(!st.total) return `<div class="sbar"><i class="seg-open" style="flex:1" title="אין חונכות"></i></div>`; const seg=(n,c,l)=>n?`<i class="${c}" style="flex:${n}" title="${l}: ${n} (${pct(n,st.total)}%)"></i>`:''; return `<div class="sbar">${seg(st.fin,'seg-final','חונכות עם שיבוץ מאושר')}${seg(st.prop,'seg-prop','חונכות עם הצעה בלבד')}${seg(st.open,'seg-open','חונכות בלי חניכות')}</div>`; };
   h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><div><h3 style="margin:0">לפי מובילה</h3><p class="muted" style="margin:2px 0 0;font-size:12px">כמה מהחונכות של כל מובילה כבר קיבלו חניכות</p></div><div class="seg"><button data-psort="order" aria-pressed="${S.progSort==='order'}">לפי שם</button><button data-psort="low" aria-pressed="${S.progSort==='low'}">הכי פחות מתקדמות קודם</button></div></div>
     <div class="legend" style="margin-bottom:6px"><span><i class="seg-final"></i>חונכת עם שיבוץ מאושר</span><span><i class="seg-prop"></i>רק הצעות</span><span><i class="seg-open"></i>חונכת בלי חניכות</span></div>
     <div class="panel prog">${rows.map(r=>{ const st=r.st;
-      return `<div class="prow"><button class="an" data-golead="${esc(r.id)}" title="מעבר לשיבוצים של המובילה">${esc(r.name)}</button>${lbar(st)}<span class="cnt muted num" style="font-size:13px">${st.fin+st.prop}/${st.total}</span><span class="pct">${pct(st.fin+st.prop,st.total)}%</span>
-        <div class="sub"><span>${st.total} חונכות · ${st.open} עדיין בלי חניכות</span><span>${st.me} חניכות מאושרות · ${st.mp} הצעות</span><span>${st.seats} מקומות פנויים</span></div></div>`; }).join('')||'<div class="empty">עדיין אין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</div>'}</div>`;
+      return `<div class="prow"><button class="an" data-golead="${esc(r.id)}" title="מעבר לשיבוצים של המובילה">${esc(r.name)}<span class="muted num" style="display:block;font-weight:400;font-size:12px">${r.pc.total} משתתפות</span></button>${lbar(st)}<span class="cnt muted num" style="font-size:13px">${st.fin+st.prop}/${st.total}</span><span class="pct">${pct(st.fin+st.prop,st.total)}%</span>
+        <div class="sub"><span><b style="color:var(--ink)">סה״כ ${r.pc.total} משתתפות:</b> ${r.pc.mentors} חונכות, ${r.pc.mentees} חניכות</span><span>${st.open} חונכות עדיין בלי חניכות</span><span>${st.me} חניכות מאושרות · ${st.mp} הצעות</span><span>${st.seats} מקומות פנויים</span></div></div>`; }).join('')||'<div class="empty">עדיין אין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</div>'}</div>`;
   if(!S.phdMissing){ const pm=all.filter(p=>isPhdMentee(p)&&isActive(p)); const inG=pm.filter(p=>phdGroupOf(p.id)).length; const gs=[...S.phd.values()]; const gm=gs.filter(g=>g.mentor).length;
     h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><h3 style="margin:0">דוקטורנטיות</h3></div><div class="panel prog"><div class="prow"><button class="an" data-tab="phd">דוקטורנטיות</button><div class="sbar">${gm?`<i class="seg-final" style="flex:${gm}" title="קבוצות עם חונכת: ${gm}"></i>`:''}${gs.length-gm?`<i class="seg-prop" style="flex:${gs.length-gm}" title="קבוצות בלי חונכת: ${gs.length-gm}"></i>`:''}${pm.length-inG?`<i class="seg-open" style="flex:${(pm.length-inG)/2}" title="בלי קבוצה: ${pm.length-inG}"></i>`:''}${!pm.length?'<i class="seg-open" style="flex:1"></i>':''}</div><span class="cnt muted num" style="font-size:13px">${inG}/${pm.length}</span><span class="pct">${pm.length?Math.round(inG*100/pm.length):0}%</span><div class="sub"><span>${inG} מתוך ${pm.length} בקבוצות</span><span>${gs.length} קבוצות · ${gm} עם חונכת</span></div></div></div>`; }
   return h;
@@ -1328,6 +1386,7 @@ function logText(l){
     case 'co': return `הוסיפה את ${n(l.c)} כחונכת שותפה בקבוצה של ${n(l.m)}`;
     case 'codel': return `הסירה את ${n(l.c)} מהקבוצה של ${n(l.m)}`;
     case 'addp': return `הוסיפה ידנית את ${n(l.p)}`;
+    case 'email': return `סימנה שנשלח מייל ל${n(l.m)}`;
     case 'lead': return `העבירה את ${n(l.m)} לאחריות ${esc(leaderFull(l.to)||'החלוקה לפי מחלקה')}`;
     default: return esc(l.kind||'');
   }
@@ -1415,6 +1474,7 @@ document.addEventListener('click',async ev=>{
   if(d.phdnew){ const ids=[...S.phdSel]; if(!ids.length||ids.length>3) return; if(phdMentorGroup(d.phdnew)){ toast('החונכת הזאת כבר משובצת לקבוצה אחרת',true); return; } const ord=Math.max(0,...[...S.phd.values()].map(g=>g.order||0))+1; await phdWrite(()=>sb.from('phd_groups').insert({faculty:S.phdFac,members:ids,mentor_id:d.phdnew,ord,by_email:S.uid}),`נוצרה קבוצה עם ${fullName(P(d.phdnew))}`); S.phdSel.clear(); logAct('phd',{what:'mentor',m:d.phdnew}); render(); return; }
   if(d.phdas){ const [gid,mid]=d.phdas.split('|'); const other=phdMentorGroup(mid); if(other&&other.id!==gid){ toast('החונכת הזאת כבר משובצת לקבוצה אחרת',true); return; }
     await phdWrite(()=>sb.from('phd_groups').update({mentor_id:mid,by_email:S.uid,at:new Date().toISOString()}).eq('id',gid),`${fullName(P(mid))} שובצה ל${phdLabel(S.phd.get(gid))}`); logAct('phd',{what:'mentor',m:mid}); return; }
+  if(d.email){ S.emailFor=d.email; render(); return; }
   if(d.coset){ const [mid,cid]=d.coset.split('|'); if(isCo(cid)||coOf(cid)||groupOf(cid).length){ toast('החונכת הזאת כבר בקבוצה אחרת',true); return; } await setAnn(mid,{coMentor:cid}).catch(()=>{}); S.coPick=null; toast(`${fullName(P(cid))} נוספה כחונכת שותפה`); logAct('co',{m:mid,c:cid}); return; }
   if(d.codel){ const c=coOf(d.codel); await setAnn(d.codel,{coMentor:null}).catch(()=>{}); toast('החונכת השותפה הוסרה מהקבוצה'); logAct('codel',{m:d.codel,c}); return; }
   if(d.ptsort){ if(S.pt.sort===d.ptsort) S.pt.dir*=-1; else { S.pt.sort=d.ptsort; S.pt.dir=1; } render(); return; }
@@ -1457,6 +1517,15 @@ document.addEventListener('click',async ev=>{
     case 'bulkLead': { const v=$('#bulkLead')?.value; if(!v){ toast('בחרי מובילה מהרשימה',true); break; } const ids=[...S.ptSel]; const lead=v==='__clear'?'':v; const now=new Date().toISOString(); const rows=ids.map(id=>{ const {by,at,...cur}=S.ann.get(id)||{}; return {person_id:id,data:{...cur,leader:lead},by_email:S.uid,at:now}; }); try{ for(let i=0;i<rows.length;i+=100) await W(()=>sb.from('ann').upsert(rows.slice(i,i+100))); toast(`${ids.length} משתתפות שויכו ל${lead?leaderFull(lead):'"ללא מובילה"'}`); logAct('bulklead',{n:ids.length,to:lead||null}); S.ptSel.clear(); render(); }catch(e){} break; }
     case 'phdCreate': { const ids=[...S.phdSel]; if(!ids.length||ids.length>3) break; if(ids.some(id=>phdGroupOf(id))){ toast('אחת המסומנות כבר בקבוצה',true); break; } const ord=Math.max(0,...[...S.phd.values()].map(g=>g.order||0))+1; await phdWrite(()=>sb.from('phd_groups').insert({faculty:S.phdFac,members:ids,ord,by_email:S.uid}),'הקבוצה נוצרה'); S.phdSel.clear(); logAct('phd',{what:'create',n:ids.length}); render(); break; }
     case 'phdAdd': { const g=S.phd.get(S.phdGroup); const ids=[...S.phdSel]; if(!g||g.members.length+ids.length>3) break; await phdWrite(()=>sb.from('phd_groups').update({members:[...g.members,...ids],by_email:S.uid,at:new Date().toISOString()}).eq('id',g.id),`נוספו ל${phdLabel(g)}`); S.phdSel.clear(); render(); break; }
+    case 'emailClose': S.emailFor=null; render(); break;
+    case 'emailCloseBg': if(ev.target===t){ S.emailFor=null; render(); } break;
+    case 'copyTo': { const em=buildEmail(S.emailFor); try{ await navigator.clipboard.writeText(em.to); toast('כתובת המייל הועתקה'); }catch(e){ toast('ההעתקה נחסמה. סמני את הטקסט והעתיקי ידנית.',true); } break; }
+    case 'copySubj': { const em=buildEmail(S.emailFor); try{ await navigator.clipboard.writeText(em.subject); toast('הנושא הועתק'); }catch(e){ toast('ההעתקה נחסמה. סמני את הטקסט והעתיקי ידנית.',true); } break; }
+    case 'copyBody': { const em=buildEmail(S.emailFor); toast(await copyRich(em.html,em.plain)?'גוף המייל הועתק, כולל הטבלה. אפשר להדביק במייל.':'ההעתקה נחסמה. סמני את הטקסט בתצוגה והעתיקי ידנית.',!0&&false); break; }
+    case 'emailSent': await setAnn(S.emailFor,{emailSent:Date.now()}).catch(()=>{}); logAct('email',{m:S.emailFor}); break;
+    case 'emailUnsent': await setAnn(S.emailFor,{emailSent:null}).catch(()=>{}); break;
+    case 'tplSave': { const subject=($('#tplSubj')?.value||'').trim(), body=$('#tplBody')?.value||''; await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{subject,body}})).then(()=>toast('התבנית נשמרה')).catch(()=>{}); break; }
+    case 'tplReset': await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{}})).then(()=>toast('הוחזר הנוסח המקורי')).catch(()=>{}); render(); break;
     case 'coPick': S.coPick=S.sel; S.coQ=''; render(); setTimeout(()=>$('#coQ')?.focus(),0); break;
     case 'coPickClose': S.coPick=null; render(); break;
     case 'addPerson': S.addOpen=!S.addOpen; render(); break;
@@ -1488,7 +1557,7 @@ document.addEventListener('submit',async ev=>{
   const {error}=await sb.auth.signInWithPassword({email,password});
   if(error) loginScreen(/Invalid login/i.test(error.message)?'המייל או הסיסמה שגויים.':error.message); else location.reload();
 });
-document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&S.settingsOpen){ S.settingsOpen=false; render(); } });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&(S.settingsOpen||S.emailFor)){ S.settingsOpen=false; S.emailFor=null; render(); } });
 document.addEventListener('toggle',ev=>{ if(ev.target.classList&&ev.target.classList.contains('facts-wrap')&&roleFor(P(S.sel),S.selRole)==='mentor') S.factsOpen=ev.target.open; },true);
 let qTimer;
 document.addEventListener('input',ev=>{
@@ -1506,6 +1575,7 @@ document.addEventListener('change',async ev=>{
   if(t.dataset.setlead){ await setAnn(t.dataset.setlead,{leader:t.value}).catch(()=>{}); logAct('lead',{m:t.dataset.setlead,to:t.value||null}); return; }
   if(t.dataset.lrole){ await W(()=>sb.from('leaders').update({role:t.value}).eq('email',t.dataset.lrole)).catch(()=>{}); return; }
   if(t.dataset.lname){ await W(()=>sb.from('leaders').update({name:t.value.trim()}).eq('email',t.dataset.lname)).catch(()=>{}); return; }
+  if(t.id==='grpLead'){ S.area=t.value; try{localStorage.setItem('shibutz.lead',S.area);}catch(e){} pushPresence(); render(); return; }
   if(t.id==='areaSel'){ S.area=t.value; try{localStorage.setItem('shibutz.lead',S.area);}catch(e){} pushPresence(); render(); return; }
   if(t.id==='file'&&t.files[0]){ readFile(t.files[0]); t.value=''; return; }
   if(t.id==='showIdle'){ S.showAllMentorsInGroups=t.checked; render(); return; }

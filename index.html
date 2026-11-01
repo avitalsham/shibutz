@@ -18,20 +18,20 @@
   --f-body:"IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
   --f-display:"Suez One", "IBM Plex Sans Hebrew", Georgia, serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
-  --open:#CBD5D3; --mentor-tint:#EEF5FC; --mentor-tint-line:#CFE0F3;
+  --open:#CBD5D3; --mentor-tint:#EEF5FC; --mentor-tint-line:#CFE0F3; --sel:#D3E5F8; --sel-line:#3B7DD8;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F; --sel:#1F3A5C; --sel-line:#6FA8F0;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F; --sel:#1F3A5C; --sel-line:#6FA8F0;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
@@ -121,7 +121,7 @@ h3{font-size:15px;margin:0 0 8px}
 .list{overflow-y:auto;flex:1}
 .item{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-inline:0;border-top:0;width:100%;text-align:right}
 .item:hover{background:var(--sunk)}
-.item[aria-current=true]{background:var(--accent-soft)}
+.item[aria-current=true]{background:var(--sel);box-shadow:inset -4px 0 0 var(--sel-line)}
 .item .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .sub{grid-column:1/-1;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 .dots{display:inline-flex;gap:3px;direction:ltr}
@@ -215,6 +215,11 @@ tbody tr:hover{background:var(--sunk)}
 .mrow{display:grid;grid-template-columns:1.4fr 1.2fr .8fr auto;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--line)}
 .mrow:first-child{border-top:0}
 @media (max-width:800px){.upper{grid-template-columns:1fr}.mrow{grid-template-columns:1fr auto}.mrow>span:nth-child(2),.mrow>span:nth-child(3){grid-column:1}}
+/* add participant */
+.addgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 14px}
+.addgrid label,.addgrid .lbl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.addgrid input[type=text],.addgrid select,.addgrid textarea{color:var(--ink);font-size:14px}
+.addgrid .row label{flex-direction:row;color:var(--ink);font-size:14px}
 /* participants table */
 .ptbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
 .pt{max-height:calc(100vh - 230px);overflow:auto}
@@ -462,7 +467,7 @@ const S={
   listMode:'open', listQ:'', mentorQ:'', mentorScope:'area', suggScope:'all', showAllMentorsInGroups:false,
   peopleQ:'', peopleRole:'all', pending:null, overrideFor:null, importPreview:null, busy:'', clearStep:0, alertsOpen:{}
 };
-const IDX={byMentor:new Map(), dupNames:new Map(), deptArea:new Map(), leadAreas:new Set()};
+const IDX={coHost:new Map(), byMentor:new Map(), dupNames:new Map(), deptArea:new Map(), leadAreas:new Set()};
 let sb=null, chan=null; const downloads=true;
 const room={peers(){ const st=chan?chan.presenceState():{}; return Object.entries(st).map(([k,arr])=>({by:k,isMe:k===S.uid,kind:'viewer',presence:arr[arr.length-1]||{}})); }};
 try{ const a=localStorage.getItem('shibutz.lead'); if(a){S.area=a;S.areaStored=true;} const t=localStorage.getItem('shibutz.tab'); if(t&&t!=='areas') S.tab=t; }catch(e){}
@@ -496,7 +501,8 @@ const P=id=>S.people.get(id);
 const A=id=>S.ann.get(id)||{};
 const fullName=p=>p?((p.first||'')+' '+(p.last||'')).trim()||p.email||'ללא שם':'נרשמת שנמחקה';
 const isActive=p=>p&&A(p.id).status!=='withdrawn';
-const capOf=p=>4;
+const MAXG=6;
+const capOf=p=>MAXG;
 const deptsOf=p=>[p.dept,p.dept2].filter(Boolean);
 const sameDept=(a,b)=>{const B=deptsOf(b);return deptsOf(a).some(x=>B.includes(x));};
 const schoolsOf=p=>p.school==='both'?['exact','eng']:p.school?[p.school]:[];
@@ -547,6 +553,8 @@ function phdLabel(g){ if(!g) return ''; const list=[...S.phd.values()].filter(x=
 const mentorInScope=m=>!!m&&regMentor(m)&&(S.area==='__all'||leaderOf(m)===leadTarget());
 function leaderOptions(){ return [...S.leaders.values()].filter(l=>l.role!=='viewer').sort((a,b)=>leaderFull(a.email).localeCompare(leaderFull(b.email),'he')); }
 const groupOf=mid=>IDX.byMentor.get(mid)||[];
+const coOf=mid=>{ const c=A(mid).coMentor; return c&&S.people.has(c)?c:null; };
+const isCo=pid=>IDX.coHost.has(pid);
 const STAGE_ORDER=r=>r==null?-1:r;
 function stageGroup(p){ const r=p.rank; if(r==null) return 'שלב לא ידוע'; if(r>=50) return 'חברת סגל'; if(r>=40) return 'פוסט דוקטורט'; if(r>=30) return 'תואר שלישי'; if(r>=20) return 'תואר שני'; return 'תואר ראשון · שנה '+HEB_YEAR[r-10]; }
 const byStage=(a,b)=>STAGE_ORDER(b.rank)-STAGE_ORDER(a.rank);
@@ -561,6 +569,8 @@ function rebuild(){
   for(const a of areas) for(const d of (a.depts||[])) if(!IDX.deptArea.has(d)) IDX.deptArea.set(d,a.id);
   IDX.leadAreas=new Set();
   if(S.area!=='__all'){ const t=leadTarget(); for(const p of S.people.values()) if(p.mentor&&isActive(p)&&leaderOf(p)===t) IDX.leadAreas.add(areaOfPerson(p)); }
+  IDX.coHost=new Map();
+  for(const [pid,a] of S.ann){ const c=a.coMentor; if(c&&S.people.has(c)&&S.people.has(pid)) IDX.coHost.set(c,pid); }
   IDX.dupNames=new Map();
   const byName=new Map();
   for(const p of S.people.values()){ const k=(p.first+' '+p.last).replace(/\s+/g,' ').trim(); if(!k) continue; if(!byName.has(k)) byName.set(k,[]); byName.get(k).push(p.id); }
@@ -592,6 +602,7 @@ function evaluate(e,m,opts={}){
     else {warn.push(`ייתכן שמתרגלת שנה ${HEB_YEAR[e.year]} — לאמת בהערות`);score-=10;}
   }
   if(S.matches.get(m.id)?.mentor===e.id) hard.push('החניכה היא החונכת שלה (שיבוץ הפוך)');
+  if(isCo(m.id)&&!opts.asCo) hard.push('חונכת שותפה בקבוצה אחרת');
   const load=opts.loadOf?opts.loadOf(m.id):groupOf(m.id).filter(x=>x!==e.id).length;
   const cap=capOf(m);
   if(!opts.ignoreCap&&load>=cap) hard.push(`הקבוצה מלאה (${load}/${cap})`);
@@ -642,7 +653,7 @@ function computeAlerts(){
   add('unassigned','warn','חניכות בלי חונכת',unassigned);
   if(!S.phdMissing&&(S.area==='__all'||S.area==='__none'||true)){ const pf=[...S.people.values()].filter(p=>isPhdMentee(p)&&isActive(p)&&!phdGroupOf(p.id)).map(p=>({p:p.id,text:stageShort(p)+' · '+(PHD_FAC[p.school]||'')+' · '+(p.dept||'')})); add('phdfree','warn','דוקטורנטיות בלי קבוצה',pf,'משבצים בלשונית דוקטורנטיות.');
     const pg=[...S.phd.values()].filter(g=>!g.mentor).map(g=>({p:g.members[0],text:phdLabel(g)+' · '+PHD_FAC[g.faculty]+' · עדיין בלי חונכת'})); add('phdnom','warn','קבוצות דוקטורנטיות בלי חונכת',pg); }
-  const idle=[...S.people.values()].filter(p=>mentorInScope(p)&&isActive(p)&&!groupOf(p.id).length).map(p=>({p:p.id,text:stageShort(p)+' · '+(p.dept||'ללא מחלקה')+(p.mentee?' · נרשמה גם כחניכה':'')}));
+  const idle=[...S.people.values()].filter(p=>mentorInScope(p)&&isActive(p)&&!groupOf(p.id).length&&!isCo(p.id)).map(p=>({p:p.id,text:stageShort(p)+' · '+(p.dept||'ללא מחלקה')+(p.mentee?' · נרשמה גם כחניכה':'')}));
   add('idle','warn','חונכות בלי חניכות',idle);
   add('prop','info','הצעות שממתינות לאישור',prop,'הצעות אוטומטיות מסומנות בקו מקווקו עד שמובילה מאשרת.');
   const dupItems=[];
@@ -936,7 +947,7 @@ function vDetail(p){
       <div><p class="pname">${esc(fullName(p))}</p>
         <div class="row" style="margin-top:4px">${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(p.dept||'מחלקה חסרה')}${p.dept2?' + '+esc(p.dept2):''}</span>${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
       </div>
-      <div class="row">${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
+      <div class="row">${roleFor(p,S.selRole)==='mentor'&&!S.readOnly&&!isCo(p.id)&&!coOf(p.id)?`<button class="btn sm" data-act="coPick">＋ הוספת חונכת שותפה</button>`:''}${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
     </div>
     <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen?'open':''}><summary>פרטים מהטופס</summary><dl class="facts">
       ${fact('מייל',p.email)}${fact('טלפון',p.phone)}${fact('מסלול מחקר',p.track)}${fact('תזה',p.thesis)}${fact('מסלול משולב',p.combined)}${fact('חוג נוסף',p.extra)}
@@ -984,15 +995,34 @@ function vMenteeBlock(e){
   }
   return h+'</div>';
 }
+function coCandidates(m){
+  const g=groupOf(m.id).map(P).filter(Boolean);
+  return [...S.people.values()].filter(c=>regMentor(c)&&c.id!==m.id&&isActive(c)&&!groupOf(c.id).length&&!isCo(c.id)&&!coOf(c.id)).map(c=>{
+    const why=[]; for(const e of g){ const ev=evaluate(e,c,{ignoreCap:true}); for(const t of ev.hard) if(!why.includes(t)) why.push(t); }
+    return {c,why,same:sameDept(c,m)};
+  }).sort((a,b)=>(a.why.length?1:0)-(b.why.length?1:0)||(b.same?1:0)-(a.same?1:0)||byStage(a.c,b.c)||fullName(a.c).localeCompare(fullName(b.c),'he'));
+}
 function vMentorBlock(m){
-  const g=groupOf(m.id); const cap=capOf(m);
-  let h=`<div class="panel block"><p class="sec-title">הקבוצה של ${esc(m.first||'')} · <span class="num">${g.length}/${cap}</span></p>`;
+  const host=IDX.coHost.get(m.id);
+  if(host) return `<div class="panel block"><p class="sec-title">חונכת שותפה</p><p style="margin:0">${esc(m.first||'')} היא חונכת שותפה בקבוצה של <button class="link" data-sel="${host}" data-role="mentor">${esc(fullName(P(host)))}</button>. החניכות משובצות דרך החונכת הראשית.</p>${S.readOnly?'':`<button class="btn sm" data-codel="${host}" style="margin-top:8px">הוצאה מהקבוצה</button>`}</div>`;
+  const g=groupOf(m.id); const cap=capOf(m); const co=coOf(m.id);
+  let h='';
+  if(S.coPick===m.id&&!co){
+    const q=(S.coQ||'').trim(); const list=coCandidates(m).filter(x=>!q||fullName(x.c).includes(q)||(x.c.dept||'').includes(q));
+    h+=`<div class="panel block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">בחירת חונכת שותפה ל${esc(m.first||'')}</p><button class="link" data-act="coPickClose">סגירה</button></div>
+      <p class="muted" style="font-size:12px;margin:4px 0 8px">מוצגות חונכות פעילות שעדיין אין להן קבוצה. חונכת שלא עומדת באילוצים מול החניכות בקבוצה מסומנת בכתום.</p>
+      <input id="coQ" type="search" placeholder="חיפוש לפי שם או מחלקה" value="${esc(S.coQ||'')}" style="width:100%;margin-bottom:6px">
+      <div style="max-height:320px;overflow-y:auto">${list.slice(0,60).map(x=>`<div class="sugg" style="padding:6px 0"><span></span><div class="who"><b>${esc(fullName(x.c))}</b> <span class="muted">${esc(stageShort(x.c))} · ${esc(x.c.dept||'')}${leaderOf(x.c)?' · '+esc(leaderFull(leaderOf(x.c))):''}</span></div><button class="btn sm ${x.why.length?'':'primary'}" data-coset="${m.id}|${x.c.id}" ${x.why.length?'disabled':''}>בחירה</button>${x.why.length?`<div class="why">${x.why.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>`).join('')||'<p class="muted">אין חונכות פנויות שמתאימות.</p>'}</div></div>`;
+  }
+  h+=`<div class="panel block"><p class="sec-title">הקבוצה של ${esc(m.first||'')}${co?` ו${esc(P(co).first||'')}`:''} · <span class="num">${g.length}/${cap}</span></p>`;
+  if(co) h+=`<div class="gm" style="margin-bottom:6px;background:var(--mentor-tint)"><div class="l"><span class="muted" style="font-size:12px">חונכת שותפה: </span><b data-sel="${co}" data-role="mentor">${esc(fullName(P(co)))}</b> <span class="muted">${esc(stageShort(P(co)))} · ${esc(P(co).dept||'')}</span></div>${S.readOnly?'':`<button class="btn sm" data-codel="${m.id}">הסרה</button>`}</div>`;
   h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
     return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
   if(!isActive(m)) return h+'<p class="muted">החונכת סומנה כלא פעילה.</p></div>';
   if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">הקבוצה מלאה (${g.length}/${cap}). כדי לצרף חניכה אחרת, הסירי קודם חניכה מהקבוצה.</p></div>`;
   const pool=[...S.people.values()].filter(e=>regMentee(e)&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||areaOfPerson(e)===areaOfPerson(m)||sameDept(e,m)));
-  const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
+  const coP=co?P(co):null;
+  const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok&&(!coP||evaluate(x.e,coP,{ignoreCap:true}).ok)).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
   h+=`</div><div class="panel block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">חניכות פנויות שמתאימות ל${esc(m.first||'')} (${cand.length})</p>
     <div class="seg"><button data-cs="area" aria-pressed="${S.candScope!=='all'}">מהמחלקות שלה</button><button data-cs="all" aria-pressed="${S.candScope==='all'}">מכל התוכנית</button></div></div>`;
   let last=null;
@@ -1048,14 +1078,14 @@ function vGroups(){
   const prop=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
   let mentors=[...S.people.values()].filter(m=>regMentor(m)&&(groupOf(m.id).length?mentorInScope(m):(S.showAllMentorsInGroups&&mentorInScope(m)&&isActive(m))));
   mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
-  const sizes=[1,2,3,4].map(n=>mentors.filter(m=>groupOf(m.id).length===n).length);
+  const sizes=[1,2,3,4,5,6].map(n=>mentors.filter(m=>groupOf(m.id).length===n).length);
   const stat=(v,l)=>`<div class="panel stat"><b>${v}</b><span>${l}</span></div>`;
-  let h=`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1 · 2 · 3 · 4')}</div>
+  let h=`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
   <div class="row" style="margin-bottom:12px"><label class="row"><input type="checkbox" id="showIdle" ${S.showAllMentorsInGroups?'checked':''}> להציג גם חונכות בלי חניכות</label>${prop?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות בתחום</button>`:''}</div>`;
   h+=`<div class="groups">`+mentors.map(m=>{
     const g=groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
     const bad=evs.some(x=>x.ev.hard.length&&!x.mt.override)||g.length>capOf(m);
-    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b><div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div>${mentorItemDots(m)}</div>
+    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b>${coOf(m.id)?` <span class="muted">+ ${esc(fullName(P(coOf(m.id))))}</span>`:''}<div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div>${mentorItemDots(m)}</div>
       ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}" data-role="mentee">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
     </div>`;}).join('')+`</div>`;
   if(!mentors.length) h+=`<div class="panel empty"><b>אין עדיין קבוצות בתחום</b>שבצי בלוח השיבוץ, או השתמשי ב"הצעת שיבוץ אוטומטית".</div>`;
@@ -1110,6 +1140,42 @@ function roleToggles(p){
   const b=(k,on,l,cls)=>`<button class="rtog ${cls}" data-trole="${p.id}|${k}" aria-pressed="${on}" ${S.readOnly?'disabled':''} title="${on?'לחצי כדי להסיר':'לחצי כדי להוסיף'}${chg(k)?' · שונה ידנית (בטופס: '+((k==='roleMentor'?p._mentor0:p._mentee0)?'כן':'לא')+')':''}">${l}${chg(k)?'*':''}</button>`;
   return b('roleMentor',p.mentor,'חונכת','m')+b('roleMentee',p.mentee,'חניכה','e');
 }
+function vAddPerson(){
+  const depts=knownDepts();
+  const o=(v,l)=>`<option value="${esc(v)}">${esc(l)}</option>`;
+  return `<div class="panel card" style="margin-bottom:12px;background:var(--sunk)"><h3>הוספת משתתפת</h3>
+    <div class="addgrid">
+      <label>שם פרטי *<input id="np-first" type="text"></label>
+      <label>שם משפחה *<input id="np-last" type="text"></label>
+      <label>מייל<input id="np-email" type="text" dir="ltr"></label>
+      <label>טלפון<input id="np-phone" type="text" dir="ltr"></label>
+      <div><span class="lbl">תפקיד *</span><div class="row"><label class="row"><input type="checkbox" id="np-mentee"> חניכה</label><label class="row"><input type="checkbox" id="np-mentor"> חונכת</label></div></div>
+      <label>שלב אקדמי *<select id="np-stage">${o('','בחרי')}${o('תואר ראשון','תואר ראשון')}${o('תואר שני','תואר שני')}${o('תואר שלישי','תואר שלישי')}${o('פוסט דוקטורט','פוסט דוקטורט')}${o('חברת סגל','חברת סגל')}</select></label>
+      <label>שנה (לתואר ראשון)<select id="np-year">${o('','—')}${o('1','שנה א')}${o('2','שנה ב')}${o('3','שנה ג')}${o('4','שנה ד ומעלה')}</select></label>
+      <label>בית ספר *<select id="np-school">${o('','בחרי')}${o('exact','מדעים מדויקים')}${o('eng','הנדסה')}${o('mgmt','ניהול')}${o('both','משולב')}</select></label>
+      <label>מחלקה<input id="np-dept" type="text" list="np-depts"><datalist id="np-depts">${depts.map(d=>`<option value="${esc(d)}">`).join('')}</datalist></label>
+      <label>מסלול מחקר<input id="np-track" type="text"></label>
+      <label style="grid-column:1/-1">הערות<textarea id="np-notes"></textarea></label>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" data-act="savePerson">שמירה</button><button class="btn" data-act="addPerson">ביטול</button></div></div>`;
+}
+async function savePerson(){
+  const v=id=>($('#np-'+id)?.value||'').trim();
+  const first=v('first'), last=v('last'), email=v('email').toLowerCase(), stage=v('stage'), school=v('school'), year=+v('year')||null;
+  const mentee=$('#np-mentee')?.checked, mentor=$('#np-mentor')?.checked;
+  if(!first||!last) return toast('חסר שם פרטי או שם משפחה',true);
+  if(!mentee&&!mentor) return toast('סמני אם היא חניכה, חונכת, או שתיהן',true);
+  if(!stage||!school) return toast('חסר שלב אקדמי או בית ספר',true);
+  if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('כתובת המייל לא תקינה',true);
+  const id='p'+fnv(email||(first+' '+last));
+  if(S.people.has(id)) return toast('משתתפת עם אותו מייל או שם כבר קיימת במערכת',true);
+  let rank=null; if(stage==='תואר ראשון') rank=year?10+year:null; else rank={'תואר שני':20,'תואר שלישי':30,'פוסט דוקטורט':40,'חברת סגל':50}[stage];
+  const dept=v('dept'), notes=v('notes');
+  const p={id,first,last,email,phone:v('phone'),ts:new Date().toISOString(),stageLabel:stage,year:stage==='תואר ראשון'?year:null,rank,mentee:!!mentee,mentor:!!mentor,
+    faculty:SCHOOL_NAME[school]||'',school,dept,dept2:'',deptRaw:dept,combined:'',extra:'',track:v('track'),thesis:'',wantMentor:'',wantMentorSpec:'',wantMentees:'',wantMenteesSpec:'',
+    okMale:'',mentorWithMale:'',program:'',prev:'',work:'',degrees:'',notes,taAuto:parseTaYears(notes),taFlag:TA_RE.test(notes),gift:false,dups:1,manual:true};
+  try{ await W(()=>sb.from('people').insert({id,data:p,updated_at:new Date().toISOString()})); toast(`${first} ${last} נוספה למערכת`); logAct('addp',{p:id}); S.addOpen=false; render(); }catch(e){}
+}
 function vPeople(){
   if(!S.people.size) return vEmptyPeople();
   const F=S.pt; const rows=ptRows(); const ids=new Set(rows.map(p=>p.id));
@@ -1131,7 +1197,9 @@ function vPeople(){
       <select id="pt-match" data-ptf="match">${opt('','שובצו ולא שובצו',F.match)}${opt('done','שובצו / יש קבוצה',F.match)}${opt('open','עוד לא שובצו',F.match)}</select>
       <select id="pt-status" data-ptf="status">${opt('','כל הסטטוסים',F.status)}${opt('active','פעילות',F.status)}${opt('inactive','לא פעילות',F.status)}</select>
       <button class="link" data-act="ptClear">ניקוי סינון</button>
+      ${S.readOnly?'':`<button class="btn sm primary" data-act="addPerson" style="margin-inline-start:auto">＋ הוספת משתתפת</button>`}
     </div>
+    ${S.addOpen?vAddPerson():''}
     <div class="ptbar" style="justify-content:space-between">
       <span class="muted"><b class="num" style="color:var(--ink)">${rows.length}</b> משתתפות מוצגות${selN?` · <b class="num" style="color:var(--ink)">${selN}</b> מסומנות`:''}</span>
       ${S.readOnly?'':`<span class="row">${selN?`<label for="bulkLead" class="muted">שיוך המסומנות ל:</label><select id="bulkLead">${opt('','—','x')}${leads.map(l=>opt(l.email,leaderFull(l.email),'x')).join('')}<option value="__clear">ללא מובילה</option></select><button class="btn sm primary" data-act="bulkLead">שיוך</button><button class="link" data-act="ptSelNone">ביטול סימון</button>`:'<span class="muted" style="font-size:12px">אפשר לסמן כמה שורות ולשייך את כולן בבת אחת</span>'}</span>`}
@@ -1139,11 +1207,11 @@ function vPeople(){
     <div class="panel tablewrap pt"><table><thead><tr>${S.readOnly?'':`<th style="width:32px"><input type="checkbox" id="ptAll" aria-label="סימון כל השורות המוצגות" ${allOn?'checked':''}></th>`}${PT_COLS.map(th).join('')}</tr></thead><tbody>${rows.map(p=>{
       const mt=S.matches.get(p.id); const g=groupOf(p.id);
       return `<tr class="${S.ptSel.has(p.id)?'on':''}">${S.readOnly?'':`<td><input type="checkbox" data-ptsel="${p.id}" ${S.ptSel.has(p.id)?'checked':''} aria-label="סימון ${esc(fullName(p))}"></td>`}
-        <td><button class="link" data-goto="${p.id}" data-role="${p.mentor?'mentor':'mentee'}" style="font-weight:600;text-decoration:none;color:var(--ink)">${esc(fullName(p))}</button></td>
+        <td><button class="link" data-goto="${p.id}" data-role="${p.mentor?'mentor':'mentee'}" style="font-weight:600;text-decoration:none;color:var(--ink)">${esc(fullName(p))}</button>${p.manual?' <span class="muted" title="נוספה ידנית" style="font-size:11px">(ידני)</span>':''}</td>
         <td style="white-space:nowrap">${roleToggles(p)}</td>
         <td style="white-space:nowrap">${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td title="${esc(p.track)}">${esc(p.track)}</td>
         <td>${leadSel(p)}</td>
-        <td>${p.mentor?`<span class="num">${g.length}/4</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
+        <td>${p.mentor?`<span class="num">${g.length}/${MAXG}</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
         <td dir="ltr" style="text-align:right">${esc(p.email)}</td><td dir="ltr" style="text-align:right;white-space:nowrap">${esc(p.phone)}</td><td title="${esc(p.prev)}">${esc(p.prev)}</td><td>${esc(p.program)}</td>
         <td>${isActive(p)?'פעילה':'<span class="chip hard">לא פעילה</span>'}</td>
         <td class="ptnotes" title="${esc(p.notes)}">${esc(p.notes)}</td></tr>`;}).join('')||`<tr><td colspan="15" class="empty">אין משתתפות שמתאימות לסינון.</td></tr>`}</tbody></table></div>`;
@@ -1180,11 +1248,11 @@ function vProgress(){
   const bar=(st,lg)=>{ if(!st.total) return `<div class="sbar${lg?' lg':''}"><i class="seg-open" style="flex:1" title="אין חניכות"></i></div>`; const seg=(n,c,l)=>n?`<i class="${c}" style="flex:${n}" title="${l}: ${n} (${pct(n,st.total)}%)"></i>`:''; return `<div class="sbar${lg?' lg':''}" role="img" aria-label="${st.fin} מאושרים, ${st.prop} הצעות, ${st.open} ללא חונכת">${seg(st.fin,'seg-final','שיבוץ מאושר')}${seg(st.prop,'seg-prop','הצעה ממתינה')}${seg(st.open,'seg-open','ללא חונכת')}</div>`; };
   const legend=`<div class="legend"><span><i class="seg-final"></i>שיבוץ מאושר</span><span><i class="seg-prop"></i>הצעה ממתינה לאישור</span><span><i class="seg-open"></i>ללא חונכת</span></div>`;
   const o=stat(all);
-  const sizes=[1,2,3,4].map(n=>all.filter(m=>regMentor(m)&&groupOf(m.id).length===n).length);
+  const sizes=[1,2,3,4,5,6].map(n=>all.filter(m=>regMentor(m)&&groupOf(m.id).length===n).length);
   let h=`<div class="panel hero"><div><div class="big">${pct(o.fin+o.prop,o.total)}%<small> שובצו</small></div><div class="muted" style="margin-top:6px"><span class="num">${o.fin+o.prop}</span> מתוך <span class="num">${o.total}</span> חניכות</div></div>
     <div style="display:flex;flex-direction:column;gap:10px;min-width:0">${bar(o,true)}${legend}
-      <div class="mini muted" style="font-size:13px"><span><b class="num" style="color:var(--ink)">${o.fin}</b> מאושרים</span><span><b class="num" style="color:var(--ink)">${o.prop}</b> הצעות</span><span><b class="num" style="color:var(--ink)">${o.open}</b> ללא חונכת</span><span>·</span><span><b class="num" style="color:var(--ink)">${o.withGroup}/${o.mentors}</b> חונכות עם קבוצה</span><span><b class="num" style="color:var(--ink)">${o.seats}</b> מקומות פנויים</span><span>קבוצות של 1·2·3·4: <b class="num" style="color:var(--ink)">${sizes.join(' · ')}</b></span></div></div></div>`;
-  const lstat=ms=>{ ms=ms.filter(isActive); let fin=0,prop=0,me=0,mp=0,seats=0; for(const m of ms){ const g=groupOf(m.id); const sts=g.map(id=>S.matches.get(id)?.status); if(sts.includes('final')) fin++; else if(g.length) prop++; me+=sts.filter(x=>x==='final').length; mp+=sts.filter(x=>x==='proposed').length; seats+=Math.max(0,capOf(m)-g.length); } return {total:ms.length,fin,prop,open:ms.length-fin-prop,me,mp,seats}; };
+      <div class="mini muted" style="font-size:13px"><span><b class="num" style="color:var(--ink)">${o.fin}</b> מאושרים</span><span><b class="num" style="color:var(--ink)">${o.prop}</b> הצעות</span><span><b class="num" style="color:var(--ink)">${o.open}</b> ללא חונכת</span><span>·</span><span><b class="num" style="color:var(--ink)">${o.withGroup}/${o.mentors}</b> חונכות עם קבוצה</span><span><b class="num" style="color:var(--ink)">${o.seats}</b> מקומות פנויים</span><span>קבוצות של 1–6: <b class="num" style="color:var(--ink)">${sizes.join(' · ')}</b></span></div></div></div>`;
+  const lstat=ms=>{ ms=ms.filter(m=>isActive(m)&&!isCo(m.id)); let fin=0,prop=0,me=0,mp=0,seats=0; for(const m of ms){ const g=groupOf(m.id); const sts=g.map(id=>S.matches.get(id)?.status); if(sts.includes('final')) fin++; else if(g.length) prop++; me+=sts.filter(x=>x==='final').length; mp+=sts.filter(x=>x==='proposed').length; seats+=Math.max(0,capOf(m)-g.length); } return {total:ms.length,fin,prop,open:ms.length-fin-prop,me,mp,seats}; };
   const mentorsAll=all.filter(p=>regMentor(p));
   let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),st:lstat(mentorsAll.filter(m=>leaderOf(m)===k))}));
   const nol=mentorsAll.filter(m=>!leaderOf(m)&&isActive(m));
@@ -1257,6 +1325,9 @@ function logText(l){
     case 'role': return `${l.v?'הוסיפה':'הסירה'} את התפקיד ${l.k==='roleMentor'?'"חונכת"':'"חניכה"'} ${l.v?'ל':'מ'}${n(l.m)}`;
     case 'phd': return l.what==='create'?`יצרה קבוצת דוקטורנטיות (${l.n})`:l.what==='mentor'?`שיבצה את ${n(l.m)} כחונכת לקבוצת דוקטורנטיות`:'פירקה קבוצת דוקטורנטיות';
     case 'rejectAll': return `ביטלה ${l.n} הצעות שיבוץ אוטומטיות`;
+    case 'co': return `הוסיפה את ${n(l.c)} כחונכת שותפה בקבוצה של ${n(l.m)}`;
+    case 'codel': return `הסירה את ${n(l.c)} מהקבוצה של ${n(l.m)}`;
+    case 'addp': return `הוסיפה ידנית את ${n(l.p)}`;
     case 'lead': return `העבירה את ${n(l.m)} לאחריות ${esc(leaderFull(l.to)||'החלוקה לפי מחלקה')}`;
     default: return esc(l.kind||'');
   }
@@ -1300,11 +1371,11 @@ async function doClear(){
   S.busy=''; S.sel=null; render();
 }
 function exportRows(){
-  const rows=[['מובילה אחראית','חונכת','שלב חונכת','מחלקת חונכת','מייל חונכת','טלפון חונכת','חניכה','שלב חניכה','מחלקת חניכה','מייל חניכה','טלפון חניכה','סטטוס','שובץ ע״י']];
+  const rows=[['מובילה אחראית','חונכת שותפה','חונכת','שלב חונכת','מחלקת חונכת','מייל חונכת','טלפון חונכת','חניכה','שלב חניכה','מחלקת חניכה','מייל חניכה','טלפון חניכה','סטטוס','שובץ ע״י']];
   const list=[...S.matches.entries()].map(([eid,mt])=>({e:P(eid),m:P(mt.mentor),mt})).filter(x=>x.e&&x.m&&(inScope(x.e)||inScope(x.m))&&(!S.exportFinal||x.mt.status==='final'));
   list.sort((a,b)=>(leaderFull(leaderOf(a.m))||'').localeCompare(leaderFull(leaderOf(b.m))||'','he')||(a.m.dept||'').localeCompare(b.m.dept||'','he')||fullName(a.m).localeCompare(fullName(b.m),'he'));
-  for(const {e,m,mt} of list) rows.push([leaderFull(leaderOf(m))||'',fullName(m),stageShort(m),m.dept,m.email,m.phone,fullName(e),stageShort(e),e.dept,e.email,e.phone,mt.status==='proposed'?'הצעה':'מאושר',leaderFull(mt.by)]);
-  for(const g of S.phd.values()){ const m=P(g.mentor); for(const id of g.members){ const e=P(id); if(!e) continue; rows.push(['דוקטורנטיות · '+PHD_FAC[g.faculty]+' · '+phdLabel(g),m?fullName(m):'',m?stageShort(m):'',m?m.dept:'',m?m.email:'',m?m.phone:'',fullName(e),stageShort(e),e.dept,e.email,e.phone,m?'מאושר':'בלי חונכת',leaderFull(g.by)]); } }
+  for(const {e,m,mt} of list) rows.push([leaderFull(leaderOf(m))||'',coOf(m.id)?fullName(P(coOf(m.id))):'',fullName(m),stageShort(m),m.dept,m.email,m.phone,fullName(e),stageShort(e),e.dept,e.email,e.phone,mt.status==='proposed'?'הצעה':'מאושר',leaderFull(mt.by)]);
+  for(const g of S.phd.values()){ const m=P(g.mentor); for(const id of g.members){ const e=P(id); if(!e) continue; rows.push(['דוקטורנטיות · '+PHD_FAC[g.faculty]+' · '+phdLabel(g),'',m?fullName(m):'',m?stageShort(m):'',m?m.dept:'',m?m.email:'',m?m.phone:'',fullName(e),stageShort(e),e.dept,e.email,e.phone,m?'מאושר':'בלי חונכת',leaderFull(g.by)]); } }
   return rows;
 }
 async function exportCsv(){
@@ -1344,6 +1415,8 @@ document.addEventListener('click',async ev=>{
   if(d.phdnew){ const ids=[...S.phdSel]; if(!ids.length||ids.length>3) return; if(phdMentorGroup(d.phdnew)){ toast('החונכת הזאת כבר משובצת לקבוצה אחרת',true); return; } const ord=Math.max(0,...[...S.phd.values()].map(g=>g.order||0))+1; await phdWrite(()=>sb.from('phd_groups').insert({faculty:S.phdFac,members:ids,mentor_id:d.phdnew,ord,by_email:S.uid}),`נוצרה קבוצה עם ${fullName(P(d.phdnew))}`); S.phdSel.clear(); logAct('phd',{what:'mentor',m:d.phdnew}); render(); return; }
   if(d.phdas){ const [gid,mid]=d.phdas.split('|'); const other=phdMentorGroup(mid); if(other&&other.id!==gid){ toast('החונכת הזאת כבר משובצת לקבוצה אחרת',true); return; }
     await phdWrite(()=>sb.from('phd_groups').update({mentor_id:mid,by_email:S.uid,at:new Date().toISOString()}).eq('id',gid),`${fullName(P(mid))} שובצה ל${phdLabel(S.phd.get(gid))}`); logAct('phd',{what:'mentor',m:mid}); return; }
+  if(d.coset){ const [mid,cid]=d.coset.split('|'); if(isCo(cid)||coOf(cid)||groupOf(cid).length){ toast('החונכת הזאת כבר בקבוצה אחרת',true); return; } await setAnn(mid,{coMentor:cid}).catch(()=>{}); S.coPick=null; toast(`${fullName(P(cid))} נוספה כחונכת שותפה`); logAct('co',{m:mid,c:cid}); return; }
+  if(d.codel){ const c=coOf(d.codel); await setAnn(d.codel,{coMentor:null}).catch(()=>{}); toast('החונכת השותפה הוסרה מהקבוצה'); logAct('codel',{m:d.codel,c}); return; }
   if(d.ptsort){ if(S.pt.sort===d.ptsort) S.pt.dir*=-1; else { S.pt.sort=d.ptsort; S.pt.dir=1; } render(); return; }
   if(d.srole){ S.selRole=d.srole; S.pending=null; S.overrideFor=null; render(); return; }
   if(d.sel!==undefined&&d.sel){ S.selRole=roleFor(P(d.sel),d.role); S.sel=d.sel; S.pending=null; S.overrideFor=null; pushPresence(); render(); if(innerWidth<1100) $('.center')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
@@ -1384,6 +1457,10 @@ document.addEventListener('click',async ev=>{
     case 'bulkLead': { const v=$('#bulkLead')?.value; if(!v){ toast('בחרי מובילה מהרשימה',true); break; } const ids=[...S.ptSel]; const lead=v==='__clear'?'':v; const now=new Date().toISOString(); const rows=ids.map(id=>{ const {by,at,...cur}=S.ann.get(id)||{}; return {person_id:id,data:{...cur,leader:lead},by_email:S.uid,at:now}; }); try{ for(let i=0;i<rows.length;i+=100) await W(()=>sb.from('ann').upsert(rows.slice(i,i+100))); toast(`${ids.length} משתתפות שויכו ל${lead?leaderFull(lead):'"ללא מובילה"'}`); logAct('bulklead',{n:ids.length,to:lead||null}); S.ptSel.clear(); render(); }catch(e){} break; }
     case 'phdCreate': { const ids=[...S.phdSel]; if(!ids.length||ids.length>3) break; if(ids.some(id=>phdGroupOf(id))){ toast('אחת המסומנות כבר בקבוצה',true); break; } const ord=Math.max(0,...[...S.phd.values()].map(g=>g.order||0))+1; await phdWrite(()=>sb.from('phd_groups').insert({faculty:S.phdFac,members:ids,ord,by_email:S.uid}),'הקבוצה נוצרה'); S.phdSel.clear(); logAct('phd',{what:'create',n:ids.length}); render(); break; }
     case 'phdAdd': { const g=S.phd.get(S.phdGroup); const ids=[...S.phdSel]; if(!g||g.members.length+ids.length>3) break; await phdWrite(()=>sb.from('phd_groups').update({members:[...g.members,...ids],by_email:S.uid,at:new Date().toISOString()}).eq('id',g.id),`נוספו ל${phdLabel(g)}`); S.phdSel.clear(); render(); break; }
+    case 'coPick': S.coPick=S.sel; S.coQ=''; render(); setTimeout(()=>$('#coQ')?.focus(),0); break;
+    case 'coPickClose': S.coPick=null; render(); break;
+    case 'addPerson': S.addOpen=!S.addOpen; render(); break;
+    case 'savePerson': await savePerson(); break;
     case 'auto': autoSuggest(); break;
     case 'approveAll': { const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); if(ids.length) await approve(ids).catch(()=>{}); break; }
     case 'confirmPending': { const p=S.pending; S.pending=null; await assign(p.eid,p.mid,{status:p.status,override:p.override,force:true}).catch(()=>{}); break; }
@@ -1417,6 +1494,7 @@ let qTimer;
 document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.id==='listQ'||t.id==='mentorQ'||t.id==='peopleQ'){ S[t.id]=t.value; clearTimeout(qTimer); qTimer=setTimeout(render,150); }
+  if(t.id==='coQ'){ S.coQ=t.value; clearTimeout(qTimer); qTimer=setTimeout(render,150); }
   if(t.id==='ptq'){ S.pt.q=t.value; clearTimeout(qTimer); qTimer=setTimeout(render,200); }
 });
 document.addEventListener('change',async ev=>{

@@ -223,6 +223,18 @@ tbody tr:hover{background:var(--sunk)}
 .mailprev table{margin:6px 0;min-width:0}
 .mailprev th{position:static;color:#111}
 .mailprev th,.mailprev td{font-size:13px}
+/* rich text editor */
+.rtbar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;background:var(--sunk);margin-top:4px}
+.rtb{border:1px solid var(--line);background:var(--surface);border-radius:6px;min-width:30px;height:30px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer}
+.rtb.sw i{width:14px;height:14px;border-radius:50%;background:var(--c);display:block}
+.rtb input[type=color]{width:22px;height:22px;border:0;padding:0;background:none}
+.rtsep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.rtlink{display:flex;gap:6px;padding:6px;border:1px solid var(--line);border-bottom:0;background:var(--sunk)}
+.rttags{display:flex;flex-wrap:wrap;gap:4px;padding:6px;border:1px solid var(--line);border-bottom:0;background:var(--sunk)}
+.rttags .chip{border:0;cursor:pointer}
+.rteditor{min-height:420px;max-height:60vh;overflow-y:auto;border:1px solid var(--line);border-radius:0 0 8px 8px;padding:12px 14px;background:#fff;color:#111;font-family:Arial,sans-serif;font-size:14px;line-height:1.55;outline:none}
+.rteditor:focus{border-color:var(--accent)}
+.rteditor a{color:#1D4ED8}
 /* add participant */
 .addgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 14px}
 .addgrid label,.addgrid .lbl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -848,6 +860,7 @@ async function autoSuggest(){
 /* ================= render ================= */
 function render(){
   if(!S.loaded.people) return;
+  if(document.activeElement&&document.activeElement.id==='tplEditor'){ S.pendingRender=true; return; }
   if(S.role!=='admin'&&ADMIN_TABS.includes(S.tab)) S.tab='progress';
   rebuild();
   $('#tabs').hidden=false; document.querySelector('.area-pick').hidden=false;
@@ -935,7 +948,7 @@ function vBoard(){
         <div class="seg" role="group"><button data-mf="all" aria-pressed="${S.mentorFilter==='all'}">כולן</button><button data-mf="free" aria-pressed="${S.mentorFilter==='free'}">עם מקום</button><button data-mf="empty" aria-pressed="${S.mentorFilter==='empty'}">בלי חניכות</button></div></div>
         <div class="row"><input id="mentorQ" type="search" placeholder="חיפוש חונכת" value="${esc(S.mentorQ)}"></div>
       </div>
-      <div class="list" data-keep-scroll="mentors">${list||(S.area!=='__all'&&S.mentorScope!=='all'?`<div class="empty"><b>אין חונכות באחריות ${S.area===S.uid?'שלך':esc(leaderFull(S.area))}</b>המובילה האחראית נקבעת בעמודת "מובילה" בקובץ הרישום. כדאי לבדוק שהמייל או השם שם תואמים בדיוק לרשימה בלשונית מובילות. בינתיים אפשר לבחור "כל התוכנית" למעלה.</div>`:'<div class="empty">אין חונכות להצגה.</div>')}</div>
+      <div class="list" data-keep-scroll="mentors">${list||(S.area!=='__all'&&S.mentorScope!=='all'?`<div class="empty"><b>אין חונכות באחריות ${S.area===S.uid?'שלך':esc(leaderFull(S.area))}</b>את המובילה האחראית קובעים בלשונית משתתפות, או בכרטיס של החונכת. כדאי לבדוק שהמייל או השם שם תואמים בדיוק לרשימה בלשונית מובילות. בינתיים אפשר לבחור "כל התוכנית" למעלה.</div>`:'<div class="empty">אין חונכות להצגה.</div>')}</div>
     </section>
     <section class="center">${S.sel&&P(S.sel)?vDetail(P(S.sel)):`<div class="panel empty"><b>בחרי חונכת</b>בחירה בחונכת מציגה את הקבוצה שלה, ומתחתיה את כל החניכות שמתאימות לה לפי האילוצים, מסודרות לפי שלב אקדמי.</div>`}</section>
   </div>`;
@@ -1079,7 +1092,28 @@ function vPhd(){
 }
 async function phdWrite(fn,ok){ try{ await W(fn); if(ok) toast(ok); }catch(e){} }
 const DEFAULT_TPL={subject:"תכנית 'מדויקות' - פרטי השיבוצים",body:"שלום {שם_החונכת}, ברכות על הצטרפותך כחונכת לתוכנית 'מדויקות'.\n\nאז, מה בעצם קורה עכשיו?\nאת מקבלת קבוצת חניכה, מגיעה למפגש הכנה לחונכות, יוצרת קשר עם החניכות ומתחילה את התוכנית!\nאת הולכת לחנוך {כמות_החניכות} סטודנטיות לתואר {תואר_החניכות}. הנה פרטי החניכות:\n\n{טבלת_החניכות}\n\nחשוב להשיב במייל חוזר למייל זה שאכן קיבלת את השיבוצים לתוכנית.\n\nמפגש הדרכה לחונכות:\nקיימים שני מועדים למפגש ההכנה, בהם נספק פרטים נוספים על התוכנית, נשתף את מערכי החניכה ונקיים הדגמה. יהיה אוכל טוב וגם מתנות של התוכנית. משך המפגש יהיה שעה.\nאנו מזמינות אותך לבחור מועד אחד נוח ולסמן בקישור את המועד אליו תגיעי:\n• יום שני (16.12.24) בשעה 12:00. בניין וולפסון הנדסה 206\n• יום שלישי (17.12.24) בשעה 12:00. בניין ציק פויינט כיתה 480\nשימו לב, נוכחותך במפגש ההכנה לחונכות לשנה הנוכחית חשוב במיוחד, גם אם הינך חונכת ותיקה.\n\nבכל שאלה והתייעצות, את מוזמנת לפנות למובילה מבית הספר שלך. רשימת המובילות והמיילים נמצא בלינק מובילות - פרטי קשר. כל הפרטים לגבי השיבוצים ישלחו בהמשך.\n\nבנוסף לשיבוצים, ריכזנו לך כאן את הנקודות המשמעותיות שצריך לזכור לקראת השנה.\n• עלייך לדווח על מפגשי החניכה (קישור) באתר מדויקות על מנת שתוענק לך מלגה. המלגה תינתן לשתי פעימות: 1000 ₪ בסיום סמסטר א' ו-1000 ₪ בסיום סמסטר ב'.\n• עלייך להעביר שני מפגשים בסמסטר א' ועוד שלושה מפגשים בסמסטר ב' ולהיות זמינה לארבע שעות קבלה במהלך השנה (במידת הצורך).\n   ◦ במידה ותחנכי סטודנטיות בשנה א׳ בתואר ראשון, עלייך להעביר מפגש קבוצתי ומפגש אישי אחד בכל סמסטר.\n   ◦ במקרים של קבוצות גדולות בשנה א' (4+ חניכות), יש לשקול מעבר למפגשים קבוצתיים בלבד.\n• את התוכנית מלווה המעבדה לקידום קריירה. נבקש למלא את השאלון, גם את וגם החניכות טרם מהמפגש הראשון על מנת להבין את השפעות התוכנית. קישור לשאלון המחקר.\n• חשוב מאוד ליידע את רכזת חונכות בר גבסו (bargabso@mail.tau.ac.il) על כל קושי שעולה במפגשים (בתיאום מפגשים, חניכות שלא מגיבות, במציאת מקום או כל קושי לוגיסטי אחר), כך שתוכל לתת מענה.\n• זכרי כי אין זה מתפקידך להיות מורה פרטית ולתת עזרה אקדמית בקורסים.\n\nמאחלות לכולנו שתהיה לנו שנה מדהימה יחד,\nצוות 'מדויקות'."};
-const tplNow=()=>{ const t=S.metaKV.emailTemplate||{}; return {subject:t.subject||DEFAULT_TPL.subject,body:t.body||DEFAULT_TPL.body}; };
+const plainToHtml=t=>esc(t).replace(/\n/g,'<br>');
+const tplNow=()=>{ const t=S.metaKV.emailTemplate||{}; return {subject:t.subject||DEFAULT_TPL.subject,html:sanitizeHtml(t.html||(t.body?plainToHtml(t.body):plainToHtml(DEFAULT_TPL.body)))}; };
+const SAFE_TAGS=new Set(['B','STRONG','I','EM','U','S','SPAN','FONT','A','BR','DIV','P','UL','OL','LI','H3','H4','BLOCKQUOTE']);
+function sanitizeHtml(html){
+  const doc=new DOMParser().parseFromString('<div>'+String(html||'')+'</div>','text/html');
+  const walk=node=>{ for(const ch of [...node.childNodes]){
+    if(ch.nodeType===3) continue;
+    if(ch.nodeType!==1){ ch.remove(); continue; }
+    if(!SAFE_TAGS.has(ch.tagName)){ if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED'].includes(ch.tagName)){ ch.remove(); continue; } walk(ch); ch.replaceWith(...ch.childNodes); continue; }
+    for(const a of [...ch.attributes]){
+      const n=a.name.toLowerCase(), v=a.value;
+      if(ch.tagName==='A'&&n==='href'&&/^(https?:|mailto:)/i.test(v.trim())) continue;
+      if(ch.tagName==='FONT'&&n==='color'&&/^#?[0-9a-z]+$/i.test(v)) continue;
+      if(n==='style'){ const keep=v.split(';').map(x=>x.trim()).filter(x=>/^(color|background-color|font-weight|font-style|text-decoration(-line)?)\s*:\s*[#\w\s(),.%-]+$/i.test(x)); if(keep.length){ ch.setAttribute('style',keep.join(';')); continue; } }
+      ch.removeAttribute(a.name);
+    }
+    if(ch.tagName==='A'){ ch.setAttribute('target','_blank'); ch.setAttribute('rel','noopener'); }
+    walk(ch);
+  } };
+  const root=doc.body.firstChild; walk(root); return root.innerHTML;
+}
+function htmlToText(html){ const d=document.createElement('div'); d.innerHTML=html.replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p|li|h3|h4)>/gi,'\n'); d.querySelectorAll('a').forEach(a=>{ const h=a.getAttribute('href'); if(h&&a.textContent.trim()!==h) a.textContent=a.textContent+' ('+h+')'; }); d.querySelectorAll('li').forEach(li=>li.prepend('• ')); return d.textContent.replace(/\n{3,}/g,'\n\n').trim(); }
 function degreeWord(list){ const w=[]; for(const e of list){ const x=e.rank==null?null:e.rank<20?'ראשון':e.rank<30?'שני':e.rank<40?'שלישי':'פוסט־דוקטורט'; if(x&&!w.includes(x)) w.push(x); } return w.length>1?w.slice(0,-1).join(', ')+' ו'+w[w.length-1]:(w[0]||''); }
 function buildEmail(mid){
   const m=P(mid); const co=coOf(mid)?P(coOf(mid)):null;
@@ -1091,10 +1125,13 @@ function buildEmail(mid){
   const tablePlain=[cols.join('\t'),...rowsP.map(r=>r.join('\t'))].join('\n');
   const td='border:1px solid #999;padding:4px 8px;text-align:right';
   const tableHtml=`<table dir="rtl" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;width:100%"><tr>${cols.map(c=>`<th style="${td};background:#eee">${esc(c)}</th>`).join('')}</tr>${rowsP.map(r=>`<tr>${r.map(c=>`<td style="${td}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
-  const fill=x=>x.replace(/\{שם_החונכת\}/g,name).replace(/\{כמות_החניכות\}/g,String(ms.length)).replace(/\{תואר_החניכות\}/g,degreeWord(ms));
-  const plain=fill(t.body).replace(/\{טבלת_החניכות\}/g,tablePlain);
-  const parts=fill(t.body).split('{טבלת_החניכות}');
-  const html=`<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${parts.map(p=>esc(p).replace(/\n/g,'<br>')).join(tableHtml)}</div>`;
+  const L=leaderOf(m); const lname=L?leaderFull(L):''; const lmail=L||'';
+  const fill=x=>x.replace(/\{שם_החונכת\}/g,name).replace(/\{כמות_החניכות\}/g,String(ms.length)).replace(/\{תואר_החניכות\}/g,degreeWord(ms)).replace(/\{שם_המובילה\}/g,lname).replace(/\{מייל_המובילה\}/g,lmail);
+  const fillH=x=>x.replace(/\{שם_החונכת\}/g,esc(name)).replace(/\{כמות_החניכות\}/g,String(ms.length)).replace(/\{תואר_החניכות\}/g,esc(degreeWord(ms))).replace(/\{שם_המובילה\}/g,esc(lname)).replace(/\{מייל_המובילה\}/g,esc(lmail));
+  const bodyH=fillH(t.html);
+  const TOK='@@TABLE@@';
+  const plain=htmlToText(bodyH.replace(/\{טבלת_החניכות\}/g,TOK)).replace(TOK,'\n'+tablePlain+'\n');
+  const html=`<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${bodyH.replace(/\{טבלת_החניכות\}/g,tableHtml)}</div>`;
   const to=[m.email,co&&co.email].filter(Boolean).join(', ');
   return {to,subject:fill(t.subject),plain,html,n:ms.length};
 }
@@ -1118,13 +1155,45 @@ function vEmail(){
     <p class="muted" style="font-size:12px;margin:8px 0 0">"פתיחת מייל חדש" ממלא את הנמען והנושא. אחר כך מדביקים את גוף המייל (Ctrl+V), והטבלה נשמרת. את נוסח המייל אפשר לערוך בתפריט ההגדרות (☰).</p>
   </div></div>`;
 }
+const TAGS=['שם_החונכת','כמות_החניכות','תואר_החניכות','טבלת_החניכות','שם_המובילה','מייל_המובילה'];
+const SWATCHES=['#111111','#0B6E63','#1D4ED8','#B42318','#A15C07','#7C3AED'];
 function vEmailTpl(){
-  const t=tplNow(); const dis=S.readOnly?'disabled':'';
-  return `<div><h3 style="margin:0">תבנית המייל לחונכות</h3><p class="muted" style="margin:4px 0 8px">הנוסח שנשלח לכל חונכת מלשונית "הקבוצות שלי". את התגיות בסוגריים המסולסלים המערכת ממלאת לבד: <b>{שם_החונכת}</b>, <b>{כמות_החניכות}</b>, <b>{תואר_החניכות}</b>, <b>{טבלת_החניכות}</b>.</p>
-    <label class="muted" for="tplSubj" style="font-size:12px">נושא</label><input id="tplSubj" type="text" value="${esc(t.subject)}" style="width:100%;margin-bottom:8px" ${dis}>
-    <label class="muted" for="tplBody" style="font-size:12px">גוף המייל</label><textarea id="tplBody" style="min-height:420px;font-size:13px" ${dis}>${esc(t.body)}</textarea>
-    ${S.readOnly?'':`<div class="row" style="margin-top:8px"><button class="btn primary" data-act="tplSave">שמירה</button><button class="btn" data-act="tplReset">חזרה לנוסח המקורי</button></div>`}</div>`;
+  const t=tplNow(); const ro=S.readOnly;
+  return `<div><h3 style="margin:0">תבנית המייל לחונכות</h3><p class="muted" style="margin:4px 0 8px">הנוסח שנשלח לכל חונכת מלשונית "הקבוצות שלי". התגיות בסוגריים המסולסלים מתמלאות לבד בפרטים של כל חונכת. לחיצה על תגית מוסיפה אותה במקום הסמן.</p>
+    <label class="muted" for="tplSubj" style="font-size:12px">נושא</label><input id="tplSubj" type="text" value="${esc(S.tplSubjDraft??t.subject)}" style="width:100%;margin-bottom:10px" ${ro?'disabled':''}>
+    <span class="muted" style="font-size:12px">גוף המייל</span>
+    ${ro?'':`<div class="rtbar" role="toolbar" aria-label="עיצוב טקסט">
+      <button class="rtb" data-rt="bold" title="מודגש"><b>B</b></button><button class="rtb" data-rt="underline" title="קו תחתון"><u>U</u></button><button class="rtb" data-rt="italic" title="נטוי"><i>I</i></button>
+      <span class="rtsep"></span>${SWATCHES.map(c=>`<button class="rtb sw" data-rtcolor="${c}" title="צבע טקסט" style="--c:${c}"><i></i></button>`).join('')}<label class="rtb" title="צבע אחר"><input type="color" id="rtColor" value="#0B6E63"></label>
+      <span class="rtsep"></span><button class="rtb" data-rt="link" title="קישור">🔗 קישור</button><button class="rtb" data-rt="unlink" title="הסרת קישור">הסרת קישור</button>
+      <span class="rtsep"></span><button class="rtb" data-rt="insertUnorderedList" title="רשימה">• רשימה</button><button class="rtb" data-rt="removeFormat" title="ניקוי עיצוב">ניקוי עיצוב</button>
+    </div>
+    <div class="rtlink" id="rtLinkBox" hidden><input id="rtLinkUrl" type="text" dir="ltr" placeholder="https://..." style="flex:1"><button class="btn sm primary" data-rt="applyLink">הוספה</button><button class="btn sm" data-rt="cancelLink">ביטול</button></div>
+    <div class="rttags">${TAGS.map(x=>`<button class="chip" data-rttag="${x}">{${x}}</button>`).join('')}</div>`}
+    <div id="tplEditor" class="rteditor" ${ro?'':'contenteditable="true"'} dir="rtl">${S.tplDraft??t.html}</div>
+    ${ro?'':`<div class="row" style="margin-top:8px"><button class="btn primary" data-act="tplSave">שמירה</button><button class="btn" data-act="tplReset">חזרה לנוסח המקורי</button>${S.tplDraft!=null?'<span class="chip warn">יש שינויים שלא נשמרו</span>':''}</div>`}</div>`;
 }
+let rtRange=null;
+function rtSave(){ const sel=getSelection(); const ed=$('#tplEditor'); if(sel.rangeCount&&ed&&ed.contains(sel.anchorNode)) rtRange=sel.getRangeAt(0).cloneRange(); }
+function rtRestore(){ const ed=$('#tplEditor'); if(!ed) return; ed.focus(); if(rtRange){ const sel=getSelection(); sel.removeAllRanges(); sel.addRange(rtRange); } }
+function rtDirty(){ const ed=$('#tplEditor'); if(ed) S.tplDraft=ed.innerHTML; }
+document.addEventListener('selectionchange',rtSave);
+document.addEventListener('mousedown',ev=>{ if(ev.target.closest&&ev.target.closest('.rtbar .rtb:not(label),.rttags .chip')) ev.preventDefault(); });
+document.addEventListener('input',ev=>{ if(ev.target.id==='tplEditor') S.tplDraft=ev.target.innerHTML; if(ev.target.id==='tplSubj') S.tplSubjDraft=ev.target.value; });
+document.addEventListener('focusout',ev=>{ if(ev.target.id==='tplEditor'&&S.pendingRender){ S.pendingRender=false; setTimeout(()=>{ if(document.activeElement?.id!=='tplEditor') render(); },0); } });
+function rtCmd(cmd,val){ rtRestore(); try{ document.execCommand('styleWithCSS',false,true); }catch(e){} document.execCommand(cmd,false,val); rtDirty(); rtSave(); }
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest&&ev.target.closest('[data-rt],[data-rtcolor],[data-rttag]'); if(!b) return;
+  ev.stopPropagation(); const d=b.dataset;
+  if(d.rtcolor){ rtCmd('foreColor',d.rtcolor); return; }
+  if(d.rttag){ rtRestore(); document.execCommand('insertText',false,'{'+d.rttag+'}'); rtDirty(); return; }
+  if(d.rt==='link'){ const box=$('#rtLinkBox'); box.hidden=false; $('#rtLinkUrl').value='https://'; $('#rtLinkUrl').focus(); return; }
+  if(d.rt==='cancelLink'){ $('#rtLinkBox').hidden=true; rtRestore(); return; }
+  if(d.rt==='applyLink'){ let url=($('#rtLinkUrl').value||'').trim(); if(!/^(https?:\/\/|mailto:)/i.test(url)){ if(/^[\w.-]+\.[a-z]{2,}/i.test(url)) url='https://'+url; else { toast('כתובת לא תקינה. היא צריכה להתחיל ב־https://',true); return; } }
+    $('#rtLinkBox').hidden=true; rtRestore(); const sel=getSelection(); if(sel.isCollapsed){ document.execCommand('insertHTML',false,`<a href="${esc(url)}">${esc(url)}</a>`); } else document.execCommand('createLink',false,url); rtDirty(); return; }
+  rtCmd(d.rt);
+},true);
+document.addEventListener('change',ev=>{ if(ev.target.id==='rtColor'){ rtCmd('foreColor',ev.target.value); } },true);
 function vGroups(){
   if(!S.people.size) return vEmptyPeople();
   const scoped=[...S.people.values()].filter(inScope);
@@ -1280,7 +1349,7 @@ function vAreas(){
   const leaders=[...S.leaders.values()].filter(l=>l.role!=='viewer').sort((a,b)=>leaderFull(a.email).localeCompare(leaderFull(b.email),'he'));
   const cnt=a=>{const ps=[...S.people.values()].filter(p=>areaOfPerson(p)===a.id);return {e:ps.filter(p=>p.mentee).length,m:ps.filter(p=>p.mentor).length};};
   const dis=admin?'':'disabled';
-  let h=`<div class="row" style="justify-content:space-between"><div><h3 style="margin:0">קבוצות מחלקות</h3><p class="muted" style="margin:4px 0 0">מחלקות קרובות מאוגדות לקבוצה אחת. כשבוחרים חונכת, "מהמחלקות שלה" מציג חניכות מכל המחלקות בקבוצה שלה. המובילה האחראית נקבעת בעמודת "מובילה" בקובץ הרישום. ${admin?'':'יש לך הרשאת צפייה בלבד, ולכן אי אפשר לשנות כאן.'}</p></div>
+  let h=`<div class="row" style="justify-content:space-between"><div><h3 style="margin:0">קבוצות מחלקות</h3><p class="muted" style="margin:4px 0 0">מחלקות קרובות מאוגדות לקבוצה אחת. כשבוחרים חונכת, "מהמחלקות שלה" מציג חניכות מכל המחלקות בקבוצה שלה. את המובילה האחראית קובעים בלשונית משתתפות, או בכרטיס של החונכת. ${admin?'':'יש לך הרשאת צפייה בלבד, ולכן אי אפשר לשנות כאן.'}</p></div>
     ${admin?`<div class="row"><button class="btn" data-act="addArea">תחום חדש</button>${!areas.length&&depts.length?`<button class="btn primary" data-act="areasFromDepts">תחום לכל מחלקה</button>`:''}</div>`:''}</div>`;
   if(!areas.length) return h+`<div class="panel empty"><b>עדיין לא הוגדרו תחומים</b>${admin?'אפשר ליצור תחום לכל מחלקה בלחיצה אחת, ואחר כך לאחד מחלקות קטנות לתחום משותף.':''}</div>`;
   h+=`<div class="areas">`+areas.map(a=>{ const c=cnt(a);
@@ -1524,8 +1593,8 @@ document.addEventListener('click',async ev=>{
     case 'copyBody': { const em=buildEmail(S.emailFor); toast(await copyRich(em.html,em.plain)?'גוף המייל הועתק, כולל הטבלה. אפשר להדביק במייל.':'ההעתקה נחסמה. סמני את הטקסט בתצוגה והעתיקי ידנית.',!0&&false); break; }
     case 'emailSent': await setAnn(S.emailFor,{emailSent:Date.now()}).catch(()=>{}); logAct('email',{m:S.emailFor}); break;
     case 'emailUnsent': await setAnn(S.emailFor,{emailSent:null}).catch(()=>{}); break;
-    case 'tplSave': { const subject=($('#tplSubj')?.value||'').trim(), body=$('#tplBody')?.value||''; await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{subject,body}})).then(()=>toast('התבנית נשמרה')).catch(()=>{}); break; }
-    case 'tplReset': await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{}})).then(()=>toast('הוחזר הנוסח המקורי')).catch(()=>{}); render(); break;
+    case 'tplSave': { const subject=($('#tplSubj')?.value||'').trim(), html=sanitizeHtml($('#tplEditor')?.innerHTML||''); await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{subject,html}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('התבנית נשמרה'); render(); }).catch(()=>{}); break; }
+    case 'tplReset': if(S.clearStep!=='tpl'){ S.clearStep='tpl'; toast('לחצי שוב כדי לחזור לנוסח המקורי. השינויים שלך יימחקו.'); break; } S.clearStep=0; await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('הוחזר הנוסח המקורי'); }).catch(()=>{}); render(); break;
     case 'coPick': S.coPick=S.sel; S.coQ=''; render(); setTimeout(()=>$('#coQ')?.focus(),0); break;
     case 'coPickClose': S.coPick=null; render(); break;
     case 'addPerson': S.addOpen=!S.addOpen; render(); break;

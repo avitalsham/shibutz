@@ -18,20 +18,20 @@
   --f-body:"IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
   --f-display:"Suez One", "IBM Plex Sans Hebrew", Georgia, serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
-  --open:#CBD5D3; --mentor-tint:#EEF5FC; --mentor-tint-line:#CFE0F3; --sel:#D3E5F8; --sel-line:#3B7DD8;
+  --open:#CBD5D3; --mentor-tint:#DCEAF8; --mentor-tint-line:#B3CEEE; --grp-tint:#F2ECFB; --grp-line:#D9C9F2; --sel:#D3E5F8; --sel-line:#3B7DD8;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F; --sel:#1F3A5C; --sel-line:#6FA8F0;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#1A2D45; --mentor-tint-line:#2D4A6E; --grp-tint:#251C38; --grp-line:#3E2F5E; --sel:#1F3A5C; --sel-line:#6FA8F0;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1514; --surface:#161F1E; --sunk:#111918; --ink:#E4ECEA; --muted:#93A39F; --line:#2A3533;
   --accent:#4FC3B2; --accent-ink:#06211D; --accent-soft:#163430;
   --mentor:#E59C6C; --mentor-soft:#3A2618;
-  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#152230; --mentor-tint-line:#25394F; --sel:#1F3A5C; --sel-line:#6FA8F0;
+  --hard:#F97066; --hard-soft:#3D1814; --warn:#F2B04A; --warn-soft:#3A2A10; --ok:#5BCB8A; --ok-soft:#14301F; --info:#A9B4C2; --info-soft:#1E2630; --open:#3B4A47; --mentor-tint:#1A2D45; --mentor-tint-line:#2D4A6E; --grp-tint:#251C38; --grp-line:#3E2F5E; --sel:#1F3A5C; --sel-line:#6FA8F0;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
@@ -132,6 +132,11 @@ h3{font-size:15px;margin:0 0 8px}
 .center{min-width:0}
 .card{padding:16px}
 .card-mentor{background:var(--mentor-tint);border-color:var(--mentor-tint-line)}
+.grp-block{background:var(--grp-tint);border-color:var(--grp-line)}
+.grp-block .gm{background:var(--surface)}
+.item .gcount{font-size:13px;color:var(--muted);align-self:center}
+.item .gcount.full{color:var(--accent);font-weight:600}
+.item .gcount.zero{opacity:.55}
 .pname{font-size:22px;font-weight:700;margin:0}
 .facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 16px;margin:12px 0}
 .facts div{min-width:0}
@@ -919,7 +924,7 @@ function mentorItem(m){
   const g=groupOf(m.id), cap=capOf(m);
   const dots=Array.from({length:4},(_,i)=>{ if(i>=Math.max(cap,g.length)) return ''; if(i<g.length){ const st=S.matches.get(g[i])?.status; return `<i class="${i>=cap?'x':st==='proposed'?'p':'f'}"></i>`;} return '<i></i>'; }).join('');
   const flags=[];
-  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}" ${isActive(m)?'':'style="opacity:.5" title="לא פעילה"'}><span class="nm">${esc(fullName(m))}</span><span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}" ${isActive(m)?'':'style="opacity:.5" title="לא פעילה"'}><span class="nm">${esc(fullName(m))}</span>${IDX.coHost.get(m.id)?'<span class="gcount" title="חונכת שותפה">שותפה</span>':`<span class="gcount num${g.length>=cap?' full':g.length?'':' zero'}" title="${g.length} חניכות משובצות מתוך ${cap}">${g.length}/${cap}</span>`}<span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
 }
 function vEmptyPeople(){
   return `<div class="panel empty"><b>עדיין אין נרשמות במערכת</b>ייבאי את קובץ האקסל מטופס הרישום, והחניכות והחונכות יופיעו כאן לכל המובילות.<div style="margin-top:12px"><button class="btn primary" data-tab="data">לייבוא קובץ</button></div></div>`;
@@ -1037,7 +1042,7 @@ function vMentorBlock(m){
       <input id="coQ" type="search" placeholder="חיפוש לפי שם או מחלקה" value="${esc(S.coQ||'')}" style="width:100%;margin-bottom:6px">
       <div style="max-height:320px;overflow-y:auto">${list.slice(0,60).map(x=>`<div class="sugg" style="padding:6px 0"><span></span><div class="who"><b>${esc(fullName(x.c))}</b> <span class="muted">${esc(stageShort(x.c))} · ${esc(x.c.dept||'')}${leaderOf(x.c)?' · '+esc(leaderFull(leaderOf(x.c))):''}</span></div><button class="btn sm ${x.why.length?'':'primary'}" data-coset="${m.id}|${x.c.id}" ${x.why.length?'disabled':''}>בחירה</button>${x.why.length?`<div class="why">${x.why.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>`).join('')||'<p class="muted">אין חונכות פנויות שמתאימות.</p>'}</div></div>`;
   }
-  h+=`<div class="panel block"><p class="sec-title">הקבוצה של ${esc(m.first||'')}${co?` ו${esc(P(co).first||'')}`:''} · <span class="num">${g.length}/${cap}</span></p>`;
+  h+=`<div class="panel block grp-block"><p class="sec-title">הקבוצה של ${esc(m.first||'')}${co?` ו${esc(P(co).first||'')}`:''} · <span class="num">${g.length}/${cap}</span></p>`;
   if(co) h+=`<div class="gm" style="margin-bottom:6px;background:var(--mentor-tint)"><div class="l"><span class="muted" style="font-size:12px">חונכת שותפה: </span><b data-sel="${co}" data-role="mentor">${esc(fullName(P(co)))}</b> <span class="muted">${esc(stageShort(P(co)))} · ${esc(P(co).dept||'')}</span></div>${S.readOnly?'':`<button class="btn sm" data-codel="${m.id}">הסרה</button>`}</div>`;
   h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
     return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
@@ -1407,8 +1412,10 @@ function vProgress(){
     <div class="panel prog">${rows.map(r=>{ const st=r.st;
       return `<div class="prow"><button class="an" data-golead="${esc(r.id)}" title="מעבר לשיבוצים של המובילה">${esc(r.name)}<span class="muted num" style="display:block;font-weight:400;font-size:12px">${r.pc.total} משתתפות</span></button>${lbar(r.pc)}<span class="cnt muted num" style="font-size:13px" title="משתתפות משובצות מתוך כל המשתתפות של המובילה">${r.pc.placed}/${r.pc.total}</span><span class="pct">${pct(r.pc.placed,r.pc.total)}%</span>
         <div class="sub"><span><b style="color:var(--ink)">סה״כ ${r.pc.total} משתתפות:</b> ${r.pc.mentors} חונכות, ${r.pc.mentees} חניכות</span><span>${st.open} חונכות עדיין בלי חניכות</span><span>${st.me} חניכות מאושרות · ${st.mp} הצעות</span><span>${st.seats} מקומות פנויים</span><span style="color:#2E9E5B">${r.pc.mailed} משתתפות בקבוצות שנשלח להן מייל</span></div></div>`; }).join('')||'<div class="empty">עדיין אין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</div>'}</div>`;
-  if(!S.phdMissing){ const pm=all.filter(p=>isPhdMentee(p)&&isActive(p)); const inG=pm.filter(p=>phdGroupOf(p.id)).length; const gs=[...S.phd.values()]; const gm=gs.filter(g=>g.mentor).length;
-    h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><h3 style="margin:0">דוקטורנטיות</h3></div><div class="panel prog"><div class="prow"><button class="an" data-tab="phd">דוקטורנטיות</button><div class="sbar">${gm?`<i class="seg-final" style="flex:${gm}" title="קבוצות עם חונכת: ${gm}"></i>`:''}${gs.length-gm?`<i class="seg-prop" style="flex:${gs.length-gm}" title="קבוצות בלי חונכת: ${gs.length-gm}"></i>`:''}${pm.length-inG?`<i class="seg-open" style="flex:${(pm.length-inG)/2}" title="בלי קבוצה: ${pm.length-inG}"></i>`:''}${!pm.length?'<i class="seg-open" style="flex:1"></i>':''}</div><span class="cnt muted num" style="font-size:13px">${inG}/${pm.length}</span><span class="pct">${pm.length?Math.round(inG*100/pm.length):0}%</span><div class="sub"><span>${inG} מתוך ${pm.length} בקבוצות</span><span>${gs.length} קבוצות · ${gm} עם חונכת</span></div></div></div>`; }
+  if(!S.phdMissing){ const pm=all.filter(p=>isPhdMentee(p)&&isActive(p)); const gs=[...S.phd.values()]; const gm=gs.filter(g=>g.mentor&&P(g.mentor)); const inG=pm.filter(p=>phdGroupOf(p.id)).length;
+    let placed=0,mailed=0; for(const g of gm){ const k=1+g.members.filter(id=>P(id)).length; placed+=k; if(A(g.mentor).emailSent) mailed+=k; }
+    const tot=pm.length+gm.length; const pc={total:tot,placed,mailed,open:tot-placed};
+    h+=`<div class="row" style="justify-content:space-between;margin:20px 0 8px"><h3 style="margin:0">דוקטורנטיות</h3></div><div class="panel prog"><div class="prow"><button class="an" data-tab="phd">דוקטורנטיות<span class="muted num" style="display:block;font-weight:400;font-size:12px">${tot} משתתפות</span></button>${lbar(pc)}<span class="cnt muted num" style="font-size:13px" title="משתתפות בקבוצות עם חונכת, מתוך כל המשתתפות במסלול">${placed}/${tot}</span><span class="pct">${pct(placed,tot)}%</span><div class="sub"><span><b style="color:var(--ink)">סה״כ ${tot} משתתפות:</b> ${gm.length} חונכות, ${pm.length} חניכות</span><span>${inG} מתוך ${pm.length} חניכות בקבוצות</span><span>${gs.length} קבוצות · ${gm.length} עם חונכת</span><span style="color:#2E9E5B">${mailed} משתתפות בקבוצות שנשלח להן מייל</span></div></div></div>`; }
   return h;
 }
 function vData(){

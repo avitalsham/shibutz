@@ -1258,7 +1258,7 @@ function vGroups(){
   const sizes=[1,2,3,4,5,6].map(n=>mentors.filter(m=>groupOf(m.id).length===n).length);
   const stat=(v,l)=>`<div class="panel stat"><b>${v}</b><span>${l}</span></div>`;
   const lsel=`<div class="row" style="margin-bottom:12px"><label for="grpLead" class="muted">הקבוצות של</label><select id="grpLead">${S.uid&&leaderKeysAll().includes(S.uid)?`<option value="${esc(S.uid)}" ${S.area===S.uid?'selected':''}>שלי</option>`:''}${leaderKeysAll().filter(k=>k!==S.uid).map(k=>`<option value="${esc(k)}" ${S.area===k?'selected':''}>${esc(leaderFull(k))}</option>`).join('')}<option value="__all" ${S.area==='__all'?'selected':''}>כל התוכנית</option><option value="__none" ${S.area==='__none'?'selected':''}>ללא מובילה</option></select></div>`;
-  let h=lsel+`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
+  let h=`<div class="row" style="justify-content:space-between;align-items:flex-start">${lsel}<button class="btn" data-act="exportXlsx" ${S.busy?'disabled':''} title="קובץ אחד לכל התוכנית: קבוצות, דוקטורנטיות, טרם שובצו, סיכום ונוסח המייל">⬇ הורדת אקסל השיבוצים</button></div>`+`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
   <div class="row" style="margin-bottom:12px"><label class="row"><input type="checkbox" id="showIdle" ${S.showAllMentorsInGroups?'checked':''}> להציג גם חונכות בלי חניכות</label>${prop?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות בתחום</button>`:''}</div>`;
   h+=`<div class="groups">`+mentors.map(m=>{
     const g=groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
@@ -1463,7 +1463,7 @@ function vProgress(){
   const star=Object.entries(wk).sort((a,b)=>b[1]-a[1])[0];
   const mailedToday=S.log.filter(l=>l.kind==='email'&&l.t>=day.getTime()).length;
   const tile=(ic,v,l,cls)=>`<div class="kpi${cls?' '+cls:''}"><span class="ic">${ic}</span><b class="num">${v}</b><span>${l}</span></div>`;
-  let h=`<div class="panel phero">
+  let h=`<div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn" data-act="exportXlsx" ${S.busy?'disabled':''} title="קובץ אחד לכל התוכנית: קבוצות, דוקטורנטיות, טרם שובצו, סיכום ונוסח המייל">⬇ הורדת אקסל השיבוצים</button></div><div class="panel phero">
     <div class="phero-ring">${ring}</div>
     <div class="phero-main">
       <div class="phero-title"><b class="num">${o.placed}</b> מתוך <b class="num">${o.total}</b> משתתפות כבר בקבוצה</div>
@@ -1522,8 +1522,10 @@ function vData(){
       <label class="row" style="margin:10px 0"><input type="checkbox" id="replaceAll" ${pv.replace?'checked':''}> החלפת כל הנרשמות (מוחק גם את השיבוצים וההערות של הנתונים הקודמים)</label>
       <div class="row"><button class="btn primary" data-act="doImport" ${S.readOnly||S.busy?'disabled':''}>ייבוא</button><button class="btn" data-act="cancelImport">ביטול</button></div></div>`;
   }
-  h+=`</div><div class="panel card"><h2>ייצוא השיבוצים</h2><p class="muted">קובץ CSV שנפתח באקסל: שורה לכל חניכה, עם פרטי החונכת שלה.${S.area!=='__all'?' הייצוא כולל רק את התחום שנבחר.':''}</p>
-    <div class="row"><button class="btn primary" data-act="exportCsv" ${downloads?'':'disabled'}>הורדת CSV</button><button class="btn" data-act="copyTsv">העתקה להדבקה בגיליון</button><label class="row"><input type="checkbox" id="exportFinal" ${S.exportFinal?'checked':''}> רק שיבוצים מאושרים</label></div>
+  h+=`</div><div class="panel card"><h2>ייצוא השיבוצים</h2><p class="muted">קובץ אקסל אחד לכל התוכנית, זהה לכל המובילות. יש בו חמישה גיליונות: קבוצות, דוקטורנטיות, טרם שובצו, סיכום ונוסח המייל. כדאי להוריד אותו פעם ביום גם כגיבוי.</p>
+    <div class="row" style="margin-bottom:14px"><button class="btn primary" data-act="exportXlsx" ${S.busy?'disabled':''} title="קובץ אחד לכל התוכנית: קבוצות, דוקטורנטיות, טרם שובצו, סיכום ונוסח המייל">⬇ הורדת אקסל השיבוצים</button></div>
+    <p class="muted" style="margin:0 0 6px">ייצוא מהיר בפורמט הישן (שורה לכל חניכה${S.area!=='__all'?', רק התחום שנבחר':''}):</p>
+    <div class="row"><button class="btn" data-act="exportCsv" ${downloads?'':'disabled'}>הורדת CSV</button><button class="btn" data-act="copyTsv">העתקה להדבקה בגיליון</button><label class="row"><input type="checkbox" id="exportFinal" ${S.exportFinal?'checked':''}> רק שיבוצים מאושרים</label></div>
     <h3 style="margin-top:20px">יומן פעולות</h3><ul class="log">${S.log.map(l=>`<li><span class="muted">${ago(l.t)}</span> · <b>${esc(leaderName(l.by))}</b> ${logText(l)}</li>`).join('')||'<li class="muted">עדיין אין פעולות.</li>'}</ul>
   </div></div>
   <div class="panel card" style="margin-top:14px;border-color:var(--hard)"><h3>איפוס לשנה חדשה</h3><p class="muted">מוחק את כל הנרשמות, השיבוצים, ההערות והיומן. תחומי האחריות נשמרים.</p>
@@ -1618,6 +1620,75 @@ function exportRows(){
   for(const {e,m,mt} of list) rows.push([leaderFull(leaderOf(m))||'',coOf(m.id)?fullName(P(coOf(m.id))):'',fullName(m),stageShort(m),m.dept,m.email,m.phone,fullName(e),stageShort(e),e.dept,e.email,e.phone,mt.status==='proposed'?'הצעה':'מאושר',leaderFull(mt.by)]);
   for(const g of S.phd.values()){ const m=P(g.mentor); for(const id of g.members){ const e=P(id); if(!e) continue; rows.push(['דוקטורנטיות · '+PHD_FAC[g.faculty]+' · '+phdLabel(g),'',m?fullName(m):'',m?stageShort(m):'',m?m.dept:'',m?m.email:'',m?m.phone:'',fullName(e),stageShort(e),e.dept,e.email,e.phone,m?'מאושר':'בלי חונכת',leaderFull(g.by)]); } }
   return rows;
+}
+/* ================= Excel export (full program, same file for everyone) ================= */
+function loadScript(src){ return new Promise((res,rej)=>{ const x=document.createElement('script'); x.src=src; x.onload=res; x.onerror=()=>rej(new Error('load')); document.head.appendChild(x); }); }
+async function exportXlsx(){
+  if(S.busy) return;
+  S.busy='מכינה את קובץ האקסל…'; render();
+  try{
+    if(!window.ExcelJS) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+    const wb=new ExcelJS.Workbook(); wb.creator='מדויקות · שיבוץ'; wb.created=new Date();
+    const HEAD={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F5F8B'}}, BAND={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F1FB'}}, BAND2={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3EEFB'}};
+    const sheet=(name,cols)=>{ const ws=wb.addWorksheet(name,{views:[{rightToLeft:true,state:'frozen',ySplit:1}]}); ws.columns=cols.map(c=>({header:c[0],key:c[0],width:c[1]||14,hidden:!!c[2]})); const h=ws.getRow(1); h.font={bold:true,color:{argb:'FFFFFFFF'}}; h.fill=HEAD; h.alignment={vertical:'middle',horizontal:'right'}; h.height=20; ws.autoFilter={from:{row:1,column:1},to:{row:1,column:cols.length}}; return ws; };
+    const band=(ws,row,on,fill)=>{ if(on) row.eachCell({includeEmpty:true},c=>{ c.fill=fill||BAND; }); };
+    const st=p=>p?stageShort(p):''; const L=m=>leaderOf(m)?leaderFull(leaderOf(m)):'ללא מובילה';
+    const sent=m=>m&&A(m.id).emailSent?'✔':'';
+    // 1. groups
+    const ws1=sheet('קבוצות',[['מובילה',14],['חונכת',18],['שלב חונכת',12],['מחלקת חונכת',18],['מייל חונכת',26],['טלפון חונכת',14],['חונכת שותפה',18],['מס׳ בקבוצה',9],['חניכה',18],['שלב חניכה',12],['מחלקת חניכה',18],['מייל חניכה',26],['טלפון חניכה',14],['סטטוס',10],['נשלח מייל',10],['שובצה ע״י',12],['מזהה חונכת',12,1],['מזהה חניכה',12,1]]);
+    const mentors=[...S.people.values()].filter(m=>groupOf(m.id).length).sort((a,b)=>L(a).localeCompare(L(b),'he')||(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
+    let alt=false, nGroups=0;
+    for(const m of mentors){ alt=!alt; nGroups++; const co=coOf(m.id)?P(coOf(m.id)):null;
+      groupOf(m.id).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||fullName(a).localeCompare(fullName(b),'he')).forEach((e,i)=>{ const mt=S.matches.get(e.id)||{};
+        const r=ws1.addRow([L(m),fullName(m),st(m),m.dept||'',m.email||'',m.phone||'',co?fullName(co):'',i+1,fullName(e),st(e),e.dept||'',e.email||'',e.phone||'',mt.status==='proposed'?'הצעה':'מאושר',sent(m),leaderFull(mt.by)||'',m.id,e.id]); band(ws1,r,alt); }); }
+    // 2. PhD
+    const ws2=sheet('דוקטורנטיות',[['מחלקה',16],['קבוצה',10],['חונכת',18],['שלב חונכת',12],['מחלקת חונכת',18],['מייל חונכת',26],['טלפון חונכת',14],['דוקטורנטית',18],['שלב',12],['מחלקה',18],['מייל',26],['טלפון',14],['נשלח מייל',10],['מזהה קבוצה',12,1],['מזהה חונכת',12,1],['מזהה דוקטורנטית',12,1]]);
+    const FAC=Object.keys(PHD_FAC); alt=false;
+    [...S.phd.values()].sort((a,b)=>FAC.indexOf(a.faculty)-FAC.indexOf(b.faculty)||(a.order||0)-(b.order||0)).forEach(g=>{ alt=!alt; const m=P(g.mentor);
+      g.members.map(P).filter(Boolean).forEach(e=>{ const r=ws2.addRow([PHD_FAC[g.faculty]||'',phdLabel(g),m?fullName(m):'— עדיין בלי חונכת',st(m),m?.dept||'',m?.email||'',m?.phone||'',fullName(e),st(e),e.dept||'',e.email||'',e.phone||'',sent(m),g.id,m?.id||'',e.id]); band(ws2,r,alt,BAND2); }); });
+    // 3. not yet placed
+    const ws3=sheet('טרם שובצו',[['מה חסר',22],['מובילה',14],['שם',18],['שלב',12],['מחלקה',18],['בית ספר',14],['מייל',26],['טלפון',14],['מזהה',12,1]]);
+    const all=[...S.people.values()].filter(isActive);
+    const rowsU=[];
+    all.filter(p=>regMentee(p)&&!S.matches.has(p.id)).forEach(p=>rowsU.push(['חניכה בלי קבוצה',p]));
+    all.filter(p=>regMentor(p)&&!isCo(p.id)&&!groupOf(p.id).length).forEach(p=>rowsU.push(['חונכת בלי חניכות',p]));
+    if(!S.phdMissing) all.filter(p=>isPhdMentee(p)&&!phdGroupOf(p.id)).forEach(p=>rowsU.push(['דוקטורנטית בלי קבוצה',p]));
+    rowsU.sort((a,b)=>a[0].localeCompare(b[0],'he')||L(a[1]).localeCompare(L(b[1]),'he')||(a[1].rank||0)-(b[1].rank||0));
+    for(const [k,p] of rowsU) ws3.addRow([k,L(p),fullName(p),st(p),p.dept||'',SCHOOL_NAME[p.school]||'',p.email||'',p.phone||'',p.id]);
+    // 4. summary
+    const ws4=sheet('סיכום',[['מובילה',18],['משתתפות',11],['משובצות',11],['אחוז',9],['קיבלו מייל',11],['חונכות',10],['חניכות',10],['קבוצות',10],['מקומות פנויים',13]]);
+    const ms=[...S.people.values()].filter(m=>regMentor(m)&&isActive(m)&&!isCo(m.id));
+    const freeM=all.filter(p=>regMentee(p)&&!p.mentor&&!S.matches.has(p.id));
+    const calc=(mlist,free)=>{ let me=0,co=0,pl=0,ml=0,gr=0,seats=0; for(const m of mlist){ const n=groupOf(m.id).length; me+=n; if(coOf(m.id)) co++; seats+=Math.max(0,capOf(m)-n); if(n){ gr++; const k=1+(coOf(m.id)?1:0)+n; pl+=k; if(A(m.id).emailSent) ml+=k; } } const tot=mlist.length+co+me+free; return [tot,pl,tot?pl/tot:0,ml,mlist.length+co,me+free,gr,seats]; };
+    const keys=[...leaderKeysAll(),null];
+    const sum=[0,0,0,0,0,0,0,0];
+    for(const k of keys){ const v=calc(ms.filter(m=>leaderOf(m)===k),freeM.filter(p=>k?leaderOf(p)===k:!leaderOf(p)).length); if(k===null&&!v[0]) continue; v.forEach((x,i)=>{ if(i!==2) sum[i]+=x; }); ws4.addRow([k?leaderFull(k):'ללא מובילה',...v]); }
+    if(!S.phdMissing){ const pm=all.filter(isPhdMentee); const gm=[...S.phd.values()].filter(g=>g.mentor&&P(g.mentor)); let pl=0,ml=0; gm.forEach(g=>{ const k=1+g.members.filter(id=>P(id)).length; pl+=k; if(A(g.mentor).emailSent) ml+=k; }); const tot=pm.length+gm.length; const v=[tot,pl,tot?pl/tot:0,ml,gm.length,pm.length,gm.length,0]; v.forEach((x,i)=>{ if(i!==2) sum[i]+=x; }); ws4.addRow(['דוקטורנטיות',...v]); }
+    sum[2]=sum[0]?sum[1]/sum[0]:0;
+    const tr=ws4.addRow(['סה״כ',...sum]); tr.font={bold:true}; band(ws4,tr,true);
+    ws4.getColumn(4).numFmt='0%';
+    ws4.addRow([]); ws4.addRow([`הקובץ נוצר ב־${new Date().toLocaleString('he-IL')} על ידי ${leaderFull(S.uid)||S.uid||''}`]).font={italic:true,color:{argb:'FF666666'}};
+    // 5. email template
+    const t=tplNow();
+    const ws5=wb.addWorksheet('נוסח המייל',{views:[{rightToLeft:true}]});
+    ws5.getColumn(1).width=110; ws5.getColumn(1).alignment={wrapText:true,vertical:'top',horizontal:'right'};
+    ws5.addRow(['הנוסח הכללי של המייל לחונכות, כפי שהוא שמור במערכת. התגיות בסוגריים מסולסלים מתמלאות אוטומטית לכל חונכת.']).font={italic:true,color:{argb:'FF666666'}};
+    ws5.addRow([]);
+    const sr=ws5.addRow(['נושא: '+t.subject]); sr.font={bold:true,size:13};
+    ws5.addRow([]);
+    htmlToText(t.html).split('\n').forEach(line=>ws5.addRow([line]));
+    ws5.addRow([]);
+    ws5.addRow(['התגיות:']).font={bold:true};
+    [['{שם_החונכת}','השם הפרטי של החונכת (ושל החונכת השותפה, אם יש)'],['{כמות_החניכות}','מספר החניכות בקבוצה'],['{תואר_החניכות}','התואר של החניכות (ראשון / שני …)'],['{טבלת_החניכות}','טבלה עם פרטי החניכות'],['{שם_המובילה}','שם המובילה האחראית'],['{מייל_המובילה}','המייל של המובילה האחראית']].forEach(([a,b])=>ws5.addRow([a+'  ←  '+b]));
+    wb.views=[{activeTab:0}];
+    const buf=await wb.xlsx.writeBuffer();
+    const d=new Date(), pad=n=>String(n).padStart(2,'0');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    a.download=`shibutzim-meduyakot-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.xlsx`;
+    document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+    toast(`הקובץ ירד: ${nGroups} קבוצות`);
+  }catch(e){ console.error(e); toast('לא הצלחתי ליצור את קובץ האקסל. נסי שוב.',true); }
+  S.busy=''; render();
 }
 async function exportCsv(){
   const rows=exportRows(); if(rows.length<2) return toast('אין שיבוצים לייצוא');
@@ -1724,6 +1795,7 @@ document.addEventListener('click',async ev=>{
     case 'doImport': doImport(); break;
     case 'cancelImport': S.importPreview=null; render(); break;
     case 'exportCsv': exportCsv(); break;
+    case 'exportXlsx': exportXlsx(); break;
     case 'copyTsv': copyTsv(); break;
     case 'askRejectAll': S.clearStep='props'; render(); break;
     case 'rejectAll': { S.clearStep=0; const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); try{ for(let i=0;i<ids.length;i+=100) await W(()=>sb.from('matches').delete().in('mentee_id',ids.slice(i,i+100)).eq('status','proposed')); toast(`${ids.length} הצעות בוטלו`); logAct('rejectAll',{n:ids.length}); }catch(e){} render(); break; }

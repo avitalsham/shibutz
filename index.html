@@ -1447,16 +1447,30 @@ function vSettings(){
     ${({areas:vAreas,email:vEmailTpl})[S.settingsSec]()}
   </aside></div>`;
 }
+/* כל משתתפת (במסלול הרגיל) נספרת פעם אחת בלבד, גם אם נרשמה גם כחונכת וגם כחניכה.
+   שובצה כחניכה → שייכת למובילה של החונכת שלה. חונכת שותפה → למובילה של החונכת הראשית. */
+function partAgg(){
+  const blank=()=>({total:0,placed:0,mailed:0,mentors:0,mentees:0,groups:0,seats:0,open:0});
+  const by=new Map(), all=blank();
+  const add=(L,f)=>{ const k=L||null; if(!by.has(k)) by.set(k,blank()); f(by.get(k)); f(all); };
+  for(const p of S.people.values()){
+    const mt=S.matches.get(p.id);
+    if(mt&&P(mt.mentor)){ const m=P(mt.mentor); add(leaderOf(m),x=>{x.total++;x.placed++;x.mentees++; if(A(m.id).emailSent) x.mailed++;}); continue; }
+    if(regMentor(p)&&isCo(p.id)){ const h=P(IDX.coHost.get(p.id)); const n=h?groupOf(h.id).length:0; add(h?leaderOf(h):leaderOf(p),x=>{x.total++;x.mentors++; if(n){x.placed++; if(A(h.id).emailSent) x.mailed++;}}); continue; }
+    if(!isActive(p)) continue;
+    if(regMentor(p)){ const n=groupOf(p.id).length; add(leaderOf(p),x=>{x.total++;x.mentors++;x.seats+=Math.max(0,capOf(p)-n); if(n){x.placed++;x.groups++; if(A(p.id).emailSent) x.mailed++;}}); continue; }
+    if(regMentee(p)) add(leaderOf(p),x=>{x.total++;x.mentees++;});
+  }
+  for(const x of [all,...by.values()]) x.open=x.total-x.placed;
+  return {all,get:k=>by.get(k||null)||blank(),hasNone:by.has(null)&&by.get(null).total>0};
+}
 function vProgress(){
   if(!S.people.size) return vEmptyPeople();
   const all=[...S.people.values()];
   const pct=(n,t)=>t?Math.round(n*100/t):0;
-  const mentorsAll=all.filter(p=>regMentor(p));
   // participants of a set of primary mentors + free mentees
-  const pcount=(ms,free)=>{ ms=ms.filter(m=>isActive(m)&&!isCo(m.id)); let me=0,co=0,placed=0,mailed=0,groups=0,seats=0; for(const m of ms){ const n=groupOf(m.id).length; me+=n; if(coOf(m.id)) co++; seats+=Math.max(0,capOf(m)-n); if(n){ groups++; const k=1+(coOf(m.id)?1:0)+n; placed+=k; if(A(m.id).emailSent) mailed+=k; } } const total=ms.length+co+me+free; return {mentors:ms.length+co,mentees:me+free,total,placed,mailed,open:total-placed,groups,seats}; };
-  const freeOf=L=>all.filter(p=>regMentee(p)&&!p.mentor&&isActive(p)&&!S.matches.has(p.id)&&(L===undefined||(L&&leaderOf(p)===L))).length;
   const phdStat=()=>{ if(S.phdMissing) return null; const pm=all.filter(p=>isPhdMentee(p)&&isActive(p)); const gs=[...S.phd.values()]; const gm=gs.filter(g=>g.mentor&&P(g.mentor)); let placed=0,mailed=0; for(const g of gm){ const k=1+g.members.filter(id=>P(id)).length; placed+=k; if(A(g.mentor).emailSent) mailed+=k; } const total=pm.length+gm.length; return {total,placed,mailed,open:total-placed,mentors:gm.length,mentees:pm.length,groups:gm.length,allGroups:gs.length,inG:pm.filter(p=>phdGroupOf(p.id)).length}; };
-  const reg=pcount(mentorsAll,freeOf(undefined)); const ph=phdStat();
+  const AG=partAgg(); const reg=AG.all; const ph=phdStat();
   const o={total:reg.total+(ph?ph.total:0),placed:reg.placed+(ph?ph.placed:0),mailed:reg.mailed+(ph?ph.mailed:0)}; o.open=o.total-o.placed;
   const op=pct(o.placed,o.total);
   const lbar=(pc,lg)=>{ if(!pc.total) return `<div class="sbar${lg?' lg':''}"><i class="seg-open" style="flex:1" title="אין משתתפות"></i></div>`; const seg=(n,c,l)=>n?`<i class="${c}" style="flex:${n}" title="${l}: ${n} (${pct(n,pc.total)}%)"></i>`:''; return `<div class="sbar${lg?' lg':''}">${seg(pc.mailed,'seg-mailed','משובצות שכבר נשלח להן מייל')}${seg(pc.placed-pc.mailed,'seg-placed','משובצות, עוד לא נשלח מייל')}${seg(pc.open,'seg-open','עדיין לא משובצות')}</div>`; };
@@ -1488,8 +1502,8 @@ function vProgress(){
   </div>
   <div class="kpis">${tile('🧩',reg.groups+(ph?ph.groups:0),'קבוצות')}${tile('✉️',o.mailed,'קיבלו מייל','k-mail')}${tile('⏳',o.open,'מחכות לשיבוץ','k-open')}${tile('🪑',reg.seats,'מקומות פנויים בקבוצות')}${tile('⚡',today,'שיבוצים היום')}${star?tile('🔥',esc(leaderFull(star[0])),`הכי פעילה השבוע · ${star[1]} פעולות`,'k-star'):''}</div>`;
   // leaders
-  let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),pc:pcount(mentorsAll.filter(m=>leaderOf(m)===k),freeOf(k))}));
-  const nol=mentorsAll.filter(m=>!leaderOf(m)&&isActive(m)); if(nol.length) rows.push({id:'__none',name:'ללא מובילה',pc:pcount(nol,0),none:true});
+  let rows=leaderKeysAll().map(k=>({id:k,name:leaderFull(k),pc:AG.get(k)}));
+  if(AG.hasNone) rows.push({id:'__none',name:'ללא מובילה',pc:AG.get(null),none:true});
   const ranked=rows.filter(r=>!r.none&&r.pc.placed).slice().sort((x,y)=>pct(y.pc.placed,y.pc.total)-pct(x.pc.placed,x.pc.total)||y.pc.placed-x.pc.placed);
   const medal={}; ['🥇','🥈','🥉'].forEach((m,i)=>{ if(ranked[i]) medal[ranked[i].id]=m; });
   if(S.progSort==='low') rows.sort((x,y)=>pct(x.pc.placed,x.pc.total)-pct(y.pc.placed,y.pc.total)||y.pc.open-x.pc.open);
@@ -1672,12 +1686,9 @@ async function exportXlsx(){
     for(const [k,p] of rowsU) ws3.addRow([k,L(p),fullName(p),st(p),p.dept||'',SCHOOL_NAME[p.school]||'',p.email||'',p.phone||'',p.id]);
     // 4. summary
     const ws4=sheet('סיכום',[['מובילה',18],['משתתפות',11],['משובצות',11],['אחוז',9],['קיבלו מייל',11],['חונכות',10],['חניכות',10],['קבוצות',10],['מקומות פנויים',13]]);
-    const ms=[...S.people.values()].filter(m=>regMentor(m)&&isActive(m)&&!isCo(m.id));
-    const freeM=all.filter(p=>regMentee(p)&&!p.mentor&&!S.matches.has(p.id));
-    const calc=(mlist,free)=>{ let me=0,co=0,pl=0,ml=0,gr=0,seats=0; for(const m of mlist){ const n=groupOf(m.id).length; me+=n; if(coOf(m.id)) co++; seats+=Math.max(0,capOf(m)-n); if(n){ gr++; const k=1+(coOf(m.id)?1:0)+n; pl+=k; if(A(m.id).emailSent) ml+=k; } } const tot=mlist.length+co+me+free; return [tot,pl,tot?pl/tot:0,ml,mlist.length+co,me+free,gr,seats]; };
-    const keys=[...leaderKeysAll(),null];
+    const AG=partAgg(); const keys=[...leaderKeysAll(),null];
     const sum=[0,0,0,0,0,0,0,0];
-    for(const k of keys){ const v=calc(ms.filter(m=>leaderOf(m)===k),freeM.filter(p=>k?leaderOf(p)===k:!leaderOf(p)).length); if(k===null&&!v[0]) continue; v.forEach((x,i)=>{ if(i!==2) sum[i]+=x; }); ws4.addRow([k?leaderFull(k):'ללא מובילה',...v]); }
+    for(const k of keys){ if(k===null&&!AG.hasNone) continue; const x=AG.get(k); const v=[x.total,x.placed,x.total?x.placed/x.total:0,x.mailed,x.mentors,x.mentees,x.groups,x.seats]; v.forEach((y,i)=>{ if(i!==2) sum[i]+=y; }); ws4.addRow([k?leaderFull(k):'ללא מובילה',...v]); }
     if(!S.phdMissing){ const pm=all.filter(isPhdMentee); const gm=[...S.phd.values()].filter(g=>g.mentor&&P(g.mentor)); let pl=0,ml=0; gm.forEach(g=>{ const k=1+g.members.filter(id=>P(id)).length; pl+=k; if(A(g.mentor).emailSent) ml+=k; }); const tot=pm.length+gm.length; const v=[tot,pl,tot?pl/tot:0,ml,gm.length,pm.length,gm.length,0]; v.forEach((x,i)=>{ if(i!==2) sum[i]+=x; }); ws4.addRow(['דוקטורנטיות',...v]); }
     sum[2]=sum[0]?sum[1]/sum[0]:0;
     const tr=ws4.addRow(['סה״כ',...sum]); tr.font={bold:true}; band(ws4,tr,true);

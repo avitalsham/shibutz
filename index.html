@@ -407,13 +407,14 @@ const DEPT_KW={
 };
 function deptFromText(t){
   if(!t) return '';
-  t=String(t);
+  t=String(t).replace(/גיאו/g,'גאו');
+  if(/גאופיז|כדור הארץ/.test(t)) return 'גאופיזיקה';
   for(const [d,kws] of Object.entries(DEPT_KW)){ if(kws.some(k=>t.includes(k))) return d; }
   return '';
 }
 function normDept(raw){
   if(!raw) return '';
-  const s=String(raw).trim();
+  const s=String(raw).trim().replace(/גיאו/g,'גאו');
   if(s.startsWith('הנדסת חשמל')) return 'הנדסת חשמל';
   if(s.includes('החוג למתמטיקה')) return 'מתמטיקה';
   if(s.includes('סטטיסטיקה')) return 'סטטיסטיקה וחקר ביצועים';
@@ -424,25 +425,25 @@ function normDept(raw){
   if(s.startsWith('הנדסה ביו')) return 'הנדסה ביו-רפואית';
   return s;
 }
-// כל שדה: רשימת כותרות אפשריות. הראשונות מקובץ תשפ"ו, האחרות מהטופס של תשפ"ז.
+// כל שדה: רשימת כותרות אפשריות: קובץ תשפ"ו, הטופס של תשפ"ז, והקובץ המעובד של תשפ"ז.
 const COLS={
   ts:['submission time'],last:['שם משפחה'],first:['שם פרטי'],email:['אימייל','מייל'],phone:['מספר טלפון','טלפון'],
-  stage:['באיזה שלב בתואר'],work:['עבודה מחוץ לאוניברסיטה','אם את עובדת מחוץ לאוניברסיטה'],role:['אני רוצה להיות','בחרי כיצד תרצי להשתתף'],
-  prev:['האם השתתפת בשנה שעברה','האם השתתפת בתכנית'],
-  program:['אודיסאה או עתודה','עתודה או אודיסאה'],year:['שנת לימודים','באיזה שנה תהיי','באיזו שנה תהיי'],faculty:['פקולטה'],
-  deptExact:['בי"ס (מדויקים)','לאיזה בית ספר את משתייכת?'],deptEng:['בי"ס (הנדסה)','לאיזה בית ספר את משתייכת? 2'],
-  track:['מסלול מחקר'],wantMentor:['בי"ס חונכת','מאיזה בית ספר תרצי לקבל חונכת'],wantMentorSpec:['בי"ס חונכת ספציפי','פרטי בית ספר ספציפי'],
-  okMale:['תרגישי בנוח עם חונך','להיחנך ע"י חונך'],
-  combinedOther:['מסלול לימודים משולב - אחר','אם סימנת אחר, אנא פרטי כאן'],extraExact:['חוג נוסף (מדויקים)','בתואר דו-חוגי'],
+  stage:['באיזה שלב בתואר','שלב בתואר'],work:['עבודה מחוץ לאוניברסיטה','אם את עובדת מחוץ לאוניברסיטה'],role:['אני רוצה להיות','בחרי כיצד תרצי להשתתף','רוצה להיות'],
+  prev:['האם השתתפת בשנה שעברה','האם השתתפת בתכנית','השתתפה בשנה שעברה'],
+  program:['אודיסאה או עתודה','עתודה או אודיסאה'],year:['שנת לימודים','באיזה שנה תהיי','באיזו שנה תהיי','שנה בתואר ראשון'],faculty:['פקולטה'],
+  deptExact:['בי"ס (מדויקים)','לאיזה בית ספר את משתייכת?','בית ספר של הנרשמת'],deptEng:['בי"ס (הנדסה)','לאיזה בית ספר את משתייכת? 2','בית ספר הנדסה'],
+  track:['מסלול מחקר'],wantMentor:['בי"ס חונכת','מאיזה בית ספר תרצי לקבל חונכת','בית ספר של החונכת'],wantMentorSpec:['בי"ס חונכת ספציפי','פרטי בית ספר ספציפי','בית ספר של החונכת פירוט מיוחד'],
+  okMale:['תרגישי בנוח עם חונך','להיחנך ע"י חונך','תרגיש בנוח עם חונך'],
+  combinedOther:['מסלול לימודים משולב - אחר','אם סימנת אחר, אנא פרטי כאן','מסלול אחר פירוט'],extraExact:['חוג נוסף (מדויקים)','בתואר דו-חוגי','חוג שני דו חוגי'],extraEng:['חוג שני דו חוגי הנדסה'],
   combined:['מסלול לימודים אחר (משולב)','באיזה מסלול לימודים את?'],
-  mentorWithMale:['לחנוך עם חונך'],thesis:['מסלול (תזה או ללא תזה)','באיזה מסלול את? (תזה','במידה ואת לומדת תואר שני, באיזה מסלול'],
-  wantMentees:['בי"ס חניכות','מאיזה בית ספר תרצי לקבל חניכות'],wantMenteesSpec:['בי"ס חניכות ספציפי','פרטי בית ספר ספציפי 2'],
-  baWhere:['תואר ראשון היכן','היכן עשית אותו?'],baWhat:['תואר ראשון במה','במה התואר הראשון שלך'],
-  maWhere:['תואר שני היכן','היכן עשית אותו? 2'],maWhat:['תואר שני במה','במה התואר השני שלך'],
-  phdWhere:['תואר שלישי היכן','היכן עשית אותו? 3'],phdWhat:['תואר שלישי במה','במה התואר השלישי שלך'],
-  notes:['הערות','משהו נוסף שתרצי לספר'],gift:['מתנה'],community:['מדויקות בקהילה'],semester:['באיזה סמסטר התחלת']
+  mentorWithMale:['לחנוך עם חונך'],thesis:['מסלול (תזה או ללא תזה)','מסלול תזה','באיזה מסלול את? (תזה','במידה ואת לומדת תואר שני, באיזה מסלול'],
+  wantMentees:['בי"ס חניכות','מאיזה בית ספר תרצי לקבל חניכות'],wantMenteesSpec:['בי"ס חניכות ספציפי','פרטי בית ספר ספציפי 2','בית ספר של החניכה פירוט מיוחד'],
+  baWhere:['תואר ראשון היכן','היכן עשית אותו?','איפה תואר ראשון'],baWhat:['תואר ראשון במה','במה התואר הראשון שלך','במה תואר ראשון'],
+  maWhere:['תואר שני היכן','היכן עשית אותו? 2','איפה תואר שני'],maWhat:['תואר שני במה','במה התואר השני שלך','במה תואר שני'],
+  phdWhere:['תואר שלישי היכן','היכן עשית אותו? 3','איפה תואר שלישי'],phdWhat:['תואר שלישי במה','במה התואר השלישי שלך','במה תואר שלישי'],phdYears:['שנים תואר שלישי'],mgmtTrack:['ניהול mba msc'],
+  notes:['הערות','משהו נוסף שתרצי לספר'],gift:['מתנה'],community:['מדויקות בקהילה'],semester:['באיזה סמסטר התחלת','חשמל סמסטר']
 };
-const OPTIONAL_COLS=['gift','community','semester','extraExact','combinedOther','track','work','program','wantMentorSpec','wantMenteesSpec','baWhere','baWhat','maWhere','maWhat','phdWhere','phdWhat'];
+const OPTIONAL_COLS=['ts','combined','wantMentees','extraEng','phdYears','mgmtTrack','gift','community','semester','extraExact','combinedOther','track','work','program','wantMentorSpec','wantMenteesSpec','baWhere','baWhat','maWhere','maWhat','phdWhere','phdWhat'];
 function mapHeader(header){
   const H=header.map(h=>String(h==null?'':h).trim().replace(/\s+/g,' ').toLowerCase());
   const used=new Set(), idx={};
@@ -506,7 +507,7 @@ function buildPerson(g){
     if(C){ if(!dept) dept=C[0]; dept2=C[0]===dept?C[1]:C[0]; }
     else if(combinedOther){ const d=deptFromText(combinedOther); if(!dept) dept=d||'משולב – אחר'; else if(d&&d!==dept) dept2=d; }
   }
-  const extra=clean(g('extraExact'));
+  const extra=clean(g('extraExact'))||clean(g('extraEng'));
   if(extra&&!dept2){ const d=deptFromText(extra); if(d&&d!==dept) dept2=d; }
   if(school==='both'&&dept&&dept2&&DEPT_SCHOOL[dept]&&DEPT_SCHOOL[dept]===DEPT_SCHOOL[dept2]) school=DEPT_SCHOOL[dept];
   if(!school&&dept&&DEPT_SCHOOL[dept]) school=DEPT_SCHOOL[dept];
@@ -517,10 +518,11 @@ function buildPerson(g){
   const deg=[];
   const dg=(lbl,w,h)=>{const a=clean(g(w)),b=clean(g(h)); if(a||b) deg.push(lbl+': '+[b,a].filter(Boolean).join(' · '));};
   dg('ראשון','baWhere','baWhat'); dg('שני','maWhere','maWhat'); dg('שלישי','phdWhere','phdWhat');
+  { const y=clean(g('phdYears')), t=clean(g('mgmtTrack')); if(y) deg.push('שנים בתואר שלישי: '+y); if(t) deg.push('מסלול ניהול: '+t); }
   const key=email||(first+' '+last);
   return {
     id:'p'+fnv(key), first, last, email, phone:phoneStr(g('phone')), ts:clean(g('ts')),
-    stageLabel, year, rank, mentee:roleRaw.includes('חניכה'), mentor:roleRaw.includes('חונכת'),
+    stageLabel, year, rank, mentee:roleRaw.includes('חניכה')||roleRaw.includes('גם וגם'), mentor:roleRaw.includes('חונכת')||roleRaw.includes('גם וגם'),
     faculty:fac, school, dept, dept2, deptRaw:clean(g('deptExact')||g('deptEng')), combined:[combined,combinedOther].filter(Boolean).join(' · '),
     extra, track:clean(g('track')), thesis:clean(g('thesis')),
     wantMentor:pref(wm), wantMentorSpec:clean(g('wantMentorSpec')), wantMentees:pref(wn), wantMenteesSpec:clean(g('wantMenteesSpec')),

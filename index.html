@@ -424,25 +424,35 @@ function normDept(raw){
   if(s.startsWith('הנדסה ביו')) return 'הנדסה ביו-רפואית';
   return s;
 }
+// כל שדה: רשימת כותרות אפשריות. הראשונות מקובץ תשפ"ו, האחרות מהטופס של תשפ"ז.
 const COLS={
   ts:['submission time'],last:['שם משפחה'],first:['שם פרטי'],email:['אימייל','מייל'],phone:['מספר טלפון','טלפון'],
-  stage:['באיזה שלב בתואר'],work:['עבודה מחוץ לאוניברסיטה'],role:['אני רוצה להיות'],prev:['האם השתתפת בשנה שעברה'],
-  program:['אודיסאה או עתודה'],year:['שנת לימודים'],faculty:['פקולטה'],deptExact:['בי"ס (מדויקים)'],deptEng:['בי"ס (הנדסה)'],
-  track:['מסלול מחקר'],wantMentor:['בי"ס חונכת'],wantMentorSpec:['בי"ס חונכת ספציפי'],okMale:['תרגישי בנוח עם חונך'],
-  combinedOther:['מסלול לימודים משולב - אחר'],extraExact:['חוג נוסף (מדויקים)'],combined:['מסלול לימודים אחר (משולב)'],
-  mentorWithMale:['לחנוך עם חונך'],thesis:['מסלול (תזה או ללא תזה)'],wantMentees:['בי"ס חניכות'],wantMenteesSpec:['בי"ס חניכות ספציפי'],
-  baWhere:['תואר ראשון היכן'],baWhat:['תואר ראשון במה'],maWhere:['תואר שני היכן'],maWhat:['תואר שני במה'],
-  phdWhere:['תואר שלישי היכן'],phdWhat:['תואר שלישי במה'],notes:['הערות'],gift:['מתנה']
+  stage:['באיזה שלב בתואר'],work:['עבודה מחוץ לאוניברסיטה','אם את עובדת מחוץ לאוניברסיטה'],role:['אני רוצה להיות','בחרי כיצד תרצי להשתתף'],
+  prev:['האם השתתפת בשנה שעברה','האם השתתפת בתכנית'],
+  program:['אודיסאה או עתודה','עתודה או אודיסאה'],year:['שנת לימודים','באיזה שנה תהיי','באיזו שנה תהיי'],faculty:['פקולטה'],
+  deptExact:['בי"ס (מדויקים)','לאיזה בית ספר את משתייכת?'],deptEng:['בי"ס (הנדסה)','לאיזה בית ספר את משתייכת? 2'],
+  track:['מסלול מחקר'],wantMentor:['בי"ס חונכת','מאיזה בית ספר תרצי לקבל חונכת'],wantMentorSpec:['בי"ס חונכת ספציפי','פרטי בית ספר ספציפי'],
+  okMale:['תרגישי בנוח עם חונך','להיחנך ע"י חונך'],
+  combinedOther:['מסלול לימודים משולב - אחר','אם סימנת אחר, אנא פרטי כאן'],extraExact:['חוג נוסף (מדויקים)','בתואר דו-חוגי'],
+  combined:['מסלול לימודים אחר (משולב)','באיזה מסלול לימודים את?'],
+  mentorWithMale:['לחנוך עם חונך'],thesis:['מסלול (תזה או ללא תזה)','באיזה מסלול את? (תזה','במידה ואת לומדת תואר שני, באיזה מסלול'],
+  wantMentees:['בי"ס חניכות','מאיזה בית ספר תרצי לקבל חניכות'],wantMenteesSpec:['בי"ס חניכות ספציפי','פרטי בית ספר ספציפי 2'],
+  baWhere:['תואר ראשון היכן','היכן עשית אותו?'],baWhat:['תואר ראשון במה','במה התואר הראשון שלך'],
+  maWhere:['תואר שני היכן','היכן עשית אותו? 2'],maWhat:['תואר שני במה','במה התואר השני שלך'],
+  phdWhere:['תואר שלישי היכן','היכן עשית אותו? 3'],phdWhat:['תואר שלישי במה','במה התואר השלישי שלך'],
+  notes:['הערות','משהו נוסף שתרצי לספר'],gift:['מתנה'],community:['מדויקות בקהילה'],semester:['באיזה סמסטר התחלת']
 };
+const OPTIONAL_COLS=['gift','community','semester','extraExact','combinedOther','track','work','program','wantMentorSpec','wantMenteesSpec','baWhere','baWhat','maWhere','maWhat','phdWhere','phdWhat'];
 function mapHeader(header){
-  const H=header.map(h=>String(h==null?'':h).trim());
+  const H=header.map(h=>String(h==null?'':h).trim().replace(/\s+/g,' ').toLowerCase());
   const used=new Set(), idx={};
   // exact matches first, then "starts with", then "includes"
   for(const pass of ['eq','starts','inc']){
     for(const [k,names] of Object.entries(COLS)){
       if(idx[k]!=null) continue;
       for(const n of names){
-        const i=H.findIndex((h,j)=>!used.has(j)&&(pass==='eq'?h===n:pass==='starts'?h.startsWith(n):h.includes(n)));
+        const nn=n.toLowerCase();
+        const i=H.findIndex((h,j)=>!used.has(j)&&(pass==='eq'?h===nn:pass==='starts'?h.startsWith(nn):h.includes(nn)));
         if(i>=0){idx[k]=i;used.add(i);break;}
       }
     }
@@ -450,7 +460,10 @@ function mapHeader(header){
   return idx;
 }
 function fnv(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return h.toString(36);}
-function clean(v){ if(v==null) return ''; const s=String(v).trim(); return s; }
+function clean(v){ if(v==null) return ''; let s=String(v).trim();
+  // בטופס החדש תשובות מרובות מגיעות כ־["חניכה","חונכת"]
+  if(s.startsWith('[')&&s.endsWith(']')){ try{ const a=JSON.parse(s); if(Array.isArray(a)) s=a.map(x=>String(x).trim()).filter(Boolean).join(', '); }catch(e){} }
+  return s; }
 function phoneStr(v){
   if(v==null||v==='') return '';
   let s=typeof v==='number'?String(Math.round(v)):String(v).replace(/[^\d+]/g,'');
@@ -471,9 +484,11 @@ function parseTaYears(t){
 function buildPerson(g){
   const first=clean(g('first')), last=clean(g('last')), email=clean(g('email')).toLowerCase();
   if(!first&&!last&&!email) return null;
-  const stageLabel=clean(g('stage'));
+  const sRaw=clean(g('stage'));
+  const stageLabel=/ראשון/.test(sRaw)?'תואר ראשון':/שני/.test(sRaw)?'תואר שני':/שלישי|דוקטורט|דוקטורנט/.test(sRaw)&&!/פוסט/.test(sRaw)?'תואר שלישי':/פוסט/.test(sRaw)?'פוסט דוקטורט':/סגל/.test(sRaw)?'חברת סגל':sRaw;
   const yRaw=clean(g('year'));
-  const year={'שנה א':1,'שנה ב':2,'שנה ג':3,'שנה ד ומעלה':4,'שנה ד':4}[yRaw]||null;
+  const ym=yRaw.match(/שנה\s*([א-ד])/);
+  const year=ym?{'א':1,'ב':2,'ג':3,'ד':4}[ym[1]]:null;
   let rank=null;
   if(stageLabel==='תואר ראשון') rank=year?10+year:null;
   else if(stageLabel==='תואר שני') rank=20; else if(stageLabel==='תואר שלישי') rank=30;
@@ -526,7 +541,7 @@ function normalizeRows(header, rows){
     if(prev){ dupRows++; const keep=(p.ts||'')>(prev.ts||'')?p:prev; keep.dups=prev.dups+1; out.set(p.id,keep); }
     else out.set(p.id,p);
   }
-  const missing=Object.keys(COLS).filter(k=>idx[k]==null);
+  const missing=Object.keys(COLS).filter(k=>idx[k]==null&&!OPTIONAL_COLS.includes(k));
   return {people:[...out.values()], skipped, dupRows, missing};
 }
 /*NORM-END*/
@@ -1518,7 +1533,7 @@ function vData(){
     h+=`<div class="panel card" style="margin-top:12px;background:var(--sunk)"><h3>${esc(pv.fileName)}</h3>
       <p style="margin:0">${pv.people.length} נרשמות · ${pv.people.filter(p=>p.mentee).length} חניכות · ${pv.people.filter(p=>p.mentor).length} חונכות${pv.dupRows?` · ${pv.dupRows} שורות כפולות אוחדו`:''}${pv.skipped?` · ${pv.skipped} שורות ריקות דולגו`:''}</p>
       <p class="muted" style="margin:4px 0">${existing} כבר קיימות במערכת (יעודכנו), ${pv.people.length-existing} חדשות.</p>
-      ${pv.missing.length?`<p class="chip warn" style="white-space:normal">עמודות שלא נמצאו: ${esc(pv.missing.join(', '))}</p>`:''}
+      ${pv.missing.length?`<p class="chip warn" style="white-space:normal">עמודות שלא נמצאו: ${esc(pv.missing.map(k=>COLS[k][0]).join(', '))}</p>`:''}
       <label class="row" style="margin:10px 0"><input type="checkbox" id="replaceAll" ${pv.replace?'checked':''}> החלפת כל הנרשמות (מוחק גם את השיבוצים וההערות של הנתונים הקודמים)</label>
       <div class="row"><button class="btn primary" data-act="doImport" ${S.readOnly||S.busy?'disabled':''}>ייבוא</button><button class="btn" data-act="cancelImport">ביטול</button></div></div>`;
   }
@@ -1528,7 +1543,7 @@ function vData(){
     <div class="row"><button class="btn" data-act="exportCsv" ${downloads?'':'disabled'}>הורדת CSV</button><button class="btn" data-act="copyTsv">העתקה להדבקה בגיליון</button><label class="row"><input type="checkbox" id="exportFinal" ${S.exportFinal?'checked':''}> רק שיבוצים מאושרים</label></div>
     <h3 style="margin-top:20px">יומן פעולות</h3><ul class="log">${S.log.map(l=>`<li><span class="muted">${ago(l.t)}</span> · <b>${esc(leaderName(l.by))}</b> ${logText(l)}</li>`).join('')||'<li class="muted">עדיין אין פעולות.</li>'}</ul>
   </div></div>
-  <div class="panel card" style="margin-top:14px;border-color:var(--hard)"><h3>איפוס לשנה חדשה</h3><p class="muted">מוחק את כל הנרשמות, השיבוצים, ההערות והיומן. תחומי האחריות נשמרים.</p>
+  <div class="panel card" style="margin-top:14px;border-color:var(--hard)"><h3>איפוס לשנה חדשה</h3><p class="muted">מוחק את כל הנרשמות, השיבוצים, קבוצות הדוקטורנטיות, ההערות והיומן. רשימת המובילות, תחומי האחריות ונוסח המייל נשמרים.</p>
     ${S.clearStep==='data'?`<div class="row"><b style="color:var(--hard)">בטוחה? אי אפשר לשחזר.</b><button class="btn danger" data-act="doClear">כן, למחוק הכל</button><button class="btn" data-act="cancelClear">ביטול</button></div>`:`<button class="btn danger" data-act="askClear" ${S.readOnly||S.busy?'disabled':''}>מחיקת כל הנתונים</button>`}</div>`;
   return h;
 }
@@ -1597,7 +1612,7 @@ async function doImport(){
   const replace=$('#replaceAll')?.checked;
   S.busy='מייבאת נרשמות…'; render();
   try{
-    if(replace){ S.busy='מוחקת את הנתונים הקודמים…'; render(); await deleteAll('matches'); await deleteAll('ann'); await deleteAll('people'); }
+    if(replace){ S.busy='מוחקת את הנתונים הקודמים…'; render(); if(!S.phdMissing) await deleteAll('phd_groups'); await deleteAll('matches'); await deleteAll('ann'); await deleteAll('people'); }
     const list=pv.people, size=200, now=new Date().toISOString();
     for(let i=0;i<list.length;i+=size){ S.busy=`שומרת נרשמות… ${Math.min(i+size,list.length)}/${list.length}`; render(); await W(()=>sb.from('people').upsert(list.slice(i,i+size).map(p=>({id:p.id,data:p,updated_at:now})))); }
     const total=replace?list.length:new Set([...S.people.keys(),...list.map(p=>p.id)]).size;
@@ -1610,7 +1625,7 @@ async function doImport(){
 }
 async function doClear(){
   S.busy='מוחקת…'; S.clearStep=0; render();
-  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity','meta']) await deleteAll(c); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
+  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().neq('key','emailTemplate')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
   S.busy=''; S.sel=null; render();
 }
 function exportRows(){

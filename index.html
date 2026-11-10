@@ -440,6 +440,8 @@ function deptFromText(t){
   for(const [d,kws] of Object.entries(DEPT_KW)){ if(kws.some(k=>t.includes(k))) return d; }
   return '';
 }
+// פקולטה → בית ספר במערכת. סובלני לניסוחים כמו "הפקולטה לניהול" או "ניהול (חדש)"
+function facSchool(f){ f=String(f||''); return /משולב/.test(f)?'both':/הנדס/.test(f)?'eng':/מדויק|מדוייק/.test(f)?'exact':/ניהול/.test(f)?'mgmt':''; }
 function normDept(raw){
   if(!raw) return '';
   const s=String(raw).trim().replace(/גיאו/g,'גאו');
@@ -524,7 +526,7 @@ function buildPerson(g){
   else if(stageLabel==='פוסט דוקטורט') rank=40; else if(stageLabel==='חברת סגל') rank=50;
   const roleRaw=clean(g('role'));
   const fac=clean(g('faculty'));
-  let school=fac==='מדעים מדויקים'?'exact':fac==='הנדסה'?'eng':fac.includes('משולב')?'both':fac==='ניהול'?'mgmt':'';
+  let school=facSchool(fac);
   let dept='',dept2='';
   const combined=clean(g('combined')), combinedOther=clean(g('combinedOther'));
   if(g('deptExact')) dept=normDept(g('deptExact'));
@@ -539,6 +541,8 @@ function buildPerson(g){
   if(extra&&!dept2){ const d=deptFromText(extra); if(d&&d!==dept) dept2=d; }
   if(school==='both'&&dept&&dept2&&DEPT_SCHOOL[dept]&&DEPT_SCHOOL[dept]===DEPT_SCHOOL[dept2]) school=DEPT_SCHOOL[dept];
   if(!school&&dept&&DEPT_SCHOOL[dept]) school=DEPT_SCHOOL[dept];
+  if(!school&&clean(g('mgmtTrack'))) school='mgmt';
+  if(!dept&&school==='mgmt') dept='ניהול';
   const wm=clean(g('wantMentor')), wn=clean(g('wantMentees'));
   const pref=v=>v.startsWith('בית הספר שלי')?'mine':v.startsWith('לא משנה')?'any':v.startsWith('בית ספר')?'specific':'';
   const prog=clean(g('program'));
@@ -813,7 +817,7 @@ function computeAlerts(){
 function rerenderSoon(){ if(rerenderSoon.t) return; rerenderSoon.t=requestAnimationFrame(()=>{rerenderSoon.t=0;rebuild();render();resolveNames();}); }
 const toMs=t=>t?Date.parse(t):0;
 const MAP={
-  people:{key:'id',set:r=>S.people.set(r.id,r.data),del:k=>S.people.delete(k)},
+  people:{key:'id',set:r=>{ const p=r.data; if(p&&!p.school) p.school=facSchool(p.faculty)||(/מסלול ניהול:/.test(p.degrees||'')?'mgmt':''); if(p&&!p.dept&&p.school==='mgmt') p.dept='ניהול'; S.people.set(r.id,p); },del:k=>S.people.delete(k)},
   ann:{key:'person_id',set:r=>S.ann.set(r.person_id,{...r.data,by:r.by_email,at:toMs(r.at)}),del:k=>S.ann.delete(k)},
   matches:{key:'mentee_id',set:r=>S.matches.set(r.mentee_id,{mentor:r.mentor_id,status:r.status,override:r.override||'',by:r.by_email,at:toMs(r.at)}),del:k=>S.matches.delete(k)},
   areas:{key:'id',set:r=>S.areas.set(r.id,{id:r.id,name:r.name,depts:r.depts||[],leaders:r.leaders||[],order:r.ord}),del:k=>S.areas.delete(k)},
@@ -1408,7 +1412,7 @@ function vCompare(){
   // tables
   const ROLE_TXT=S.cmpRole==='mentor'?' (חונכות)':S.cmpRole==='mentee'?' (חניכות)':'';
   const stageK=r=>{ const g=stageGroup({rank:r.r}); return g.replace('תואר ראשון · ','ראשון · '); };
-  const tbl=(title,ic,kf,sortBy,PP=prev,CC=cur,bare)=>{ const m=new Map(); const bump=(k,i)=>{ const x=m.get(k)||{k,p:0,c:0,o:Infinity}; x[i]++; m.set(k,x); return x; };
+  const tbl=(title,ic,kf,sortBy,PP=prev,CC=cur,bare,seed=[])=>{ const m=new Map(); seed.forEach(k=>m.set(k,{k,p:0,c:0,o:Infinity})); const bump=(k,i)=>{ const x=m.get(k)||{k,p:0,c:0,o:Infinity}; x[i]++; m.set(k,x); return x; };
     PP.forEach(r=>{ const x=bump(kf(r)||'לא ידוע','p'); x.o=Math.min(x.o,r.r??999); }); CC.forEach(r=>{ const x=bump(kf(r)||'לא ידוע','c'); x.o=Math.min(x.o,r.r??999); });
     let L=[...m.values()]; L.sort(sortBy==='rank'?(a,b)=>a.o-b.o:(a,b)=>(a.c-a.p)-(b.c-b.p)||b.p-a.p);
     const max=Math.max(1,...L.map(x=>Math.max(x.p,x.c)));
@@ -1417,7 +1421,7 @@ function vCompare(){
       <div class="crow chead"><span></span><span class="num">${lbl}</span><span class="num">השנה</span><span>שינוי</span><span></span></div>
       ${L.map(x=>`<div class="crow"><span class="ck" title="${esc(x.k)}">${esc(x.k)}</span><span class="num muted">${x.p}</span><b class="num">${x.c}</b>${dl(x.c,x.p)}<span class="cbars"><i class="cb-p" style="width:${x.p*100/max}%" title="${lbl}: ${x.p}"></i><i class="cb-c" style="width:${x.c*100/max}%" title="השנה: ${x.c}"></i></span></div>`).join('')}</div>`; };
   h+=`<div class="sec-head"><div><h3>🔍 איפה הפער</h3><p class="muted">פס אפור: ${lbl} · פס כחול: השנה. המחלקות ממוינות מהירידה הגדולה לעלייה.</p></div></div>
-  <div class="rgrid">${tbl('לפי פקולטה','🏛️',r=>SCHOOL_NAME[r.sc])}${tbl('לפי שלב אקדמי','🎓',stageK,'rank')}<div class="wide-span">${tbl('לפי בית ספר','🧪',r=>r.d)}</div></div>`;
+  <div class="rgrid">${tbl('לפי פקולטה','🏛️',r=>SCHOOL_NAME[r.sc],'',prev,cur,false,['מדעים מדויקים','הנדסה','ניהול'])}${tbl('לפי שלב אקדמי','🎓',stageK,'rank')}<div class="wide-span">${tbl('לפי בית ספר','🧪',r=>r.d)}</div></div>`;
   // drill-down by school (department)
   const depts=[...new Set([...prev,...cur].map(r=>r.d).filter(Boolean))];
   const drop=d=>cur.filter(r=>r.d===d).length-prev.filter(r=>r.d===d).length;
@@ -1603,6 +1607,24 @@ function partAgg(){
   for(const x of [all,...by.values()]) x.open=x.total-x.placed;
   return {all,get:k=>by.get(k||null)||blank(),hasNone:by.has(null)&&by.get(null).total>0};
 }
+// מי מהנרשמות בטופס לא נספרת בדף ההתקדמות, ולמה
+function notCounted(){
+  const phdM=new Set(S.phdMissing?[]:[...S.phd.values()].map(g=>g.mentor).filter(Boolean));
+  const c={inactive:0,fac:0,phd:0,norole:0};
+  for(const p of S.people.values()){
+    const mt=S.matches.get(p.id);
+    if(mt&&P(mt.mentor)) continue;
+    if(regMentor(p)&&isCo(p.id)) continue;
+    if(phdM.has(p.id)) continue;
+    if(isActive(p)&&(regMentor(p)||regMentee(p))) continue;
+    if(isActive(p)&&isPhdMentee(p)&&!S.phdMissing) continue;
+    if(!isActive(p)) c.inactive++;
+    else if(isPhdMentor(p)) c.fac++;
+    else if(isPhdMentee(p)) c.phd++;
+    else c.norole++;
+  }
+  c.total=c.inactive+c.fac+c.phd+c.norole; return c;
+}
 function vProgress(){
   if(!S.people.size) return vEmptyPeople();
   const all=[...S.people.values()];
@@ -1635,6 +1657,7 @@ function vProgress(){
     <div class="phero-ring">${ring}</div>
     <div class="phero-main">
       <div class="phero-title"><b class="num">${o.placed}</b> מתוך <b class="num">${o.total}</b> משתתפות כבר בקבוצה</div>
+      ${(nc=>nc.total?`<div class="muted" style="font-size:12px;margin-top:2px">${S.people.size} נרשמו בטופס. ${nc.total===1?'אחת לא נספרת':nc.total+' לא נספרות'} כאן: ${[nc.inactive&&`${nc.inactive} סומנו כלא פעילות`,nc.fac&&`${nc.fac} חברות סגל / פוסט־דוקטורט שעדיין לא מלוות קבוצת דוקטורנטיות`,nc.phd&&`${nc.phd} דוקטורנטיות`,nc.norole&&`${nc.norole} בלי תפקיד מזוהה`].filter(Boolean).join(' · ')}</div>`:'')(notCounted())}
       <div class="cheer">${cheer}</div>
       ${msBar}${legend}
     </div>

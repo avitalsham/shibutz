@@ -562,17 +562,35 @@ function buildPerson(g){
 }
 function normalizeRows(header, rows){
   const idx=mapHeader(header);
-  const out=new Map(); let skipped=0, dupRows=0;
+  // אותה נרשמת (לפי מייל או טלפון) שמופיעה בכמה שורות מאוחדת לנרשמת אחת עם כל התפקידים שלה
+  const phKey=v=>{ let d=String(v||'').replace(/\D/g,''); if(d.startsWith('972')) d='0'+d.slice(3); if(d&&!d.startsWith('0')) d='0'+d; return d.length>=9?d:''; };
+  const merge=(a,b)=>{ // a = השורה שנשמרת (העדכנית), b = השורה הנוספת
+    const roleMix=(a.mentor!==b.mentor)||(a.mentee!==b.mentee);
+    for(const k of Object.keys(b)){ const v=a[k]; if((v===''||v==null||(Array.isArray(v)&&!v.length))&&b[k]!==''&&b[k]!=null) a[k]=b[k]; }
+    a.mentor=a.mentor||b.mentor; a.mentee=a.mentee||b.mentee;
+    if(b.notes&&a.notes&&!a.notes.includes(b.notes)) a.notes=a.notes+'\n'+b.notes;
+    a.taAuto=[...new Set([...(a.taAuto||[]),...(b.taAuto||[])])].sort(); a.taFlag=a.taFlag||b.taFlag;
+    a.dups=(a.dups||1)+(b.dups||1);
+    return roleMix;
+  };
+  const out=new Map(), byPh=new Map(); let skipped=0, dupRows=0, roleMerged=0;
   for(const r of rows){
     const g=k=>{const i=idx[k]; if(i==null) return null; const v=r[i]; return (v===''||v==null)?null:v;};
     const p=buildPerson(g);
     if(!p){skipped++;continue;}
-    const prev=out.get(p.id);
-    if(prev){ dupRows++; const keep=(p.ts||'')>(prev.ts||'')?p:prev; keep.dups=prev.dups+1; out.set(p.id,keep); }
-    else out.set(p.id,p);
+    const ph=phKey(p.phone);
+    // טלפון זהה נחשב לאותה נרשמת רק אם גם השם הפרטי או שם המשפחה זהים (מונע איחוד של מספרים כמו 0500000000)
+    const nm=x=>String(x||'').replace(/\s+/g,' ').trim();
+    const byP=ph&&byPh.get(ph); const sameName=byP&&((nm(byP.first)&&nm(byP.first)===nm(p.first))||(nm(byP.last)&&nm(byP.last)===nm(p.last)));
+    const prev=out.get(p.id)||(sameName?byP:null);
+    if(prev){ dupRows++; const newer=(p.ts||'')>(prev.ts||''); const [a,b]=newer?[p,prev]:[prev,p];
+      if(newer){ out.delete(prev.id); a.id=prev.id; }
+      if(merge(a,b)) roleMerged++;
+      out.set(a.id,a); if(ph) byPh.set(ph,a); const ph2=phKey(a.phone); if(ph2) byPh.set(ph2,a); }
+    else { out.set(p.id,p); if(ph) byPh.set(ph,p); }
   }
   const missing=Object.keys(COLS).filter(k=>idx[k]==null&&!OPTIONAL_COLS.includes(k));
-  return {people:[...out.values()], skipped, dupRows, missing};
+  return {people:[...out.values()], skipped, dupRows, roleMerged, missing};
 }
 /*NORM-END*/
 
@@ -592,7 +610,7 @@ try{ const a=localStorage.getItem('shibutz.lead'); if(a){S.area=a;S.areaStored=t
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function toast(msg,err){const d=document.createElement('div');d.textContent=msg;if(err)d.className='err';$('#toast').appendChild(d);setTimeout(()=>d.remove(),err?6000:3200);}
+function toast(msg,err,ms){const d=document.createElement('div');d.textContent=msg;if(err)d.className='err';$('#toast').appendChild(d);setTimeout(()=>d.remove(),ms||(err?6000:3200));}
 async function W(fn){
   for(let i=0;i<4;i++){
     try{ const r=await fn(); if(r&&r.error) throw r.error; return r&&('data' in r)?r.data:r; }
@@ -1330,9 +1348,12 @@ function vPhdGroupsList(){
 }
 function mentorItemDots(m){ const g=groupOf(m.id), cap=capOf(m); return `<span class="dots" title="${g.length}/${cap}">${Array.from({length:Math.max(cap,g.length)},(_,i)=>`<i class="${i<g.length?(i>=cap?'x':S.matches.get(g[i])?.status==='proposed'?'p':'f'):''}"></i>`).join('')}</span>`; }
 /* ================= השוואה לשנה שעברה ================= */
-// זיהוי אותה נרשמת בין השנים: לפי מייל או לפי מספר טלפון
+// זיהוי אותה נרשמת בין השנים: לפי מייל, או לפי מספר טלפון יחד עם שם פרטי או שם משפחה
 const normPh=v=>{ let d=String(v||'').replace(/\D/g,''); if(d.startsWith('972')) d='0'+d.slice(3); if(d&&!d.startsWith('0')) d='0'+d; return d.length>=9?d:''; };
-function cmpIndex(rows){ const E=new Set(), T=new Set(); rows.forEach(r=>{ if(r.e) E.add(r.e); const t=normPh(r.ph); if(t) T.add(t); }); return r=>(!!r.e&&E.has(r.e))||(!!normPh(r.ph)&&T.has(normPh(r.ph))); }
+const cmpNm=x=>String(x||'').replace(/\s+/g,' ').trim();
+function cmpIndex(rows){ const E=new Set(), T=new Map(); rows.forEach(r=>{ if(r.e) E.add(r.e); const t=normPh(r.ph); if(t){ if(!T.has(t)) T.set(t,[]); T.get(t).push(r); } });
+  // טלפון זהה נחשב לאותה נרשמת רק אם גם השם הפרטי או שם המשפחה זהים
+  return r=>{ if(r.e&&E.has(r.e)) return true; const t=normPh(r.ph); if(!t||!T.has(t)) return false; return T.get(t).some(o=>(cmpNm(o.f)&&cmpNm(o.f)===cmpNm(r.f))||(cmpNm(o.l)&&cmpNm(o.l)===cmpNm(r.l))); }; }
 const cmpRow=p=>({f:p.first||'',l:p.last||'',e:(p.email||'').toLowerCase(),ph:p.phone||'',m:p.mentor?1:0,n:p.mentee?1:0,r:p.rank,y:p.year,sc:p.school||'',d:p.dept||''});
 async function readPrevFile(f){
   try{
@@ -1345,7 +1366,7 @@ async function readPrevFile(f){
     const noRole=res.people.filter(p=>!p.mentor&&!p.mentee).length;
     const label=($('#prevLabel')?.value||'').trim()||'שנה שעברה';
     await W(()=>sb.from('meta').upsert({key:'prevYear',data:{label,at:Date.now(),by:S.uid,fileName:f.name,rows:res.people.map(cmpRow)}}));
-    toast(`נטענו ${res.people.length} נרשמות מ${label}`+(noRole?` · ל־${noRole} לא זוהה תפקיד`:''));
+    toast(`נטענו ${res.people.length} נרשמות מ${label}`+(res.roleMerged?` · אוחדו ${res.roleMerged} שהופיעו פעמיים (חונכת + חניכה)`:'')+(res.dupRows-res.roleMerged>0?` · ${res.dupRows-res.roleMerged} שורות כפולות נוספות אוחדו`:'')+(noRole?` · ל־${noRole} לא זוהה תפקיד`:''),false,8000);
   }catch(e){ console.error(e); toast('לא הצלחתי לקרוא את הקובץ. ודאי שזה קובץ xlsx.',true); }
 }
 function cmpExportMissing(dept){
@@ -1663,7 +1684,7 @@ function vData(){
   if(pv){
     const existing=pv.people.filter(p=>S.people.has(p.id)).length;
     h+=`<div class="panel card" style="margin-top:12px;background:var(--sunk)"><h3>${esc(pv.fileName)}</h3>
-      <p style="margin:0">${pv.people.length} נרשמות · ${pv.people.filter(p=>p.mentee).length} חניכות · ${pv.people.filter(p=>p.mentor).length} חונכות${pv.dupRows?` · ${pv.dupRows} שורות כפולות אוחדו`:''}${pv.skipped?` · ${pv.skipped} שורות ריקות דולגו`:''}</p>
+      <p style="margin:0">${pv.people.length} נרשמות · ${pv.people.filter(p=>p.mentee).length} חניכות · ${pv.people.filter(p=>p.mentor).length} חונכות${pv.dupRows?` · ${pv.dupRows} שורות כפולות אוחדו`:''}${pv.roleMerged?` (מתוכן ${pv.roleMerged} נרשמות שהופיעו פעם כחונכת ופעם כחניכה)`:''}${pv.skipped?` · ${pv.skipped} שורות ריקות דולגו`:''}</p>
       <p class="muted" style="margin:4px 0">${existing} כבר קיימות במערכת (יעודכנו), ${pv.people.length-existing} חדשות.</p>
       ${pv.missing.length?`<p class="chip warn" style="white-space:normal">עמודות שלא נמצאו: ${esc(pv.missing.map(k=>COLS[k][0]).join(', '))}</p>`:''}
       <label class="row" style="margin:10px 0"><input type="checkbox" id="replaceAll" ${pv.replace?'checked':''}> החלפת כל הנרשמות (מוחק גם את השיבוצים וההערות של הנתונים הקודמים)</label>

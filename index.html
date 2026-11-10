@@ -354,6 +354,28 @@ tbody tr:hover{background:var(--sunk)}
 .rrow b{text-align:left;font-weight:500}
 .r-mentor{background:#4F8FE0}.r-mentee{background:#9B7BD8}.r-both{background:repeating-linear-gradient(135deg,#4F8FE0 0 3px,#9B7BD8 3px 6px)}
 @media (max-width:760px){.phero{grid-template-columns:1fr;justify-items:center;text-align:center}.phero-main{width:100%}.rgrid,.rlist.cols{grid-template-columns:1fr}.legend{justify-content:center}}
+.ckpi{grid-template-columns:auto 1fr}
+.ckpi .kl{font-size:12px;color:var(--muted)}
+.dlt{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap;text-align:right;unicode-bidi:isolate}
+.dlt.neg{color:var(--hard)}.dlt.pos{color:var(--ok)}
+.cflow{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:0;overflow:hidden}
+.cf{padding:16px 18px;display:flex;flex-direction:column;gap:2px;border-inline-start:1px solid var(--line)}
+.cf:first-child{border-inline-start:0}
+.cf b{font-size:28px;font-weight:500;line-height:1.1}
+.cf.neg b{color:var(--hard)}.cf.pos b{color:var(--ok)}
+.cf small{font-size:12px}
+.ctbl{padding:14px 16px}
+.ctbl h4{margin:0 0 4px;font-size:15px}
+.insight{margin:0 0 10px;font-size:12px;color:var(--muted)}
+.crow{display:grid;grid-template-columns:minmax(90px,1.3fr) 44px 44px 92px minmax(60px,1.5fr);gap:8px;align-items:center;font-size:13px;padding:3px 0}
+.crow.chead{font-size:11px;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:3px}
+.crow .ck{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow b{font-weight:600}
+.cbars{display:flex;flex-direction:column;gap:2px}
+.cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
+.cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
+.wide-span{grid-column:1/-1}
+@media (max-width:760px){.cflow{grid-template-columns:1fr}.cf{border-inline-start:0;border-top:1px solid var(--line)}.cf:first-child{border-top:0}.crow{grid-template-columns:minmax(80px,1fr) 34px 34px 80px}.cbars{display:none}}
 @media (max-width:640px){.prow{grid-template-columns:1fr 70px}.prow .sbar{grid-column:1/-1;order:3}.prow .sub{grid-column:1/-1;order:4}.prow .cnt{display:none}.hero{grid-template-columns:1fr}}
 #toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));inset-inline-start:16px;z-index:50;display:flex;flex-direction:column;gap:6px;direction:rtl}
 #toast div{background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.18);max-width:360px}
@@ -428,9 +450,9 @@ function normDept(raw){
 // כל שדה: רשימת כותרות אפשריות: קובץ תשפ"ו, הטופס של תשפ"ז, והקובץ המעובד של תשפ"ז.
 const COLS={
   ts:['submission time'],last:['שם משפחה'],first:['שם פרטי'],email:['אימייל','מייל'],phone:['מספר טלפון','טלפון'],
-  stage:['באיזה שלב בתואר','שלב בתואר'],work:['עבודה מחוץ לאוניברסיטה','אם את עובדת מחוץ לאוניברסיטה'],role:['אני רוצה להיות','בחרי כיצד תרצי להשתתף','רוצה להיות'],
-  prev:['האם השתתפת בשנה שעברה','האם השתתפת בתכנית','השתתפה בשנה שעברה'],
-  program:['אודיסאה או עתודה','עתודה או אודיסאה'],year:['שנת לימודים','באיזה שנה תהיי','באיזו שנה תהיי','שנה בתואר ראשון'],faculty:['פקולטה'],
+  stage:['באיזה שלב בתואר','שלב בתואר','שלב אקדמי'],work:['עבודה מחוץ לאוניברסיטה','אם את עובדת מחוץ לאוניברסיטה',"עבודה מחוץ לאונ'"],role:['אני רוצה להיות','בחרי כיצד תרצי להשתתף','רוצה להיות','חונכת / חניכה','חונכת/חניכה'],
+  prev:['האם השתתפת בשנה שעברה','האם השתתפת בתכנית','השתתפה בשנה שעברה','השתתפה בשנים קודמות'],
+  program:['אודיסאה או עתודה','עתודה או אודיסאה','אודיסאה/עתודה'],year:['שנת לימודים','באיזה שנה תהיי','באיזו שנה תהיי','שנה בתואר ראשון'],faculty:['פקולטה'],
   deptExact:['בי"ס (מדויקים)','לאיזה בית ספר את משתייכת?','בית ספר של הנרשמת'],deptEng:['בי"ס (הנדסה)','לאיזה בית ספר את משתייכת? 2','בית ספר הנדסה'],
   track:['מסלול מחקר'],wantMentor:['בי"ס חונכת','מאיזה בית ספר תרצי לקבל חונכת','בית ספר של החונכת'],wantMentorSpec:['בי"ס חונכת ספציפי','פרטי בית ספר ספציפי','בית ספר של החונכת פירוט מיוחד'],
   okMale:['תרגישי בנוח עם חונך','להיחנך ע"י חונך','תרגיש בנוח עם חונך'],
@@ -522,7 +544,7 @@ function buildPerson(g){
   const key=email||(first+' '+last);
   return {
     id:'p'+fnv(key), first, last, email, phone:phoneStr(g('phone')), ts:clean(g('ts')),
-    stageLabel, year, rank, mentee:roleRaw.includes('חניכה')||roleRaw.includes('גם וגם'), mentor:roleRaw.includes('חונכת')||roleRaw.includes('גם וגם'),
+    stageLabel, year, rank, mentee:roleRaw.includes('חניכה')||/גם וגם|שתיהן|שניהם/.test(roleRaw), mentor:roleRaw.includes('חונכת')||/גם וגם|שתיהן|שניהם/.test(roleRaw),
     faculty:fac, school, dept, dept2, deptRaw:clean(g('deptExact')||g('deptEng')), combined:[combined,combinedOther].filter(Boolean).join(' · '),
     extra, track:clean(g('track')), thesis:clean(g('thesis')),
     wantMentor:pref(wm), wantMentorSpec:clean(g('wantMentorSpec')), wantMentees:pref(wn), wantMenteesSpec:clean(g('wantMenteesSpec')),
@@ -938,7 +960,7 @@ function render(){
   const active=document.activeElement; const aid=active&&active.id; let ss=null,se=null; try{ss=active.selectionStart;se=active.selectionEnd;}catch(e){}
   const keepVal=active&&(active.tagName==='TEXTAREA'||(active.tagName==='INPUT'&&active.type==='text'))?active.value:null;
   const scrolls={}; m.querySelectorAll('[data-keep-scroll]').forEach(el=>scrolls[el.dataset.keepScroll]=el.scrollTop);
-  m.innerHTML=banners()+(S.loaded.people?({progress:vProgress,board:vBoard,phd:vPhd,groups:vGroups,alerts:vAlerts,people:vPeople,data:vData,team:vTeam}[S.tab]||vProgress)():'<div class="empty"><b>טוען…</b></div>')+(S.settingsOpen&&S.loaded.people?vSettings():'')+(S.emailFor&&S.loaded.people?vEmail():'');
+  m.innerHTML=banners()+(S.loaded.people?({progress:vProgress,board:vBoard,phd:vPhd,groups:vGroups,alerts:vAlerts,compare:vCompare,people:vPeople,data:vData,team:vTeam}[S.tab]||vProgress)():'<div class="empty"><b>טוען…</b></div>')+(S.settingsOpen&&S.loaded.people?vSettings():'')+(S.emailFor&&S.loaded.people?vEmail():'');
   m.querySelectorAll('[data-keep-scroll]').forEach(el=>{ if(scrolls[el.dataset.keepScroll]!=null) el.scrollTop=scrolls[el.dataset.keepScroll]; });
   if(aid){ const el=document.getElementById(aid); if(el){ if(keepVal!=null) el.value=keepVal; el.focus(); try{ if(ss!=null) el.setSelectionRange(ss,se);}catch(e){} } }
   $('#season').textContent=S.meta?(S.meta.demo?'נתוני הדגמה':`${S.people.size} נרשמות`):'';
@@ -956,7 +978,7 @@ function renderTabs(){
   const al=S.loaded.people?computeAlerts():[];
   const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
   const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
-  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['phd','דוקטורנטיות'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],...(S.role==='admin'?[['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']]:[['team','החשבון שלי']])];
+  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['phd','דוקטורנטיות'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],['compare','השוואה לשנה שעברה'],...(S.role==='admin'?[['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']]:[['team','החשבון שלי']])];
   $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
 }
 function renderPeers(){
@@ -1301,6 +1323,74 @@ function vPhdGroupsList(){
   return h;
 }
 function mentorItemDots(m){ const g=groupOf(m.id), cap=capOf(m); return `<span class="dots" title="${g.length}/${cap}">${Array.from({length:Math.max(cap,g.length)},(_,i)=>`<i class="${i<g.length?(i>=cap?'x':S.matches.get(g[i])?.status==='proposed'?'p':'f'):''}"></i>`).join('')}</span>`; }
+/* ================= השוואה לשנה שעברה ================= */
+const cmpRow=p=>({f:p.first||'',l:p.last||'',e:(p.email||'').toLowerCase(),ph:p.phone||'',m:p.mentor?1:0,n:p.mentee?1:0,r:p.rank,y:p.year,sc:p.school||'',d:p.dept||''});
+async function readPrevFile(f){
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    const header=rows.shift()||[];
+    const res=normalizeRows(header,rows);
+    if(!res.people.length){ toast('לא נמצאו נרשמות בקובץ. ודאי שהשורה הראשונה היא שורת הכותרות.',true); return; }
+    const noRole=res.people.filter(p=>!p.mentor&&!p.mentee).length;
+    const label=($('#prevLabel')?.value||'').trim()||'שנה שעברה';
+    await W(()=>sb.from('meta').upsert({key:'prevYear',data:{label,at:Date.now(),by:S.uid,fileName:f.name,rows:res.people.map(cmpRow)}}));
+    toast(`נטענו ${res.people.length} נרשמות מ${label}`+(noRole?` · ל־${noRole} לא זוהה תפקיד`:''));
+  }catch(e){ console.error(e); toast('לא הצלחתי לקרוא את הקובץ. ודאי שזה קובץ xlsx.',true); }
+}
+function cmpExportMissing(){
+  const pv=S.metaKV.prevYear; if(!pv) return;
+  const cur=new Set([...S.people.values()].map(p=>(p.email||'').toLowerCase()).filter(Boolean));
+  const miss=pv.rows.filter(r=>r.e&&!cur.has(r.e)&&cmpRoleOk(r));
+  const aoa=[['שם פרטי','שם משפחה','אימייל','טלפון','תפקיד בשנה שעברה','שלב בשנה שעברה','בית ספר','מחלקה']].concat(miss.map(r=>[r.f,r.l,r.e,r.ph,r.m&&r.n?'חונכת וחניכה':r.m?'חונכת':'חניכה',stageGroup({rank:r.r}),SCHOOL_NAME[r.sc]||'',r.d]));
+  const w=XLSX.utils.book_new(); const sh=XLSX.utils.aoa_to_sheet(aoa); sh['!cols']=[12,14,28,14,14,18,14,20].map(wch=>({wch}));
+  XLSX.utils.book_append_sheet(w,sh,'לא נרשמו השנה'); w.Workbook={Views:[{RTL:true}]};
+  XLSX.writeFile(w,'lo-nirshemu-hashana.xlsx');
+}
+const cmpRoleOk=r=>S.cmpRole==='mentor'?!!r.m:S.cmpRole==='mentee'?!!r.n:true;
+function vCompare(){
+  const pv=S.metaKV.prevYear; const admin=S.role==='admin';
+  const up=`<div class="row" style="gap:8px;flex-wrap:wrap"><input type="text" id="prevLabel" style="width:170px" placeholder="שם השנה, למשל תשפ״ו" value="${esc(pv?.label||'')}"><label class="btn${pv?'':' primary'}" style="cursor:pointer">${pv?'החלפת הקובץ':'⬆ טעינת קובץ השנה שעברה'}<input type="file" id="prevFile" accept=".xlsx,.xls" hidden></label>${pv?`<button class="btn" data-act="cmpDel">${S.clearStep==='prev'?'לחצי שוב למחיקה':'מחיקת נתוני השנה שעברה'}</button>`:''}</div>`;
+  if(!pv) return `<div class="panel" style="padding:28px;max-width:720px"><h2 style="margin-top:0">📈 השוואה לשנה שעברה</h2><p>כאן אפשר להשוות את הרישום השנה לרישום של השנה שעברה: לפי בית ספר, שלב אקדמי, מחלקה ותפקיד, וגם לראות מי מהנרשמות של השנה שעברה לא נרשמה השנה.</p>${admin?`<p class="muted">טוענים את קובץ האקסל של השנה שעברה (שורה לכל נרשמת). המערכת מזהה לבד את העמודות: שם, אימייל, שלב אקדמי, שנה, פקולטה, בית ספר ותפקיד.</p>${up}`:'<p class="muted">המנהלת עוד לא טענה את הקובץ של השנה שעברה.</p>'}</div>`;
+  const prev=pv.rows.filter(cmpRoleOk);
+  const cur=[...S.people.values()].map(cmpRow).filter(cmpRoleOk);
+  const lbl=esc(pv.label||'שנה שעברה');
+  const pct=(a,b)=>b?Math.round((a-b)*100/b):null;
+  const dl=(c,p)=>{ const d=c-p, q=pct(c,p); const sg=n=>(n>0?'+':n<0?'−':'')+Math.abs(n); return `<span class="dlt ${d<0?'neg':d>0?'pos':''}" dir="ltr">${sg(d)}${q!=null&&d?` (${sg(q)}%)`:''}</span>`; };
+  // KPIs
+  const allP=pv.rows, allC=[...S.people.values()].map(cmpRow);
+  const kp=(ic,l,c,p)=>`<div class="kpi ckpi"><span class="ic">${ic}</span><div><span class="kl">${l}</span><div><b class="num">${c}</b> <span class="muted num" style="font-size:13px">לעומת ${p}</span></div>${dl(c,p)}</div></div>`;
+  let h=`<div class="sec-head" style="margin-top:0"><div><h3>📈 השוואה ל${lbl}</h3><p class="muted">כל הנרשמות בטופס בשתי השנים, כולל מי שאינה פעילה. הקובץ של ${lbl}: ${esc(pv.fileName||'')} (${allP.length} נרשמות).</p></div>
+    <div class="seg"><button data-cmprole="all" aria-pressed="${!S.cmpRole||S.cmpRole==='all'}">כולן</button><button data-cmprole="mentor" aria-pressed="${S.cmpRole==='mentor'}">חונכות</button><button data-cmprole="mentee" aria-pressed="${S.cmpRole==='mentee'}">חניכות</button></div></div>
+  <div class="kpis">${kp('🙋‍♀️','נרשמו',allC.length,allP.length)}${kp('🧭','רוצות לחנוך',allC.filter(r=>r.m).length,allP.filter(r=>r.m).length)}${kp('🌱','רוצות חונכת',allC.filter(r=>r.n).length,allP.filter(r=>r.n).length)}${kp('🤝','נרשמו לשני התפקידים',allC.filter(r=>r.m&&r.n).length,allP.filter(r=>r.m&&r.n).length)}</div>`;
+  // returning
+  const ce=new Set(cur.map(r=>r.e).filter(Boolean)), pe=new Set(prev.map(r=>r.e).filter(Boolean));
+  const back=prev.filter(r=>r.e&&ce.has(r.e)), gone=prev.filter(r=>r.e&&!ce.has(r.e)), fresh=cur.filter(r=>r.e&&!pe.has(r.e));
+  const goneBy=new Map(); gone.forEach(r=>{ const k=stageGroup({rank:r.r}); goneBy.set(k,(goneBy.get(k)||0)+1); });
+  const goneList=[...goneBy.entries()].sort((a,b)=>b[1]-a[1]);
+  h+=`<div class="sec-head"><div><h3>🔁 מי חזרה ומי חדשה</h3><p class="muted">לפי כתובת המייל. מי שנרשמה השנה עם מייל אחר תיחשב כחדשה.</p></div><button class="btn sm" data-act="cmpMissing" ${gone.length?'':'disabled'}>⬇ רשימת מי שלא נרשמה השנה</button></div>
+  <div class="panel cflow">
+    <div class="cf"><b class="num">${back.length}</b><span>נרשמו שוב</span><small class="muted">${prev.length?Math.round(back.length*100/prev.length):0}% מהנרשמות של ${lbl}</small></div>
+    <div class="cf neg"><b class="num">${gone.length}</b><span>לא נרשמו השנה</span><small class="muted">${goneList.slice(0,3).map(([k,n])=>`${esc(k)}: ${n}`).join(' · ')}</small></div>
+    <div class="cf pos"><b class="num">${fresh.length}</b><span>חדשות השנה</span><small class="muted">לא היו ב${lbl}</small></div>
+  </div>`;
+  // tables
+  const ROLE_TXT=S.cmpRole==='mentor'?' (חונכות)':S.cmpRole==='mentee'?' (חניכות)':'';
+  const stageK=r=>{ const g=stageGroup({rank:r.r}); return g.replace('תואר ראשון · ','ראשון · '); };
+  const tbl=(title,ic,kf,sortBy)=>{ const m=new Map(); const bump=(k,i)=>{ const x=m.get(k)||{k,p:0,c:0,o:Infinity}; x[i]++; m.set(k,x); return x; };
+    prev.forEach(r=>{ const x=bump(kf(r)||'לא ידוע','p'); x.o=Math.min(x.o,r.r??999); }); cur.forEach(r=>{ const x=bump(kf(r)||'לא ידוע','c'); x.o=Math.min(x.o,r.r??999); });
+    let L=[...m.values()]; L.sort(sortBy==='rank'?(a,b)=>a.o-b.o:(a,b)=>(a.c-a.p)-(b.c-b.p)||b.p-a.p);
+    const max=Math.max(1,...L.map(x=>Math.max(x.p,x.c)));
+    const worst=L.filter(x=>x.c<x.p).sort((a,b)=>(a.c-a.p)-(b.c-b.p))[0];
+    return `<div class="panel ctbl"><h4>${ic} ${title}${ROLE_TXT}</h4>${worst?`<p class="insight">הירידה הגדולה ביותר: <b>${esc(worst.k)}</b> (${worst.c-worst.p})</p>`:''}
+      <div class="crow chead"><span></span><span class="num">${lbl}</span><span class="num">השנה</span><span>שינוי</span><span></span></div>
+      ${L.map(x=>`<div class="crow"><span class="ck" title="${esc(x.k)}">${esc(x.k)}</span><span class="num muted">${x.p}</span><b class="num">${x.c}</b>${dl(x.c,x.p)}<span class="cbars"><i class="cb-p" style="width:${x.p*100/max}%" title="${lbl}: ${x.p}"></i><i class="cb-c" style="width:${x.c*100/max}%" title="השנה: ${x.c}"></i></span></div>`).join('')}</div>`; };
+  h+=`<div class="sec-head"><div><h3>🔍 איפה הפער</h3><p class="muted">פס אפור: ${lbl} · פס כחול: השנה. המחלקות ממוינות מהירידה הגדולה לעלייה.</p></div></div>
+  <div class="rgrid">${tbl('לפי בית ספר','🏛️',r=>SCHOOL_NAME[r.sc])}${tbl('לפי שלב אקדמי','🎓',stageK,'rank')}<div class="wide-span">${tbl('לפי מחלקה','🧪',r=>r.d)}</div></div>`;
+  if(admin) h+=`<div class="panel" style="padding:14px 16px;margin-top:16px"><p class="muted" style="margin:0 0 8px">נתוני ${lbl} נטענו ${new Date(pv.at).toLocaleDateString('he-IL')}. אפשר להחליף אותם בקובץ אחר:</p>${up}</div>`;
+  return h;
+}
 function vAlerts(){
   if(!S.people.size) return vEmptyPeople();
   const al=computeAlerts().filter(a=>a.items.length);
@@ -1559,7 +1649,7 @@ function vData(){
     <div class="row"><button class="btn" data-act="exportCsv" ${downloads?'':'disabled'}>הורדת CSV</button><button class="btn" data-act="copyTsv">העתקה להדבקה בגיליון</button><label class="row"><input type="checkbox" id="exportFinal" ${S.exportFinal?'checked':''}> רק שיבוצים מאושרים</label></div>
     <h3 style="margin-top:20px">יומן פעולות</h3><ul class="log">${S.log.map(l=>`<li><span class="muted">${ago(l.t)}</span> · <b>${esc(leaderName(l.by))}</b> ${logText(l)}</li>`).join('')||'<li class="muted">עדיין אין פעולות.</li>'}</ul>
   </div></div>
-  <div class="panel card" style="margin-top:14px;border-color:var(--hard)"><h3>איפוס לשנה חדשה</h3><p class="muted">מוחק את כל הנרשמות, השיבוצים, קבוצות הדוקטורנטיות, ההערות והיומן. רשימת המובילות, תחומי האחריות ונוסח המייל נשמרים.</p>
+  <div class="panel card" style="margin-top:14px;border-color:var(--hard)"><h3>איפוס לשנה חדשה</h3><p class="muted">מוחק את כל הנרשמות, השיבוצים, קבוצות הדוקטורנטיות, ההערות והיומן. רשימת המובילות, תחומי האחריות, נוסח המייל ונתוני השנה שעברה (להשוואה) נשמרים.</p>
     ${S.clearStep==='data'?`<div class="row"><b style="color:var(--hard)">בטוחה? אי אפשר לשחזר.</b><button class="btn danger" data-act="doClear">כן, למחוק הכל</button><button class="btn" data-act="cancelClear">ביטול</button></div>`:`<button class="btn danger" data-act="askClear" ${S.readOnly||S.busy?'disabled':''}>מחיקת כל הנתונים</button>`}</div>`;
   return h;
 }
@@ -1641,7 +1731,7 @@ async function doImport(){
 }
 async function doClear(){
   S.busy='מוחקת…'; S.clearStep=0; render();
-  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().neq('key','emailTemplate')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
+  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,prevYear)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
   S.busy=''; S.sel=null; render();
 }
 function exportRows(){
@@ -1734,6 +1824,7 @@ async function addArea(name,depts=[]){ const ord=Math.max(0,...[...S.areas.value
 document.addEventListener('click',async ev=>{
   const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto],[data-act],[data-phdgrp]'); if(!t) return;
   const d=t.dataset;
+  if(d.cmprole){ S.cmpRole=d.cmprole; render(); return; }
   if(d.tab){ if(S.role!=='admin'&&ADMIN_TABS.includes(d.tab)){ toast('הלשונית הזאת זמינה למנהלת בלבד'); return; } S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
   if(d.mf){ S.mentorFilter=d.mf; render(); return; }
   if(d.cs){ S.candScope=d.cs; render(); return; }
@@ -1824,6 +1915,8 @@ document.addEventListener('click',async ev=>{
     case 'cancelImport': S.importPreview=null; render(); break;
     case 'exportCsv': exportCsv(); break;
     case 'exportXlsx': exportXlsx(); break;
+    case 'cmpMissing': cmpExportMissing(); break;
+    case 'cmpDel': if(S.clearStep!=='prev'){ S.clearStep='prev'; render(); break; } S.clearStep=0; await W(()=>sb.from('meta').delete().eq('key','prevYear')).then(()=>toast('נתוני השנה שעברה נמחקו')).catch(()=>{}); render(); break;
     case 'copyTsv': copyTsv(); break;
     case 'askRejectAll': S.clearStep='props'; render(); break;
     case 'rejectAll': { S.clearStep=0; const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); try{ for(let i=0;i<ids.length;i+=100) await W(()=>sb.from('matches').delete().in('mentee_id',ids.slice(i,i+100)).eq('status','proposed')); toast(`${ids.length} הצעות בוטלו`); logAct('rejectAll',{n:ids.length}); }catch(e){} render(); break; }
@@ -1860,6 +1953,7 @@ document.addEventListener('change',async ev=>{
   if(t.id==='grpLead'){ S.area=t.value; try{localStorage.setItem('shibutz.lead',S.area);}catch(e){} pushPresence(); render(); return; }
   if(t.id==='areaSel'){ S.area=t.value; try{localStorage.setItem('shibutz.lead',S.area);}catch(e){} pushPresence(); render(); return; }
   if(t.id==='file'&&t.files[0]){ readFile(t.files[0]); t.value=''; return; }
+  if(t.id==='prevFile'&&t.files[0]){ readPrevFile(t.files[0]); t.value=''; return; }
   if(t.id==='showIdle'){ S.showAllMentorsInGroups=t.checked; render(); return; }
   if(t.id==='exportFinal'){ S.exportFinal=t.checked; return; }
   if(t.id==='replaceAll'&&S.importPreview){ S.importPreview.replace=t.checked; return; }

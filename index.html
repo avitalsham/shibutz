@@ -375,6 +375,7 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.plink{padding:14px 16px;margin-top:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
 .ddown{padding:16px 18px;border-color:var(--mentor-tint-line);background:linear-gradient(180deg,var(--mentor-tint),var(--surface) 140px)}
 .ddown .ctbl{background:var(--surface);border:1px solid var(--line);border-radius:10px}
 .dminis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
@@ -1329,6 +1330,9 @@ function vPhdGroupsList(){
 }
 function mentorItemDots(m){ const g=groupOf(m.id), cap=capOf(m); return `<span class="dots" title="${g.length}/${cap}">${Array.from({length:Math.max(cap,g.length)},(_,i)=>`<i class="${i<g.length?(i>=cap?'x':S.matches.get(g[i])?.status==='proposed'?'p':'f'):''}"></i>`).join('')}</span>`; }
 /* ================= השוואה לשנה שעברה ================= */
+// זיהוי אותה נרשמת בין השנים: לפי מייל או לפי מספר טלפון
+const normPh=v=>{ let d=String(v||'').replace(/\D/g,''); if(d.startsWith('972')) d='0'+d.slice(3); if(d&&!d.startsWith('0')) d='0'+d; return d.length>=9?d:''; };
+function cmpIndex(rows){ const E=new Set(), T=new Set(); rows.forEach(r=>{ if(r.e) E.add(r.e); const t=normPh(r.ph); if(t) T.add(t); }); return r=>(!!r.e&&E.has(r.e))||(!!normPh(r.ph)&&T.has(normPh(r.ph))); }
 const cmpRow=p=>({f:p.first||'',l:p.last||'',e:(p.email||'').toLowerCase(),ph:p.phone||'',m:p.mentor?1:0,n:p.mentee?1:0,r:p.rank,y:p.year,sc:p.school||'',d:p.dept||''});
 async function readPrevFile(f){
   try{
@@ -1346,8 +1350,8 @@ async function readPrevFile(f){
 }
 function cmpExportMissing(dept){
   const pv=S.metaKV.prevYear; if(!pv) return;
-  const cur=new Set([...S.people.values()].map(p=>(p.email||'').toLowerCase()).filter(Boolean));
-  const miss=pv.rows.filter(r=>r.e&&!cur.has(r.e)&&cmpRoleOk(r)&&(!dept||r.d===dept));
+  const inCur=cmpIndex([...S.people.values()].map(cmpRow));
+  const miss=pv.rows.filter(r=>!inCur(r)&&cmpRoleOk(r)&&(!dept||r.d===dept));
   const aoa=[['שם פרטי','שם משפחה','אימייל','טלפון','תפקיד בשנה שעברה','שלב בשנה שעברה','בית ספר','מחלקה']].concat(miss.map(r=>[r.f,r.l,r.e,r.ph,r.m&&r.n?'חונכת וחניכה':r.m?'חונכת':'חניכה',stageGroup({rank:r.r}),SCHOOL_NAME[r.sc]||'',r.d]));
   const w=XLSX.utils.book_new(); const sh=XLSX.utils.aoa_to_sheet(aoa); sh['!cols']=[12,14,28,14,14,18,14,20].map(wch=>({wch}));
   XLSX.utils.book_append_sheet(w,sh,'לא נרשמו השנה'); w.Workbook={Views:[{RTL:true}]};
@@ -1370,11 +1374,11 @@ function vCompare(){
     <div class="seg"><button data-cmprole="all" aria-pressed="${!S.cmpRole||S.cmpRole==='all'}">כולן</button><button data-cmprole="mentor" aria-pressed="${S.cmpRole==='mentor'}">חונכות</button><button data-cmprole="mentee" aria-pressed="${S.cmpRole==='mentee'}">חניכות</button></div></div>
   <div class="kpis">${kp('🙋‍♀️','נרשמו',allC.length,allP.length)}${kp('🧭','רוצות לחנוך',allC.filter(r=>r.m).length,allP.filter(r=>r.m).length)}${kp('🌱','רוצות חונכת',allC.filter(r=>r.n).length,allP.filter(r=>r.n).length)}</div>`;
   // returning
-  const ce=new Set(cur.map(r=>r.e).filter(Boolean)), pe=new Set(prev.map(r=>r.e).filter(Boolean));
-  const back=prev.filter(r=>r.e&&ce.has(r.e)), gone=prev.filter(r=>r.e&&!ce.has(r.e)), fresh=cur.filter(r=>r.e&&!pe.has(r.e));
+  const inCur=cmpIndex(allC), inPrev=cmpIndex(allP);
+  const back=prev.filter(inCur), gone=prev.filter(r=>!inCur(r)), fresh=cur.filter(r=>!inPrev(r));
   const goneBy=new Map(); gone.forEach(r=>{ const k=stageGroup({rank:r.r}); goneBy.set(k,(goneBy.get(k)||0)+1); });
   const goneList=[...goneBy.entries()].sort((a,b)=>b[1]-a[1]);
-  h+=`<div class="sec-head"><div><h3>🔁 מי חזרה ומי חדשה</h3><p class="muted">לפי כתובת המייל. מי שנרשמה השנה עם מייל אחר תיחשב כחדשה.</p></div><button class="btn sm" data-act="cmpMissing" ${gone.length?'':'disabled'}>⬇ רשימת מי שלא נרשמה השנה</button></div>
+  h+=`<div class="sec-head"><div><h3>🔁 מי חזרה ומי חדשה</h3><p class="muted">אותה נרשמת מזוהה לפי מייל או לפי מספר טלפון.</p></div><button class="btn sm" data-act="cmpMissing" ${gone.length?'':'disabled'}>⬇ רשימת מי שלא נרשמה השנה</button></div>
   <div class="panel cflow">
     <div class="cf"><b class="num">${back.length}</b><span>נרשמו שוב</span><small class="muted">${prev.length?Math.round(back.length*100/prev.length):0}% מהנרשמות של ${lbl}</small></div>
     <div class="cf neg"><b class="num">${gone.length}</b><span>לא נרשמו השנה</span><small class="muted">${goneList.slice(0,3).map(([k,n])=>`${esc(k)}: ${n}`).join(' · ')}</small></div>
@@ -1400,14 +1404,17 @@ function vCompare(){
   if(!S.cmpDept||!depts.includes(S.cmpDept)) S.cmpDept=depts.slice().sort((a,b)=>drop(a)-drop(b))[0]||'';
   if(S.cmpDept){ const D=S.cmpDept, pD=prev.filter(r=>r.d===D), cD=cur.filter(r=>r.d===D);
     const pAll=pv.rows.filter(r=>r.d===D), cAll=[...S.people.values()].map(cmpRow).filter(r=>r.d===D);
-    const ceD=new Set(cAll.map(r=>r.e)), goneD=pD.filter(r=>r.e&&!ceD.has(r.e)).length, backD=pD.filter(r=>r.e&&ceD.has(r.e)).length;
+    const goneD=pD.filter(r=>!inCur(r)).length, backD=pD.filter(inCur).length;
     const mini=(l,c,p)=>`<div class="dmini"><span class="muted">${l}</span><b class="num">${c}</b><span class="muted num" style="font-size:12px">לעומת ${p}</span>${dl(c,p)}</div>`;
     h+=`<div class="sec-head"><div><h3>🎯 פער לפי בית ספר</h3><p class="muted">בוחרים בית ספר ורואים איפה בדיוק הפער בתוכו. ברירת המחדל: בית הספר עם הירידה הגדולה ביותר.</p></div></div>
     <div class="panel ddown"><div class="row" style="gap:10px;flex-wrap:wrap;margin-bottom:12px"><label for="cmpDept" style="font-weight:600">בית ספר:</label><select id="cmpDept">${depts.map(d=>`<option value="${esc(d)}" ${d===D?'selected':''}>${esc(d)} · ${(n=>n>0?'+'+n:n<0?'−'+(-n):'ללא שינוי')(cur.filter(r=>r.d===d).length-prev.filter(r=>r.d===d).length)}</option>`).join('')}</select></div>
       <div class="dminis">${mini('נרשמו'+ROLE_TXT,cD.length,pD.length)}${mini('חונכות',cAll.filter(r=>r.m).length,pAll.filter(r=>r.m).length)}${mini('חניכות',cAll.filter(r=>r.n).length,pAll.filter(r=>r.n).length)}<div class="dmini"><span class="muted">מ${lbl}</span><b class="num">${backD}</b><span class="muted" style="font-size:12px">נרשמו שוב · ${goneD} לא נרשמו</span>${goneD?`<button class="btn sm" data-act="cmpMissing" data-dept="${esc(D)}" style="margin-top:4px">⬇ רשימת מי שלא נרשמה</button>`:''}</div></div>
       <div class="rgrid" style="margin-top:12px">${tbl('לפי שלב אקדמי','🎓',stageK,'rank',pD,cD,true)}${tbl('לפי תפקיד','👥',r=>r.m&&r.n?'חונכת וחניכה':r.m?'חונכת':'חניכה','',pD,cD,true)}</div>
     </div>`; }
-  if(admin) h+=`<div class="panel" style="padding:14px 16px;margin-top:16px"><p class="muted" style="margin:0 0 8px">נתוני ${lbl} נטענו ${new Date(pv.at).toLocaleDateString('he-IL')}. אפשר להחליף אותם בקובץ אחר:</p>${up}</div>`;
+  const link=(S.metaKV.prevYearLink||{}).url||'';
+  h+=`<div class="panel plink"><div><b>📎 קובץ השיבוצים של ${lbl}</b><p class="muted" style="margin:2px 0 0;font-size:12px">הקובץ המלא ב־Google Sheets. נפתח רק למי שיש לה הרשאה אליו בגוגל.</p></div>${link?`<a class="btn primary" href="${esc(link)}" target="_blank" rel="noopener">פתיחת הקובץ ↗</a>`:`<span class="muted">${admin?'עוד לא נשמר קישור':'המנהלת עוד לא הוסיפה קישור'}</span>`}
+    ${admin?`<div class="row" style="gap:8px;width:100%;margin-top:10px"><input type="text" id="prevLink" dir="ltr" style="flex:1;min-width:200px" placeholder="https://docs.google.com/spreadsheets/…" value="${esc(link)}"><button class="btn" data-act="prevLinkSave">שמירת הקישור</button></div>`:''}</div>`;
+  if(admin) h+=`<div class="panel" style="padding:14px 16px;margin-top:12px"><p class="muted" style="margin:0 0 8px">נתוני ${lbl} נטענו ${new Date(pv.at).toLocaleDateString('he-IL')}. אפשר להחליף אותם בקובץ אחר:</p>${up}</div>`;
   return h;
 }
 function vAlerts(){
@@ -1750,7 +1757,7 @@ async function doImport(){
 }
 async function doClear(){
   S.busy='מוחקת…'; S.clearStep=0; render();
-  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,prevYear)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
+  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,prevYear,prevYearLink)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
   S.busy=''; S.sel=null; render();
 }
 function exportRows(){
@@ -1935,6 +1942,7 @@ document.addEventListener('click',async ev=>{
     case 'exportCsv': exportCsv(); break;
     case 'exportXlsx': exportXlsx(); break;
     case 'cmpMissing': cmpExportMissing(d.dept||''); break;
+    case 'prevLinkSave': { const u=($('#prevLink')?.value||'').trim(); if(u&&!/^https:\/\//.test(u)){ toast('הקישור צריך להתחיל ב־https://',true); break; } await W(()=>sb.from('meta').upsert({key:'prevYearLink',data:{url:u}})).then(()=>toast(u?'הקישור נשמר':'הקישור הוסר')).catch(()=>{}); break; }
     case 'cmpDel': if(S.clearStep!=='prev'){ S.clearStep='prev'; render(); break; } S.clearStep=0; await W(()=>sb.from('meta').delete().eq('key','prevYear')).then(()=>toast('נתוני השנה שעברה נמחקו')).catch(()=>{}); render(); break;
     case 'copyTsv': copyTsv(); break;
     case 'askRejectAll': S.clearStep='props'; render(); break;

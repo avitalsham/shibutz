@@ -1614,6 +1614,19 @@ function partAgg(){
   for(const x of [all,...by.values()]) x.open=x.total-x.placed;
   return {all,get:k=>by.get(k||null)||blank(),hasNone:by.has(null)&&by.get(null).total>0};
 }
+// מסלול הדוקטורנטיות: כל הדוקטורנטיות הפעילות וכל חברות הסגל / הפוסט־דוקטורט הפעילות שנרשמו לחנוך,
+// גם אם עוד לא מלוות קבוצה. משובצות = חברות בקבוצה שיש לה חונכת, והחונכת עצמה.
+function phdAgg(){
+  if(S.phdMissing) return null;
+  const ids=new Set(), placed=new Set(), mailed=new Set(), mentorIds=new Set(); const gs=[...S.phd.values()];
+  for(const p of S.people.values()){ if(!isActive(p)) continue; if(isPhdMentee(p)) ids.add(p.id); if(isPhdMentor(p)){ ids.add(p.id); mentorIds.add(p.id); } }
+  let groups=0;
+  for(const g of gs){ const mem=g.members.filter(id=>P(id)); mem.forEach(id=>ids.add(id)); const m=g.mentor&&P(g.mentor)?g.mentor:null;
+    if(m){ ids.add(m); mentorIds.add(m); if(mem.length){ groups++; [m,...mem].forEach(id=>{ placed.add(id); if(A(m).emailSent) mailed.add(id); }); } } }
+  const total=ids.size, mentors=[...ids].filter(id=>mentorIds.has(id)).length;
+  const pm=[...ids].filter(id=>!mentorIds.has(id));
+  return {total,placed:placed.size,mailed:mailed.size,open:total-placed.size,mentors,mentees:pm.length,groups,allGroups:gs.length,inG:pm.filter(id=>phdGroupOf(id)).length};
+}
 // מי מהנרשמות בטופס לא נספרת בדף ההתקדמות, ולמה
 function notCounted(){
   const phdM=new Set(S.phdMissing?[]:[...S.phd.values()].map(g=>g.mentor).filter(Boolean));
@@ -1624,7 +1637,7 @@ function notCounted(){
     if(regMentor(p)&&isCo(p.id)) continue;
     if(phdM.has(p.id)) continue;
     if(isActive(p)&&(regMentor(p)||regMentee(p))) continue;
-    if(isActive(p)&&isPhdMentee(p)&&!S.phdMissing) continue;
+    if(isActive(p)&&(isPhdMentee(p)||isPhdMentor(p))&&!S.phdMissing) continue;
     if(!isActive(p)) c.inactive++;
     else if(isPhdMentor(p)) c.fac++;
     else if(isPhdMentee(p)) c.phd++;
@@ -1637,7 +1650,7 @@ function vProgress(){
   const all=[...S.people.values()];
   const pct=(n,t)=>t?Math.round(n*100/t):0;
   // participants of a set of primary mentors + free mentees
-  const phdStat=()=>{ if(S.phdMissing) return null; const pm=all.filter(p=>isPhdMentee(p)&&isActive(p)); const gs=[...S.phd.values()]; const gm=gs.filter(g=>g.mentor&&P(g.mentor)); let placed=0,mailed=0; for(const g of gm){ const k=1+g.members.filter(id=>P(id)).length; placed+=k; if(A(g.mentor).emailSent) mailed+=k; } const total=pm.length+gm.length; return {total,placed,mailed,open:total-placed,mentors:gm.length,mentees:pm.length,groups:gm.length,allGroups:gs.length,inG:pm.filter(p=>phdGroupOf(p.id)).length}; };
+  const phdStat=phdAgg;
   const AG=partAgg(); const reg=AG.all; const ph=phdStat();
   const o={total:reg.total+(ph?ph.total:0),placed:reg.placed+(ph?ph.placed:0),mailed:reg.mailed+(ph?ph.mailed:0)}; o.open=o.total-o.placed;
   const op=pct(o.placed,o.total);
@@ -1864,7 +1877,7 @@ async function exportXlsx(){
     const AG=partAgg(); const keys=[...leaderKeysAll(),null];
     const sum=[0,0,0,0,0,0,0,0];
     for(const k of keys){ if(k===null&&!AG.hasNone) continue; const x=AG.get(k); const v=[x.total,x.placed,x.total?x.placed/x.total:0,x.mailed,x.mentors,x.mentees,x.groups,x.seats]; v.forEach((y,i)=>{ if(i!==2) sum[i]+=y; }); ws4.addRow([k?leaderFull(k):'ללא מובילה',...v]); }
-    if(!S.phdMissing){ const pm=all.filter(isPhdMentee); const gm=[...S.phd.values()].filter(g=>g.mentor&&P(g.mentor)); let pl=0,ml=0; gm.forEach(g=>{ const k=1+g.members.filter(id=>P(id)).length; pl+=k; if(A(g.mentor).emailSent) ml+=k; }); const tot=pm.length+gm.length; const v=[tot,pl,tot?pl/tot:0,ml,gm.length,pm.length,gm.length,0]; v.forEach((x,i)=>{ if(i!==2) sum[i]+=x; }); ws4.addRow(['דוקטורנטיות',...v]); }
+    { const x=phdAgg(); if(x){ const v=[x.total,x.placed,x.total?x.placed/x.total:0,x.mailed,x.mentors,x.mentees,x.groups,0]; v.forEach((y,i)=>{ if(i!==2) sum[i]+=y; }); ws4.addRow(['דוקטורנטיות',...v]); } }
     sum[2]=sum[0]?sum[1]/sum[0]:0;
     const tr=ws4.addRow(['סה״כ',...sum]); tr.font={bold:true}; band(ws4,tr,true);
     ws4.getColumn(4).numFmt='0%';

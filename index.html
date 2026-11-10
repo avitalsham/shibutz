@@ -375,6 +375,10 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.gap details{margin:6px 0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.gap summary{cursor:pointer;font-weight:600}
+.gaptbl{min-width:0;width:100%;font-size:12px;margin-top:6px}
+.gaptbl th{position:static}
 .plink{padding:14px 16px;margin-top:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
 .ddown{padding:16px 18px;border-color:var(--mentor-tint-line);background:linear-gradient(180deg,var(--mentor-tint),var(--surface) 140px)}
 .ddown .ctbl{background:var(--surface);border:1px solid var(--line);border-radius:10px}
@@ -577,24 +581,27 @@ function normalizeRows(header, rows){
     a.dups=(a.dups||1)+(b.dups||1);
     return roleMix;
   };
-  const out=new Map(), byPh=new Map(); let skipped=0, dupRows=0, roleMerged=0;
-  for(const r of rows){
+  const out=new Map(), byPh=new Map(); let skipped=0, dupRows=0, roleMerged=0; const lost=[]; let rowNo=1;
+  for(const r of rows){ rowNo++;
     const g=k=>{const i=idx[k]; if(i==null) return null; const v=r[i]; return (v===''||v==null)?null:v;};
     const p=buildPerson(g);
-    if(!p){skipped++;continue;}
+    if(!p){ if(r.some(v=>v!==''&&v!=null)) lost.push({row:rowNo,name:'',email:'',phone:'',why:'אין בשורה שם או מייל'}); skipped++; continue; }
+    p._row=rowNo;
     const ph=phKey(p.phone);
     // טלפון זהה נחשב לאותה נרשמת רק אם גם השם הפרטי או שם המשפחה זהים (מונע איחוד של מספרים כמו 0500000000)
     const nm=x=>String(x||'').replace(/\s+/g,' ').trim();
     const byP=ph&&byPh.get(ph); const sameName=byP&&((nm(byP.first)&&nm(byP.first)===nm(p.first))||(nm(byP.last)&&nm(byP.last)===nm(p.last)));
     const prev=out.get(p.id)||(sameName?byP:null);
-    if(prev){ dupRows++; const newer=(p.ts||'')>(prev.ts||''); const [a,b]=newer?[p,prev]:[prev,p];
+    if(prev){ dupRows++; const byMail=out.get(p.id)===prev;
+      lost.push({row:rowNo,name:(p.first+' '+p.last).trim(),email:p.email,phone:p.phone,role:[p.mentor&&'חונכת',p.mentee&&'חניכה'].filter(Boolean).join(' + '),why:(byMail?'אותו מייל':'אותו טלפון ושם')+' כמו בשורה '+(prev._row||'?')+((prev.first+' '+prev.last).trim()?` (${(prev.first+' '+prev.last).trim()})`:'')+' · אוחדה איתה'});
+      const newer=(p.ts||'')>(prev.ts||''); const [a,b]=newer?[p,prev]:[prev,p];
       if(newer){ out.delete(prev.id); a.id=prev.id; }
       if(merge(a,b)) roleMerged++;
       out.set(a.id,a); if(ph) byPh.set(ph,a); const ph2=phKey(a.phone); if(ph2) byPh.set(ph2,a); }
     else { out.set(p.id,p); if(ph) byPh.set(ph,p); }
   }
   const missing=Object.keys(COLS).filter(k=>idx[k]==null&&!OPTIONAL_COLS.includes(k));
-  return {people:[...out.values()], skipped, dupRows, roleMerged, missing};
+  return {people:[...out.values()], skipped, dupRows, roleMerged, missing, lost, rowCount:rows.filter(r=>r.some(v=>v!==''&&v!=null)).length};
 }
 /*NORM-END*/
 
@@ -1709,6 +1716,12 @@ function vData(){
     h+=`<div class="panel card" style="margin-top:12px;background:var(--sunk)"><h3>${esc(pv.fileName)}</h3>
       <p style="margin:0">${pv.people.length} נרשמות · ${pv.people.filter(p=>p.mentee).length} חניכות · ${pv.people.filter(p=>p.mentor).length} חונכות${pv.dupRows?` · ${pv.dupRows} שורות כפולות אוחדו`:''}${pv.roleMerged?` (מתוכן ${pv.roleMerged} נרשמות שהופיעו פעם כחונכת ופעם כחניכה)`:''}${pv.skipped?` · ${pv.skipped} שורות ריקות דולגו`:''}</p>
       <p class="muted" style="margin:4px 0">${existing} כבר קיימות במערכת (יעודכנו), ${pv.people.length-existing} חדשות.</p>
+      ${(()=>{ const inFile=new Set(pv.people.map(p=>p.id)); const extra=[...S.people.values()].filter(p=>!inFile.has(p.id));
+        let x=`<div class="gap"><p style="margin:8px 0 4px"><b>${pv.rowCount??'?'} שורות בקובץ → ${pv.people.length} נרשמות</b>${S.people.size?` · במערכת עכשיו: ${S.people.size}`:''}</p>`;
+        if(pv.lost?.length) x+=`<details ${pv.lost.length<=40?'open':''}><summary>${pv.lost.length} שורות בקובץ שלא נספרו כנרשמת נפרדת</summary><table class="gaptbl"><thead><tr><th>שורה באקסל</th><th>שם</th><th>מייל</th><th>טלפון</th><th>תפקיד בשורה</th><th>למה</th></tr></thead><tbody>${pv.lost.map(l=>`<tr><td class="num">${l.row}</td><td>${esc(l.name)}</td><td dir="ltr">${esc(l.email)}</td><td class="num">${esc(l.phone)}</td><td>${esc(l.role||'')}</td><td>${esc(l.why)}</td></tr>`).join('')}</tbody></table></details>`;
+        if(extra.length) x+=`<details><summary>${extra.length} נרשמות שנמצאות במערכת ולא בקובץ הזה${pv.replace?' (יימחקו בהחלפה)':' (יישארו במערכת)'}</summary><table class="gaptbl"><thead><tr><th>שם</th><th>מייל</th><th>טלפון</th><th>מקור</th></tr></thead><tbody>${extra.map(p=>`<tr><td>${esc(fullName(p))}</td><td dir="ltr">${esc(p.email||'')}</td><td class="num">${esc(p.phone||'')}</td><td>${p.manual?'נוספה ידנית':'ייבוא קודם'}</td></tr>`).join('')}</tbody></table></details>`;
+        if(pv.lost?.length||extra.length) x+=`<button class="btn sm" data-act="gapXlsx" style="margin-top:6px">⬇ הורדת הרשימות לאקסל</button>`;
+        return x+`</div>`; })()}
       ${pv.missing.length?`<p class="chip warn" style="white-space:normal">עמודות שלא נמצאו: ${esc(pv.missing.map(k=>COLS[k][0]).join(', '))}</p>`:''}
       <label class="row" style="margin:10px 0"><input type="checkbox" id="replaceAll" ${pv.replace?'checked':''}> החלפת כל הנרשמות (מוחק גם את השיבוצים וההערות של הנתונים הקודמים)</label>
       <div class="row"><button class="btn primary" data-act="doImport" ${S.readOnly||S.busy?'disabled':''}>ייבוא</button><button class="btn" data-act="cancelImport">ביטול</button></div></div>`;
@@ -1986,6 +1999,10 @@ document.addEventListener('click',async ev=>{
     case 'exportCsv': exportCsv(); break;
     case 'exportXlsx': exportXlsx(); break;
     case 'cmpMissing': cmpExportMissing(d.dept||''); break;
+    case 'gapXlsx': { const pv=S.importPreview; if(!pv) break; const inFile=new Set(pv.people.map(p=>p.id)); const w=XLSX.utils.book_new();
+      const a=XLSX.utils.aoa_to_sheet([['שורה באקסל','שם','מייל','טלפון','תפקיד בשורה','למה'],...(pv.lost||[]).map(l=>[l.row,l.name,l.email,l.phone,l.role||'',l.why])]); a['!cols']=[10,20,28,14,14,50].map(wch=>({wch})); XLSX.utils.book_append_sheet(w,a,'לא נספרו בנפרד');
+      const b=XLSX.utils.aoa_to_sheet([['שם','מייל','טלפון','מקור'],...[...S.people.values()].filter(p=>!inFile.has(p.id)).map(p=>[fullName(p),p.email||'',p.phone||'',p.manual?'נוספה ידנית':'ייבוא קודם'])]); b['!cols']=[20,28,14,14].map(wch=>({wch})); XLSX.utils.book_append_sheet(w,b,'במערכת ולא בקובץ');
+      w.Workbook={Views:[{RTL:true}]}; XLSX.writeFile(w,'pa-ar-kovetz-maarechet.xlsx'); break; }
     case 'prevLinkSave': { const u=($('#prevLink')?.value||'').trim(); if(u&&!/^https:\/\//.test(u)){ toast('הקישור צריך להתחיל ב־https://',true); break; } await W(()=>sb.from('meta').upsert({key:'prevYearLink',data:{url:u}})).then(()=>toast(u?'הקישור נשמר':'הקישור הוסר')).catch(()=>{}); break; }
     case 'cmpDel': if(S.clearStep!=='prev'){ S.clearStep='prev'; render(); break; } S.clearStep=0; await W(()=>sb.from('meta').delete().eq('key','prevYear')).then(()=>toast('נתוני השנה שעברה נמחקו')).catch(()=>{}); render(); break;
     case 'copyTsv': copyTsv(); break;

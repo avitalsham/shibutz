@@ -1599,11 +1599,26 @@ function vSettings(){
 }
 /* כל משתתפת (במסלול הרגיל) נספרת פעם אחת בלבד, גם אם נרשמה גם כחונכת וגם כחניכה.
    שובצה כחניכה → שייכת למובילה של החונכת שלה. חונכת שותפה → למובילה של החונכת הראשית. */
+/* כל נרשמת שייכת למסלול אחד בלבד בספירה, כדי שאף אחת לא תיספר פעמיים:
+   'reg' = המסלול הרגיל, 'phd' = מסלול הדוקטורנטיות, null = לא נספרת (לא פעילה / בלי תפקיד) */
+function trackOf(p){
+  if(!p) return null;
+  const mt=S.matches.get(p.id);
+  if(mt&&P(mt.mentor)) return 'reg';
+  if(regMentor(p)&&(isCo(p.id)||groupOf(p.id).length)) return 'reg';
+  if(!S.phdMissing&&(phdGroupOf(p.id)||phdMentorGroup(p.id))) return 'phd';
+  if(!isActive(p)) return null;
+  if(!S.phdMissing&&isPhdMentor(p)) return 'phd';
+  if(regMentor(p)||regMentee(p)) return 'reg';
+  if(!S.phdMissing&&isPhdMentee(p)) return 'phd';
+  return null;
+}
 function partAgg(){
   const blank=()=>({total:0,placed:0,mailed:0,mentors:0,mentees:0,groups:0,seats:0,open:0});
   const by=new Map(), all=blank();
   const add=(L,f)=>{ const k=L||null; if(!by.has(k)) by.set(k,blank()); f(by.get(k)); f(all); };
   for(const p of S.people.values()){
+    if(trackOf(p)!=='reg') continue;
     const mt=S.matches.get(p.id);
     if(mt&&P(mt.mentor)){ const m=P(mt.mentor); add(leaderOf(m),x=>{x.total++;x.placed++;x.mentees++; if(A(m.id).emailSent) x.mailed++;}); continue; }
     if(regMentor(p)&&isCo(p.id)){ const h=P(IDX.coHost.get(p.id)); const n=h?groupOf(h.id).length:0; add(h?leaderOf(h):leaderOf(p),x=>{x.total++;x.mentors++; if(n){x.placed++; if(A(h.id).emailSent) x.mailed++;}}); continue; }
@@ -1619,25 +1634,20 @@ function partAgg(){
 function phdAgg(){
   if(S.phdMissing) return null;
   const ids=new Set(), placed=new Set(), mailed=new Set(), mentorIds=new Set(); const gs=[...S.phd.values()];
-  for(const p of S.people.values()){ if(!isActive(p)) continue; if(isPhdMentee(p)) ids.add(p.id); if(isPhdMentor(p)){ ids.add(p.id); mentorIds.add(p.id); } }
+  const T=id=>trackOf(P(id))==='phd';
+  for(const p of S.people.values()){ if(trackOf(p)!=='phd') continue; ids.add(p.id); if(isPhdMentor(p)||phdMentorGroup(p.id)) mentorIds.add(p.id); }
   let groups=0;
-  for(const g of gs){ const mem=g.members.filter(id=>P(id)); mem.forEach(id=>ids.add(id)); const m=g.mentor&&P(g.mentor)?g.mentor:null;
-    if(m){ ids.add(m); mentorIds.add(m); if(mem.length){ groups++; [m,...mem].forEach(id=>{ placed.add(id); if(A(m).emailSent) mailed.add(id); }); } } }
+  for(const g of gs){ const mem=g.members.filter(id=>P(id)&&T(id)); const m=g.mentor&&P(g.mentor)?g.mentor:null;
+    if(m&&g.members.some(id=>P(id))){ groups++; [m,...mem].filter(T).forEach(id=>{ placed.add(id); if(A(m).emailSent) mailed.add(id); }); } }
   const total=ids.size, mentors=[...ids].filter(id=>mentorIds.has(id)).length;
   const pm=[...ids].filter(id=>!mentorIds.has(id));
   return {total,placed:placed.size,mailed:mailed.size,open:total-placed.size,mentors,mentees:pm.length,groups,allGroups:gs.length,inG:pm.filter(id=>phdGroupOf(id)).length};
 }
 // מי מהנרשמות בטופס לא נספרת בדף ההתקדמות, ולמה
 function notCounted(){
-  const phdM=new Set(S.phdMissing?[]:[...S.phd.values()].map(g=>g.mentor).filter(Boolean));
   const c={inactive:0,fac:0,phd:0,norole:0};
   for(const p of S.people.values()){
-    const mt=S.matches.get(p.id);
-    if(mt&&P(mt.mentor)) continue;
-    if(regMentor(p)&&isCo(p.id)) continue;
-    if(phdM.has(p.id)) continue;
-    if(isActive(p)&&(regMentor(p)||regMentee(p))) continue;
-    if(isActive(p)&&(isPhdMentee(p)||isPhdMentor(p))&&!S.phdMissing) continue;
+    if(trackOf(p)) continue;
     if(!isActive(p)) c.inactive++;
     else if(isPhdMentor(p)) c.fac++;
     else if(isPhdMentee(p)) c.phd++;
@@ -1710,7 +1720,7 @@ function vRegStats(all){
   const fresh=all.filter(p=>p.prev&&String(p.prev).startsWith('לא')).length;
   return `<div class="sec-head"><div><h3>📊 מי נרשמה השנה</h3><p class="muted">כל הנרשמות בטופס, כולל מי שאינה פעילה.</p></div></div>
     <div class="regtop">
-      <div class="kpi"><span class="ic">🙋‍♀️</span><b class="num">${tot.n}</b><span>נרשמו</span></div>
+      <div class="kpi"><span class="ic">🙋‍♀️</span><b class="num">${all.length}</b><span>נרשמו</span></div>
       <div class="kpi"><span class="ic" style="color:#4F8FE0">●</span><b class="num">${tot.mentor+tot.both}</b><span>רוצות לחנוך</span></div>
       <div class="kpi"><span class="ic" style="color:#9B7BD8">●</span><b class="num">${tot.mentee+tot.both}</b><span>רוצות חונכת</span></div>
       <div class="kpi"><span class="ic">🤝</span><b class="num">${tot.both}</b><span>נרשמו לשני התפקידים</span></div>

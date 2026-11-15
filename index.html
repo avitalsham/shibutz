@@ -375,6 +375,8 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.subgrp{border-top:1px dashed var(--grp-line);margin-top:4px}
+.subgrp:first-of-type{border-top:0}
 .btn.danger{color:var(--hard);border-color:currentColor}
 .prow .hidebtn{font-size:12px;opacity:.6}
 .prow:hover .hidebtn{opacity:1}
@@ -651,7 +653,22 @@ const A=id=>S.ann.get(id)||{};
 const fullName=p=>p?((p.first||'')+' '+(p.last||'')).trim()||p.email||'ללא שם':'נרשמת שנמחקה';
 const isActive=p=>p&&A(p.id).status!=='withdrawn';
 const MAXG=6;
-const capOf=p=>MAXG;
+// חונכת יכולה ללוות קבוצה אחת או שתיים (קבוצה א / קבוצה ב), עד 6 חניכות בכל אחת
+const nGroups=m=>m&&A(m.id).groups===2?2:1;
+const capOf=p=>MAXG*nGroups(p);
+const GL=g=>g===2?'ב':'א';
+const grpOf=eid=>(S.matches.get(eid)?.grp)||1;
+const groupOfG=(mid,g)=>groupOf(mid).filter(eid=>grpOf(eid)===g);
+const sentKey=g=>g===2?'emailSent2':'emailSent';
+const sentOf=(mid,g)=>A(mid)[sentKey(g||1)];
+// לאיזו קבוצה נכנסת חניכה חדשה אם לא נבחרה: לזו שיש בה פחות
+const pickGrp=(mid,exclude)=>{ const m=P(mid); if(nGroups(m)<2) return 1; const a=groupOfG(mid,1).filter(x=>x!==exclude).length, b=groupOfG(mid,2).filter(x=>x!==exclude).length; return b<a?2:1; };
+// קריאה לשיבוץ במסד הנתונים. אם עדיין לא הורץ עדכון 07 (אין עמודת grp), נשלח בלי מספר קבוצה
+async function rpcAssign(args,grp){
+  let r=await sb.rpc('assign_match',{...args,p_grp:grp||1});
+  if(r.error&&/p_grp|assign_match\(|function .*does not exist|schema cache/i.test(r.error.message||'')){ if((grp||1)!==1) return {data:null,error:{message:'NEED_UPDATE_07'}}; r=await sb.rpc('assign_match',args); }
+  return r;
+}
 const deptsOf=p=>[p.dept,p.dept2].filter(Boolean);
 const sameDept=(a,b)=>{const B=deptsOf(b);return deptsOf(a).some(x=>B.includes(x));};
 const schoolsOf=p=>p.school==='both'?['exact','eng']:p.school?[p.school]:[];
@@ -829,7 +846,7 @@ const toMs=t=>t?Date.parse(t):0;
 const MAP={
   people:{key:'id',set:r=>{ const p=r.data; if(p&&!p.school) p.school=facSchool(p.faculty)||(/מסלול ניהול:/.test(p.degrees||'')?'mgmt':''); if(p&&!p.dept&&p.school==='mgmt') p.dept='ניהול'; S.people.set(r.id,p); },del:k=>S.people.delete(k)},
   ann:{key:'person_id',set:r=>S.ann.set(r.person_id,{...r.data,by:r.by_email,at:toMs(r.at)}),del:k=>S.ann.delete(k)},
-  matches:{key:'mentee_id',set:r=>S.matches.set(r.mentee_id,{mentor:r.mentor_id,status:r.status,override:r.override||'',by:r.by_email,at:toMs(r.at)}),del:k=>S.matches.delete(k)},
+  matches:{key:'mentee_id',set:r=>S.matches.set(r.mentee_id,{mentor:r.mentor_id,status:r.status,override:r.override||'',by:r.by_email,at:toMs(r.at),grp:r.grp||1}),del:k=>S.matches.delete(k)},
   areas:{key:'id',set:r=>S.areas.set(r.id,{id:r.id,name:r.name,depts:r.depts||[],leaders:r.leaders||[],order:r.ord}),del:k=>S.areas.delete(k)},
   leaders:{key:'email',set:r=>S.leaders.set(r.email,r),del:k=>S.leaders.delete(k)},
   meta:{key:'key',set:r=>{ S.metaKV[r.key]=r.data; if(r.key==='import') S.meta=r.data; },del:k=>{ delete S.metaKV[k]; if(k==='import') S.meta=null; }},
@@ -919,17 +936,18 @@ function renderMe(){
 async function logAct(kind,data){ try{ await sb.from('activity').insert({by_email:S.uid,kind,data}); }catch(e){} }
 
 /* ================= actions ================= */
-async function assign(eid,mid,{expected,status='final',override='',force=false}={}){
+async function assign(eid,mid,{expected,status='final',override='',force=false,grp}={}){
   if(S.readOnly) return toast('יש לך הרשאת צפייה בלבד',true);
-  const e=P(eid), m=P(mid);
-  if(!override&&groupOf(mid).filter(x=>x!==eid).length>=capOf(m)){ toast(`הקבוצה של ${fullName(m)} כבר מלאה (${capOf(m)} חניכות)`,true); return; }
-  let r; try{ r=await W(()=>sb.rpc('assign_match',{p_mentee:eid,p_mentor:mid,p_expected:expected||null,p_status:status,p_override:override||'',p_force:!!force})); }catch(err){ return; }
+  const e=P(eid), m=P(mid); const two=nGroups(m)===2;
+  grp=grp||pickGrp(mid,eid);
+  if(!override&&groupOfG(mid,grp).filter(x=>x!==eid).length>=MAXG){ toast(`${two?`קבוצה ${GL(grp)} של `:'הקבוצה של '}${fullName(m)} כבר מלאה (${MAXG} חניכות)`,true); return; }
+  let r; try{ r=await W(()=>rpcAssign({p_mentee:eid,p_mentor:mid,p_expected:expected||null,p_status:status,p_override:override||'',p_force:!!force},grp)); }catch(err){ if(/NEED_UPDATE_07/.test(err?.message||'')) toast('כדי לשבץ לקבוצה ב צריך להריץ קודם את update-07-two-groups.sql ב־Supabase',true); return; }
   if(r&&r.conflict){
     S.pending={eid,mid,status,override,msg:`בזמן שעבדת, ${leaderName(r.by)} שיבצה את ${fullName(e)} אל ${fullName(P(r.mentor))} (${ago(toMs(r.at))}). להחליף?`};
     render(); return;
   }
   S.pending=null; S.overrideFor=null;
-  toast(`${fullName(e)} שובצה אל ${fullName(m)}`);
+  toast(`${fullName(e)} שובצה אל ${fullName(m)}${two?` · קבוצה ${GL(grp)}`:''}`);
 }
 async function unassign(eid){
   if(S.readOnly) return;
@@ -979,7 +997,9 @@ async function autoSuggest(){
   }
   S.busy=`שומרת ${plan.length} הצעות…`; render();
   let n=0;
-  for(const [eid,mid] of plan){ const {data,error}=await sb.rpc('assign_match',{p_mentee:eid,p_mentor:mid,p_expected:null,p_status:'proposed',p_override:'',p_force:false}); if(!error&&data&&!data.conflict) n++; if(n%10===0){S.busy=`שומרת הצעות… ${n}/${plan.length}`;render();} }
+  const gl=new Map(); const gcount=(mid,g)=>{ const k=mid+'|'+g; if(!gl.has(k)) gl.set(k,groupOfG(mid,g).length); return gl.get(k); };
+  for(const [eid,mid] of plan){ const two=nGroups(P(mid))===2; const g=two&&gcount(mid,2)<gcount(mid,1)?2:1; if(gcount(mid,g)>=MAXG) continue; gl.set(mid+'|'+g,gcount(mid,g)+1);
+    const {data,error}=await rpcAssign({p_mentee:eid,p_mentor:mid,p_expected:null,p_status:'proposed',p_override:'',p_force:false},g); if(!error&&data&&!data.conflict) n++; if(n%10===0){S.busy=`שומרת הצעות… ${n}/${plan.length}`;render();} }
   S.busy='';
   toast(`נוספו ${n} הצעות לשיבוץ${none?` · ל־${none} חניכות לא נמצאה חונכת מתאימה`:''}`);
   logAct('auto',{n,none});
@@ -1046,7 +1066,7 @@ function mentorItem(m){
   const g=groupOf(m.id), cap=capOf(m);
   const dots=Array.from({length:4},(_,i)=>{ if(i>=Math.max(cap,g.length)) return ''; if(i<g.length){ const st=S.matches.get(g[i])?.status; return `<i class="${i>=cap?'x':st==='proposed'?'p':'f'}"></i>`;} return '<i></i>'; }).join('');
   const flags=[];
-  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}" ${isActive(m)?'':'style="opacity:.5" title="לא פעילה"'}><span class="nm">${esc(fullName(m))}</span>${IDX.coHost.get(m.id)?'<span class="gcount" title="חונכת שותפה">שותפה</span>':`<span class="gcount num${g.length>=cap?' full':g.length?'':' zero'}" title="${g.length} חניכות משובצות מתוך ${cap}">${g.length}/${cap}</span>`}<span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
+  return `<button class="item" data-sel="${m.id}" data-role="mentor" aria-current="${S.sel===m.id&&S.selRole==='mentor'}" ${isActive(m)?'':'style="opacity:.5" title="לא פעילה"'}><span class="nm">${esc(fullName(m))}</span>${IDX.coHost.get(m.id)?'<span class="gcount" title="חונכת שותפה">שותפה</span>':(nGroups(m)===2?`<span class="gcount num${g.length>=cap?' full':g.length?'':' zero'}" title="שתי קבוצות: א ${groupOfG(m.id,1).length}/${MAXG}, ב ${groupOfG(m.id,2).length}/${MAXG}">${groupOfG(m.id,1).length}/${MAXG} · ${groupOfG(m.id,2).length}/${MAXG}</span>`:`<span class="gcount num${g.length>=cap?' full':g.length?'':' zero'}" title="${g.length} חניכות משובצות מתוך ${cap}">${g.length}/${cap}</span>`)}<span class="sub">${ladder(m,true)}<span>${esc(m.dept||'ללא מחלקה')}</span>${flags.join('')}</span></button>`;
 }
 function vEmptyPeople(){
   return `<div class="panel empty"><b>עדיין אין נרשמות במערכת</b>ייבאי את קובץ האקסל מטופס הרישום, והחניכות והחונכות יופיעו כאן לכל המובילות.<div style="margin-top:12px"><button class="btn primary" data-tab="data">לייבוא קובץ</button></div></div>`;
@@ -1166,12 +1186,16 @@ function vMentorBlock(m){
       <input id="coQ" type="search" placeholder="חיפוש לפי שם או מחלקה" value="${esc(S.coQ||'')}" style="width:100%;margin-bottom:6px">
       <div style="max-height:320px;overflow-y:auto">${list.slice(0,60).map(x=>`<div class="sugg" style="padding:6px 0"><span></span><div class="who"><b>${esc(fullName(x.c))}</b> <span class="muted">${esc(stageShort(x.c))} · ${esc(x.c.dept||'')}${leaderOf(x.c)?' · '+esc(leaderFull(leaderOf(x.c))):''}</span></div><button class="btn sm ${x.why.length?'':'primary'}" data-coset="${m.id}|${x.c.id}" ${x.why.length?'disabled':''}>בחירה</button>${x.why.length?`<div class="why">${x.why.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>`).join('')||'<p class="muted">אין חונכות פנויות שמתאימות.</p>'}</div></div>`;
   }
-  h+=`<div class="panel block grp-block"><p class="sec-title">הקבוצה של ${esc(m.first||'')}${co?` ו${esc(P(co).first||'')}`:''} · <span class="num">${g.length}/${cap}</span></p>`;
+  const two=nGroups(m)===2, ro=S.readOnly;
+  const g2=groupOfG(m.id,2).length;
+  h+=`<div class="panel block grp-block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">${two?'הקבוצות':'הקבוצה'} של ${esc(m.first||'')}${co?` ו${esc(P(co).first||'')}`:''} · <span class="num">${g.length}/${cap}</span></p>${ro||!isActive(m)?'':two?`<button class="link" data-grpn="${m.id}|1" ${g2?`disabled title="קודם צריך להעביר או להסיר את החניכות מקבוצה ב"`:''}>סגירת קבוצה ב</button>`:`<button class="btn sm" data-grpn="${m.id}|2" title="החונכת תלווה שתי קבוצות נפרדות, עד ${MAXG} חניכות בכל אחת">＋ קבוצה שנייה לחונכת</button>`}</div>`;
   if(co) h+=`<div class="gm" style="margin-bottom:6px;background:var(--mentor-tint)"><div class="l"><span class="muted" style="font-size:12px">חונכת שותפה: </span><b data-sel="${co}" data-role="mentor">${esc(fullName(P(co)))}</b> <span class="muted">${esc(stageShort(P(co)))} · ${esc(P(co).dept||'')}</span></div>${S.readOnly?'':`<button class="btn sm" data-codel="${m.id}">הסרה</button>`}</div>`;
-  h+=g.length?g.map(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
-    return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;}).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
+  const gRow=(eid=>{const e=P(eid), mt=S.matches.get(eid); const ev=e?evaluate(e,m,{ignoreCap:true}):{hard:['נרשמת חסרה'],warn:[],info:[],good:[]};
+    return `<div class="gm${mt.status==='proposed'?' prop':''}" style="margin-bottom:6px"><div class="l"><b data-sel="${eid}" data-role="mentee">${esc(fullName(e))}</b> ${e?ladder(e):''} <span class="muted">${esc(e?.dept||'')}</span><div class="row" style="margin-top:2px">${chips({...ev,good:[],info:[]})}${mt.status==='proposed'?'<span class="chip dashed">הצעה</span>':''}</div></div><div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}${two&&!ro?`<button class="btn sm" data-movegrp="${eid}|${grpOf(eid)===1?2:1}" title="העברה לקבוצה ${GL(grpOf(eid)===1?2:1)}">← לקבוצה ${GL(grpOf(eid)===1?2:1)}</button>`:''}<button class="btn sm" data-unassign="${eid}" ${S.readOnly?'disabled':''}>הסרה</button></div></div>`;});
+  if(two) h+=[1,2].map(k=>{ const L=groupOfG(m.id,k); const st=sentOf(m.id,k); return `<div class="subgrp"><div class="row" style="justify-content:space-between;margin:8px 0 6px"><b>קבוצה ${GL(k)} · <span class="num">${L.length}/${MAXG}</span></b>${st?'<span class="chip ok">מייל נשלח</span>':''}</div>${L.map(gRow).join('')||'<p class="muted" style="margin:0 0 6px">אין עדיין חניכות בקבוצה הזאת.</p>'}</div>`; }).join('');
+  else h+=g.length?g.map(gRow).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
   if(!isActive(m)) return h+'<p class="muted">החונכת סומנה כלא פעילה.</p></div>';
-  if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">הקבוצה מלאה (${g.length}/${cap}). כדי לצרף חניכה אחרת, הסירי קודם חניכה מהקבוצה.</p></div>`;
+  if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">${two?'שתי הקבוצות מלאות':'הקבוצה מלאה'} (${g.length}/${cap}). כדי לצרף חניכה אחרת, הסירי קודם חניכה${two?'':' מהקבוצה, או פתחי לחונכת קבוצה שנייה'}.</p></div>`;
   const pool=[...S.people.values()].filter(e=>regMentee(e)&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||areaOfPerson(e)===areaOfPerson(m)||sameDept(e,m)));
   const coP=co?P(co):null;
   const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok&&(!coP||evaluate(x.e,coP,{ignoreCap:true}).ok)).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
@@ -1181,7 +1205,7 @@ function vMentorBlock(m){
   for(const {e,ev} of cand){
     const sg=stageGroup(e);
     if(sg!==last){ h+=`<div class="cand-h">${esc(sg)}<span class="num">${cand.filter(x=>stageGroup(x.e)===sg).length}</span></div>`; last=sg; }
-    h+=`<div class="sugg" style="padding:6px 0"><span class="score" title="ציון התאמה">${ev.score}</span><div class="who"><b data-sel="${e.id}" data-role="mentee">${esc(fullName(e))}</b> <span class="muted">${esc(e.dept||'')}</span></div><button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button><div class="why">${chips(ev)}</div></div>`;
+    h+=`<div class="sugg" style="padding:6px 0"><span class="score" title="ציון התאמה">${ev.score}</span><div class="who"><b data-sel="${e.id}" data-role="mentee">${esc(fullName(e))}</b> <span class="muted">${esc(e.dept||'')}</span></div>${two?[1,2].map(k=>`<button class="btn sm primary" data-assign="${e.id}|${m.id}|${k}" ${S.readOnly||groupOfG(m.id,k).length>=MAXG?'disabled':''}>לקבוצה ${GL(k)}</button>`).join(' '):`<button class="btn sm primary" data-assign="${e.id}|${m.id}" ${S.readOnly?'disabled':''}>צירוף</button>`}<div class="why">${chips(ev)}</div></div>`;
   }
   if(!cand.length) h+=`<p class="muted">אין חניכות פנויות שעומדות באילוצים${S.candScope!=='all'?'. אפשר לנסות "מכל התוכנית".':'.'}</p>`;
   return h+'</div>';
@@ -1247,10 +1271,10 @@ function sanitizeHtml(html){
 }
 function htmlToText(html){ const d=document.createElement('div'); d.innerHTML=html.replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p|li|h3|h4)>/gi,'\n'); d.querySelectorAll('a').forEach(a=>{ const h=a.getAttribute('href'); if(h&&a.textContent.trim()!==h) a.textContent=a.textContent+' ('+h+')'; }); d.querySelectorAll('li').forEach(li=>li.prepend('• ')); return d.textContent.replace(/\n{3,}/g,'\n\n').trim(); }
 function degreeWord(list){ const w=[]; for(const e of list){ const x=e.rank==null?null:e.rank<20?'ראשון':e.rank<30?'שני':e.rank<40?'שלישי':'פוסט־דוקטורט'; if(x&&!w.includes(x)) w.push(x); } return w.length>1?w.slice(0,-1).join(', ')+' ו'+w[w.length-1]:(w[0]||''); }
-function buildEmail(mid){
+function buildEmail(mid,grp){
   const m=P(mid); const co=coOf(mid)?P(coOf(mid)):null;
   const pg=phdMentorGroup(mid);
-  const ms=(pg?pg.members:groupOf(mid)).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
+  const ms=(pg?pg.members:nGroups(m)===2?groupOfG(mid,grp||1):groupOf(mid)).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
   const t=tplNow();
   const name=co?`${m.first||''} ו${co.first||''}`:(m.first||'');
   const cols=['שנת לימודים','אימייל','מספר טלפון','שם משפחה','שם פרטי'];
@@ -1273,10 +1297,11 @@ async function copyRich(html,plain){
   try{ await navigator.clipboard.writeText(plain); return true; }catch(e){ return false; }
 }
 function vEmail(){
-  const mid=S.emailFor; const m=P(mid); if(!m) return '';
-  const em=buildEmail(mid); const sent=A(mid).emailSent;
+  const [mid,gs]=String(S.emailFor).split('|'); const grp=+gs||1; const m=P(mid); if(!m) return '';
+  const two=nGroups(m)===2&&!phdMentorGroup(mid);
+  const em=buildEmail(mid,grp); const sent=sentOf(mid,two?grp:1);
   return `<div class="overlay center-modal" data-act="emailCloseBg"><div class="panel modal" role="dialog" aria-label="תבנית מייל">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">מייל לחונכת · ${esc(fullName(m))}</h2><button class="btn" data-act="emailClose">סגירה</button></div>
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">מייל לחונכת · ${esc(fullName(m))}${two?` · קבוצה ${GL(grp)}`:''}</h2><button class="btn" data-act="emailClose">סגירה</button></div>
     ${em.n?'':'<p class="chip warn" style="white-space:normal">אין עדיין חניכות בקבוצה. המייל ייצא עם טבלה ריקה.</p>'}
     <div class="mf"><span class="muted">אל</span><b dir="ltr">${esc(em.to||'אין מייל לחונכת')}</b><button class="btn sm" data-act="copyTo">העתקה</button></div>
     <div class="mf"><span class="muted">נושא</span><b>${esc(em.subject)}</b><button class="btn sm" data-act="copySubj">העתקה</button></div>
@@ -1335,16 +1360,17 @@ function vGroups(){
   const prop=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
   let mentors=[...S.people.values()].filter(m=>regMentor(m)&&(groupOf(m.id).length?mentorInScope(m):(S.showAllMentorsInGroups&&mentorInScope(m)&&isActive(m))));
   mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
-  const sizes=[1,2,3,4,5,6].map(n=>mentors.filter(m=>groupOf(m.id).length===n).length);
+  const allG=mentors.flatMap(m=>nGroups(m)===2?[groupOfG(m.id,1).length,groupOfG(m.id,2).length]:[groupOf(m.id).length]); const sizes=[1,2,3,4,5,6].map(n=>allG.filter(x=>x===n).length);
   const stat=(v,l)=>`<div class="panel stat"><b>${v}</b><span>${l}</span></div>`;
   const lsel=`<div class="row" style="margin-bottom:12px"><label for="grpLead" class="muted">הקבוצות של</label><select id="grpLead">${S.uid&&leaderKeysAll().includes(S.uid)?`<option value="${esc(S.uid)}" ${S.area===S.uid?'selected':''}>שלי</option>`:''}${leaderKeysAll().filter(k=>k!==S.uid).map(k=>`<option value="${esc(k)}" ${S.area===k?'selected':''}>${esc(leaderFull(k))}</option>`).join('')}<option value="__all" ${S.area==='__all'?'selected':''}>כל התוכנית</option><option value="__none" ${S.area==='__none'?'selected':''}>ללא מובילה</option></select></div>`;
-  let h=`<div class="row" style="justify-content:space-between;align-items:flex-start">${lsel}<button class="btn" data-act="exportXlsx" ${S.busy?'disabled':''} title="קובץ אחד לכל התוכנית: קבוצות, דוקטורנטיות, טרם שובצו, סיכום ונוסח המייל">⬇ הורדת אקסל השיבוצים</button></div>`+`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.filter(m=>groupOf(m.id).length).length,'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
+  let h=`<div class="row" style="justify-content:space-between;align-items:flex-start">${lsel}<button class="btn" data-act="exportXlsx" ${S.busy?'disabled':''} title="קובץ אחד לכל התוכנית: קבוצות, דוקטורנטיות, טרם שובצו, סיכום ונוסח המייל">⬇ הורדת אקסל השיבוצים</button></div>`+`<div class="stats">${stat(`${fin+prop}/${mentees.length}`,'חניכות משובצות')}${stat(fin,'שיבוצים מאושרים')}${stat(prop,'הצעות ממתינות')}${stat(mentees.length-fin-prop,'חניכות פנויות')}${stat(mentors.reduce((n,m)=>n+(nGroups(m)===2?[1,2].filter(k=>groupOfG(m.id,k).length).length:groupOf(m.id).length?1:0),0),'קבוצות')}${stat(sizes.map((s,i)=>`<span title="קבוצות של ${i+1}">${s}</span>`).join(' · '),'קבוצות בגודל 1–6')}</div>
   <div class="row" style="margin-bottom:12px"><label class="row"><input type="checkbox" id="showIdle" ${S.showAllMentorsInGroups?'checked':''}> להציג גם חונכות בלי חניכות</label>${prop?`<button class="btn sm" data-act="approveAll" ${S.readOnly?'disabled':''}>אישור כל ההצעות בתחום</button>`:''}</div>`;
-  h+=`<div class="groups">`+mentors.map(m=>{
-    const g=groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
-    const bad=evs.some(x=>x.ev.hard.length&&!x.mt.override)||g.length>capOf(m);
-    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b>${coOf(m.id)?` <span class="muted">+ ${esc(fullName(P(coOf(m.id))))}</span>`:''}<div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div><div class="row" style="gap:6px">${mentorItemDots(m)}</div></div>
-      <div class="row" style="justify-content:space-between"><button class="btn sm" data-email="${m.id}">✉ תבנית מייל</button>${A(m.id).emailSent?`<span class="chip ok">מייל נשלח</span>`:''}</div>
+  const cards=[]; for(const m of mentors){ if(nGroups(m)===2) [1,2].forEach(k=>{ if(groupOfG(m.id,k).length||S.showAllMentorsInGroups) cards.push([m,k]); }); else cards.push([m,0]); }
+  h+=`<div class="groups">`+cards.map(([m,k])=>{
+    const g=k?groupOfG(m.id,k):groupOf(m.id); const evs=g.map(eid=>({eid,e:P(eid),mt:S.matches.get(eid)})).map(x=>({...x,ev:x.e?evaluate(x.e,m,{ignoreCap:true}):{hard:['חסרה'],warn:[],info:[],good:[]}}));
+    const bad=evs.some(x=>x.ev.hard.length&&!x.mt.override)||g.length>(k?MAXG:capOf(m));
+    return `<div class="panel gcard${bad?' bad':''}"><div class="ghead"><div><b data-sel="${m.id}" data-role="mentor" style="cursor:pointer">${esc(fullName(m))}</b>${k?` <span class="chip">קבוצה ${GL(k)}</span>`:''}${coOf(m.id)?` <span class="muted">+ ${esc(fullName(P(coOf(m.id))))}</span>`:''}<div class="row">${ladder(m,true)}<span class="muted" style="font-size:12px">${esc(m.dept||'')}</span></div></div><div class="row" style="gap:6px">${k?`<span class="muted num">${g.length}/${MAXG}</span>`:mentorItemDots(m)}</div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn sm" data-email="${m.id}${k?'|'+k:''}">✉ תבנית מייל</button>${sentOf(m.id,k||1)?`<span class="chip ok">מייל נשלח</span>`:''}</div>
       ${evs.map(x=>`<div class="gm${x.mt.status==='proposed'?' prop':''}"><div class="l"><b data-sel="${x.eid}" data-role="mentee">${esc(fullName(x.e))}</b> <span class="muted" style="font-size:12px">${esc(x.e?stageShort(x.e):'')} · ${esc(x.e?.dept||'')}</span>${x.ev.hard.length&&!x.mt.override?`<div class="row">${x.ev.hard.map(t=>`<span class="chip hard">${esc(t)}</span>`).join('')}</div>`:''}${x.ev.warn.length?`<div class="row">${x.ev.warn.map(t=>`<span class="chip warn">${esc(t)}</span>`).join('')}</div>`:''}</div>${x.mt.status==='proposed'?`<button class="btn sm" data-approve="${x.eid}" ${S.readOnly?'disabled':''}>אישור</button>`:''}</div>`).join('')||'<span class="muted">אין חניכות</span>'}
     </div>`;}).join('')+`</div>`;
   if(!mentors.length) h+=`<div class="panel empty"><b>אין עדיין קבוצות בתחום</b>שבצי בלוח השיבוץ, או השתמשי ב"הצעת שיבוץ אוטומטית".</div>`;
@@ -1574,7 +1600,7 @@ function vPeople(){
         <td style="white-space:nowrap">${roleToggles(p)}</td>
         <td style="white-space:nowrap">${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td title="${esc(p.track)}">${esc(p.track)}</td>
         <td>${leadSel(p)}</td>
-        <td>${p.mentor?`<span class="num">${g.length}/${MAXG}</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
+        <td>${p.mentor?`<span class="num">${g.length}/${capOf(p)}</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
         <td dir="ltr" style="text-align:right">${esc(p.email)}</td><td dir="ltr" style="text-align:right;white-space:nowrap">${esc(p.phone)}</td><td title="${esc(p.prev)}">${esc(p.prev)}</td><td>${esc(p.program)}</td>
         <td>${isActive(p)?'פעילה':'<span class="chip hard">לא פעילה</span>'}</td>
         <td class="ptnotes" title="${esc(p.notes)}">${esc(p.notes)}</td></tr>`;}).join('')||`<tr><td colspan="15" class="empty">אין משתתפות שמתאימות לסינון.</td></tr>`}</tbody></table></div>`;
@@ -1626,10 +1652,11 @@ function partAgg(){
   for(const p of S.people.values()){
     if(trackOf(p)!=='reg') continue;
     const mt=S.matches.get(p.id);
-    if(mt&&P(mt.mentor)){ const m=P(mt.mentor); add(leaderOf(m),x=>{x.total++;x.placed++;x.mentees++; if(A(m.id).emailSent) x.mailed++;}); continue; }
+    if(mt&&P(mt.mentor)){ const m=P(mt.mentor); const ok=sentOf(m.id,nGroups(m)===2?(mt.grp||1):1); add(leaderOf(m),x=>{x.total++;x.placed++;x.mentees++; if(ok) x.mailed++;}); continue; }
     if(regMentor(p)&&isCo(p.id)){ const h=P(IDX.coHost.get(p.id)); const n=h?groupOf(h.id).length:0; add(h?leaderOf(h):leaderOf(p),x=>{x.total++;x.mentors++; if(n){x.placed++; if(A(h.id).emailSent) x.mailed++;}}); continue; }
     if(!isActive(p)) continue;
-    if(regMentor(p)){ const n=groupOf(p.id).length; add(leaderOf(p),x=>{x.total++;x.mentors++;x.seats+=Math.max(0,capOf(p)-n); if(n){x.placed++;x.groups++; if(A(p.id).emailSent) x.mailed++;}}); continue; }
+    if(regMentor(p)){ const n=groupOf(p.id).length; const two=nGroups(p)===2; const ng=two?[1,2].filter(k=>groupOfG(p.id,k).length).length:(n?1:0); const mailedAll=ng&&(two?[1,2].filter(k=>groupOfG(p.id,k).length).every(k=>sentOf(p.id,k)):sentOf(p.id,1));
+      add(leaderOf(p),x=>{x.total++;x.mentors++;x.seats+=Math.max(0,capOf(p)-n); if(n){x.placed++;x.groups+=ng; if(mailedAll) x.mailed++;}}); continue; }
     if(regMentee(p)) add(leaderOf(p),x=>{x.total++;x.mentees++;});
   }
   for(const x of [all,...by.values()]) x.open=x.total-x.placed;
@@ -1798,6 +1825,7 @@ function logText(l){
     case 'auto': return `יצרה ${l.n} הצעות שיבוץ אוטומטיות`;
     case 'import': return `ייבאה ${l.n} נרשמות${l.replace?' (החלפה מלאה)':''}`;
     case 'clear': return 'מחקה את כל הנתונים';
+    case 'groups': return `${l.n===2?'פתחה קבוצה שנייה ל':'סגרה את קבוצה ב של '}${n(l.m)}`;
     case 'delete': return `מחקה ${l.n===1?'את '+esc((l.names||[])[0]||'משתתפת'):l.n+' משתתפות'}`;
     case 'split': return `חילקה ${l.n} חונכות בתחום ${esc(l.area||'')}`;
     case 'bulklead': return `שייכה ${l.n} משתתפות ל${esc(l.to?leaderFull(l.to):'"ללא מובילה"')}`;
@@ -1885,14 +1913,15 @@ async function exportXlsx(){
     const sheet=(name,cols)=>{ const ws=wb.addWorksheet(name,{views:[{rightToLeft:true,state:'frozen',ySplit:1}]}); ws.columns=cols.map(c=>({header:c[0],key:c[0],width:c[1]||14,hidden:!!c[2]})); const h=ws.getRow(1); h.font={bold:true,color:{argb:'FFFFFFFF'}}; h.fill=HEAD; h.alignment={vertical:'middle',horizontal:'right'}; h.height=20; ws.autoFilter={from:{row:1,column:1},to:{row:1,column:cols.length}}; return ws; };
     const band=(ws,row,on,fill)=>{ if(on) row.eachCell({includeEmpty:true},c=>{ c.fill=fill||BAND; }); };
     const st=p=>p?stageShort(p):''; const L=m=>leaderOf(m)?leaderFull(leaderOf(m)):'ללא מובילה';
-    const sent=m=>m&&A(m.id).emailSent?'✔':'';
+    const sent=m=>m&&sentOf(m.id,1)?'✔':'';
     // 1. groups
-    const ws1=sheet('קבוצות',[['מובילה',14],['חונכת',18],['שלב חונכת',12],['מחלקת חונכת',18],['מייל חונכת',26],['טלפון חונכת',14],['חונכת שותפה',18],['מס׳ בקבוצה',9],['חניכה',18],['שלב חניכה',12],['מחלקת חניכה',18],['מייל חניכה',26],['טלפון חניכה',14],['סטטוס',10],['נשלח מייל',10],['שובצה ע״י',12],['מזהה חונכת',12,1],['מזהה חניכה',12,1]]);
+    const ws1=sheet('קבוצות',[['מובילה',14],['חונכת',18],['שלב חונכת',12],['מחלקת חונכת',18],['מייל חונכת',26],['טלפון חונכת',14],['חונכת שותפה',18],['קבוצה',8],['מס׳ בקבוצה',9],['חניכה',18],['שלב חניכה',12],['מחלקת חניכה',18],['מייל חניכה',26],['טלפון חניכה',14],['סטטוס',10],['נשלח מייל',10],['שובצה ע״י',12],['מזהה חונכת',12,1],['מזהה חניכה',12,1]]);
     const mentors=[...S.people.values()].filter(m=>groupOf(m.id).length).sort((a,b)=>L(a).localeCompare(L(b),'he')||(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
-    let alt=false, nGroups=0;
-    for(const m of mentors){ alt=!alt; nGroups++; const co=coOf(m.id)?P(coOf(m.id)):null;
-      groupOf(m.id).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||fullName(a).localeCompare(fullName(b),'he')).forEach((e,i)=>{ const mt=S.matches.get(e.id)||{};
-        const r=ws1.addRow([L(m),fullName(m),st(m),m.dept||'',m.email||'',m.phone||'',co?fullName(co):'',i+1,fullName(e),st(e),e.dept||'',e.email||'',e.phone||'',mt.status==='proposed'?'הצעה':'מאושר',sent(m),leaderFull(mt.by)||'',m.id,e.id]); band(ws1,r,alt); }); }
+    let alt=false, nGrp=0;
+    for(const m of mentors){ const co=coOf(m.id)?P(coOf(m.id)):null; const two=nGroups(m)===2;
+      for(const k of two?[1,2]:[0]){ const list=k?groupOfG(m.id,k):groupOf(m.id); if(!list.length) continue; alt=!alt; nGrp++;
+      list.map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||fullName(a).localeCompare(fullName(b),'he')).forEach((e,i)=>{ const mt=S.matches.get(e.id)||{};
+        const r=ws1.addRow([L(m),fullName(m),st(m),m.dept||'',m.email||'',m.phone||'',co?fullName(co):'',k?GL(k):'',i+1,fullName(e),st(e),e.dept||'',e.email||'',e.phone||'',mt.status==='proposed'?'הצעה':'מאושר',sentOf(m.id,k||1)?'✔':'',leaderFull(mt.by)||'',m.id,e.id]); band(ws1,r,alt); }); } }
     // 2. PhD
     const ws2=sheet('דוקטורנטיות',[['מחלקה',16],['קבוצה',10],['חונכת',18],['שלב חונכת',12],['מחלקת חונכת',18],['מייל חונכת',26],['טלפון חונכת',14],['דוקטורנטית',18],['שלב',12],['מחלקה',18],['מייל',26],['טלפון',14],['נשלח מייל',10],['מזהה קבוצה',12,1],['מזהה חונכת',12,1],['מזהה דוקטורנטית',12,1]]);
     const FAC=Object.keys(PHD_FAC); alt=false;
@@ -1945,7 +1974,7 @@ async function exportXlsx(){
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
     a.download=`shibutzim-meduyakot-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.xlsx`;
     document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
-    toast(`הקובץ ירד: ${nGroups} קבוצות`);
+    toast(`הקובץ ירד: ${nGrp} קבוצות`);
   }catch(e){ console.error(e); toast('לא הצלחתי ליצור את קובץ האקסל. נסי שוב.',true); }
   S.busy=''; render();
 }
@@ -2000,7 +2029,12 @@ document.addEventListener('click',async ev=>{
   if(d.ss){ S.suggScope=d.ss; render(); return; }
   if(d.pr){ S.peopleRole=d.pr; render(); return; }
   if(d.aopen){ S.alertsOpen[d.aopen]=!S.alertsOpen[d.aopen]; render(); return; }
-  if(d.assign){ const [e,m]=d.assign.split('|'); t.disabled=true; await assign(e,m,{expected:S.matches.get(e)?.mentor||null}).catch(()=>{}); return; }
+  if(d.assign){ const [e,m,gs]=d.assign.split('|'); t.disabled=true; await assign(e,m,{expected:S.matches.get(e)?.mentor||null,grp:gs?+gs:undefined}).catch(()=>{}); return; }
+  if(d.grpn){ if(S.readOnly) return; const [mid,n]=d.grpn.split('|'); const m=P(mid); if(+n===1&&groupOfG(mid,2).length){ toast('קודם צריך להעביר או להסיר את החניכות מקבוצה ב',true); return; }
+    await setAnn(mid,{groups:+n===2?2:null}).catch(()=>{}); toast(+n===2?`ל${fullName(m)} יש עכשיו שתי קבוצות`:`קבוצה ב של ${fullName(m)} נסגרה`); logAct('groups',{m:mid,n:+n}); return; }
+  if(d.movegrp){ if(S.readOnly) return; const [eid,gs]=d.movegrp.split('|'); const mt=S.matches.get(eid); if(!mt) return; const g=+gs;
+    if(groupOfG(mt.mentor,g).length>=MAXG){ toast(`קבוצה ${GL(g)} כבר מלאה`,true); return; } t.disabled=true;
+    try{ await W(()=>sb.from('matches').update({grp:g}).eq('mentee_id',eid)); toast(`${fullName(P(eid))} הועברה לקבוצה ${GL(g)}`); }catch(e){ toast('כדי להעביר בין קבוצות צריך להריץ קודם את update-07-two-groups.sql ב־Supabase',true); } return; }
   if(d.override){ S.overrideFor=d.override; render(); setTimeout(()=>$('#ovr')?.focus(),0); return; }
   if(d.unassign){ t.disabled=true; await unassign(d.unassign).catch(()=>{}); return; }
   if(d.approve){ t.disabled=true; await approve([d.approve]).catch(()=>{}); return; }
@@ -2040,8 +2074,8 @@ document.addEventListener('click',async ev=>{
     case 'copyTo': { const em=buildEmail(S.emailFor); try{ await navigator.clipboard.writeText(em.to); toast('כתובת המייל הועתקה'); }catch(e){ toast('ההעתקה נחסמה. סמני את הטקסט והעתיקי ידנית.',true); } break; }
     case 'copySubj': { const em=buildEmail(S.emailFor); try{ await navigator.clipboard.writeText(em.subject); toast('הנושא הועתק'); }catch(e){ toast('ההעתקה נחסמה. סמני את הטקסט והעתיקי ידנית.',true); } break; }
     case 'copyBody': { const em=buildEmail(S.emailFor); toast(await copyRich(em.html,em.plain)?'גוף המייל הועתק, כולל הטבלה. אפשר להדביק במייל.':'ההעתקה נחסמה. סמני את הטקסט בתצוגה והעתיקי ידנית.',!0&&false); break; }
-    case 'emailSent': await setAnn(S.emailFor,{emailSent:Date.now()}).catch(()=>{}); logAct('email',{m:S.emailFor}); break;
-    case 'emailUnsent': await setAnn(S.emailFor,{emailSent:null}).catch(()=>{}); break;
+    case 'emailSent': { const [mid,gs]=String(S.emailFor).split('|'); await setAnn(mid,{[sentKey(+gs||1)]:Date.now()}).catch(()=>{}); logAct('email',{m:mid}); break; }
+    case 'emailUnsent': { const [mid,gs]=String(S.emailFor).split('|'); await setAnn(mid,{[sentKey(+gs||1)]:null}).catch(()=>{}); break; }
     case 'tplSave': { const subject=($('#tplSubj')?.value||'').trim(), html=sanitizeHtml($('#tplEditor')?.innerHTML||''); await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{subject,html}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('התבנית נשמרה'); render(); }).catch(()=>{}); break; }
     case 'tplReset': if(S.clearStep!=='tpl'){ S.clearStep='tpl'; toast('לחצי שוב כדי לחזור לנוסח המקורי. השינויים שלך יימחקו.'); break; } S.clearStep=0; await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('הוחזר הנוסח המקורי'); }).catch(()=>{}); render(); break;
     case 'coPick': S.coPick=S.sel; S.coQ=''; render(); setTimeout(()=>$('#coQ')?.focus(),0); break;

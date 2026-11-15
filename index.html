@@ -375,6 +375,9 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.btn.danger{color:var(--hard);border-color:currentColor}
+.prow .hidebtn{font-size:12px;opacity:.6}
+.prow:hover .hidebtn{opacity:1}
 .gap details{margin:6px 0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .gap summary{cursor:pointer;font-weight:600}
 .gaptbl{min-width:0;width:100%;font-size:12px;margin-top:6px}
@@ -1111,6 +1114,7 @@ function vDetail(p){
       <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
       ${p.mentor?(()=>{ const f=p.mentorWithMale||''; const auto=/^כן|בטח|בשמחה|לא משנה/.test(f)?'yes':/^לא(?! משנה)/.test(f)?'no':''; const v=a.withMale??auto;
         return `<div><label for="withMale">מסכימה לחנוך עם חונך?</label><select id="withMale" data-ann="withMale" ${S.readOnly?'disabled':''}><option value="" ${!v?'selected':''}>לא ידוע</option><option value="yes" ${v==='yes'?'selected':''}>כן</option><option value="no" ${v==='no'?'selected':''}>לא</option></select><div class="muted" style="font-size:12px;margin-top:4px">${f?'בטופס: '+esc(f):'לא ענתה בטופס'}${a.withMale!=null&&a.withMale!==auto?' · עודכן ע״י מובילה':''}</div></div>`; })():''}
+      ${S.role==='admin'?`<div style="grid-column:1/-1;text-align:left"><button class="btn sm danger" data-act="delOne" data-id="${p.id}">${S.clearStep==='del1'?'לחצי שוב למחיקה לצמיתות':'🗑 מחיקת המשתתפת'}</button></div>`:''}
       <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
     </div>
   </div>`;
@@ -1562,7 +1566,7 @@ function vPeople(){
     ${S.addOpen?vAddPerson():''}
     <div class="ptbar" style="justify-content:space-between">
       <span class="muted"><b class="num" style="color:var(--ink)">${rows.length}</b> משתתפות מוצגות${selN?` · <b class="num" style="color:var(--ink)">${selN}</b> מסומנות`:''}</span>
-      ${S.readOnly?'':`<span class="row">${selN?`<label for="bulkLead" class="muted">שיוך המסומנות ל:</label><select id="bulkLead">${opt('','—','x')}${leads.map(l=>opt(l.email,leaderFull(l.email),'x')).join('')}<option value="__clear">ללא מובילה</option></select><button class="btn sm primary" data-act="bulkLead">שיוך</button><button class="link" data-act="ptSelNone">ביטול סימון</button>`:'<span class="muted" style="font-size:12px">אפשר לסמן כמה שורות ולשייך את כולן בבת אחת</span>'}</span>`}
+      ${S.readOnly?'':`<span class="row">${selN?`<label for="bulkLead" class="muted">שיוך המסומנות ל:</label><select id="bulkLead">${opt('','—','x')}${leads.map(l=>opt(l.email,leaderFull(l.email),'x')).join('')}<option value="__clear">ללא מובילה</option></select><button class="btn sm primary" data-act="bulkLead">שיוך</button>${S.role==='admin'?`<button class="btn sm danger" data-act="ptDelete" title="מחיקה לצמיתות, כולל השיבוצים שלהן">${S.clearStep==='ptdel'?`לחצי שוב כדי למחוק ${selN} לצמיתות`:`🗑 מחיקת ${selN} המסומנות`}</button>`:''}<button class="link" data-act="ptSelNone">ביטול סימון</button>`:'<span class="muted" style="font-size:12px">אפשר לסמן כמה שורות ולשייך את כולן בבת אחת</span>'}</span>`}
     </div>
     <div class="panel tablewrap pt"><table><thead><tr>${S.readOnly?'':`<th style="width:32px"><input type="checkbox" id="ptAll" aria-label="סימון כל השורות המוצגות" ${allOn?'checked':''}></th>`}${PT_COLS.map(th).join('')}</tr></thead><tbody>${rows.map(p=>{
       const mt=S.matches.get(p.id); const g=groupOf(p.id);
@@ -1704,11 +1708,14 @@ function vProgress(){
   if(S.progSort==='low') rows.sort((x,y)=>pct(x.pc.placed,x.pc.total)-pct(y.pc.placed,y.pc.total)||y.pc.open-x.pc.open);
   else if(S.progSort==='top') rows.sort((x,y)=>pct(y.pc.placed,y.pc.total)-pct(x.pc.placed,x.pc.total)||y.pc.placed-x.pc.placed);
   const badges=pc=>[pc.total&&pc.placed===pc.total?'<span class="pbadge" title="כל המשתתפות שובצו">🏁 הכול שובץ</span>':'',pc.placed&&pc.mailed===pc.placed?'<span class="pbadge" title="כל הקבוצות קיבלו מייל">✉️ כל המיילים נשלחו</span>':''].join('');
+  const hidden=new Set((S.metaKV.progHidden||{}).emails||[]); const hiddenRows=rows.filter(r=>hidden.has(r.id)); rows=rows.filter(r=>!hidden.has(r.id));
+  const isAdm=S.role==='admin';
   const prow=(r,go)=>{ const pc=r.pc; return `<div class="prow"><button class="an" ${go}><span class="medal">${medal[r.id]||''}</span>${esc(r.name)}</button>${lbar(pc)}<span class="cnt muted num" title="משתתפות משובצות מתוך כל המשתתפות">${pc.placed}/${pc.total}</span><span class="pct">${pct(pc.placed,pc.total)}%</span>
-      <div class="sub"><span>${pc.mentors} חונכות · ${pc.mentees} חניכות</span><span>${pc.groups} קבוצות</span><span class="mailtxt">✉️ ${pc.mailed} קיבלו מייל</span>${badges(pc)}</div></div>`; };
+      <div class="sub">${isAdm&&r.id!=='__phd'?`<button class="link hidebtn" data-hidelead="${esc(r.id)}" title="הסתרה מלוח המובילות (רק התצוגה, הנתונים נשארים)">הסתרה</button>`:''}<span>${pc.mentors} חונכות · ${pc.mentees} חניכות</span><span>${pc.groups} קבוצות</span><span class="mailtxt">✉️ ${pc.mailed} קיבלו מייל</span>${badges(pc)}</div></div>`; };
   h+=`<div class="sec-head"><div><h3>🏅 לוח המובילות</h3><p class="muted">כמה מהמשתתפות של כל מובילה כבר בקבוצה. לחיצה על שם עוברת לשיבוצים שלה.</p></div><div class="seg"><button data-psort="order" aria-pressed="${S.progSort==='order'}">לפי שם</button><button data-psort="top" aria-pressed="${S.progSort==='top'}">המובילות קודם</button><button data-psort="low" aria-pressed="${S.progSort==='low'}">צריכות עזרה קודם</button></div></div>
     <div class="panel prog">${rows.map(r=>prow(r,`data-golead="${esc(r.id)}" title="מעבר לשיבוצים של המובילה"`)).join('')||'<div class="empty">עדיין אין מובילות ברשימה. מוסיפים אותן בלשונית מובילות.</div>'}
-    ${ph?prow({id:'__phd',name:'🎓 דוקטורנטיות',pc:ph},'data-tab="phd" title="מעבר ללשונית דוקטורנטיות"'):''}</div>`;
+    ${ph?prow({id:'__phd',name:'🎓 דוקטורנטיות',pc:ph},'data-tab="phd" title="מעבר ללשונית דוקטורנטיות"'):''}</div>
+    ${hiddenRows.length?`<p class="muted" style="font-size:12px;margin:6px 2px">מוסתרות מהלוח: ${hiddenRows.map(r=>isAdm?`<button class="link" data-showlead="${esc(r.id)}" title="החזרה ללוח">${esc(r.name)} ↩</button>`:esc(r.name)).join(' · ')}. הן עדיין נספרות בסה״כ למעלה.</p>`:''}`;
   h+=vRegStats(all);
   return h;
 }
@@ -1792,6 +1799,7 @@ function logText(l){
     case 'auto': return `יצרה ${l.n} הצעות שיבוץ אוטומטיות`;
     case 'import': return `ייבאה ${l.n} נרשמות${l.replace?' (החלפה מלאה)':''}`;
     case 'clear': return 'מחקה את כל הנתונים';
+    case 'delete': return `מחקה ${l.n===1?'את '+esc((l.names||[])[0]||'משתתפת'):l.n+' משתתפות'}`;
     case 'split': return `חילקה ${l.n} חונכות בתחום ${esc(l.area||'')}`;
     case 'bulklead': return `שייכה ${l.n} משתתפות ל${esc(l.to?leaderFull(l.to):'"ללא מובילה"')}`;
     case 'role': return `${l.v?'הוסיפה':'הסירה'} את התפקיד ${l.k==='roleMentor'?'"חונכת"':'"חניכה"'} ${l.v?'ל':'מ'}${n(l.m)}`;
@@ -1840,7 +1848,7 @@ async function doImport(){
 }
 async function doClear(){
   S.busy='מוחקת…'; S.clearStep=0; render();
-  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,prevYear,prevYearLink)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
+  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,prevYear,prevYearLink,progHidden)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
   S.busy=''; S.sel=null; render();
 }
 function exportRows(){
@@ -1850,6 +1858,21 @@ function exportRows(){
   for(const {e,m,mt} of list) rows.push([leaderFull(leaderOf(m))||'',coOf(m.id)?fullName(P(coOf(m.id))):'',fullName(m),stageShort(m),m.dept,m.email,m.phone,fullName(e),stageShort(e),e.dept,e.email,e.phone,mt.status==='proposed'?'הצעה':'מאושר',leaderFull(mt.by)]);
   for(const g of S.phd.values()){ const m=P(g.mentor); for(const id of g.members){ const e=P(id); if(!e) continue; rows.push(['דוקטורנטיות · '+PHD_FAC[g.faculty]+' · '+phdLabel(g),'',m?fullName(m):'',m?stageShort(m):'',m?m.dept:'',m?m.email:'',m?m.phone:'',fullName(e),stageShort(e),e.dept,e.email,e.phone,m?'מאושר':'בלי חונכת',leaderFull(g.by)]); } }
   return rows;
+}
+// מחיקת משתתפות לצמיתות (מנהלות בלבד). השיבוצים וההערות שלהן נמחקים איתן.
+async function deletePeople(ids){
+  const set=new Set(ids);
+  if(!S.phdMissing) for(const g of [...S.phd.values()]){
+    const mem=g.members.filter(id=>!set.has(id)), lostMentor=set.has(g.mentor);
+    if(mem.length===g.members.length&&!lostMentor) continue;
+    if(!mem.length) await W(()=>sb.from('phd_groups').delete().eq('id',g.id));
+    else await W(()=>sb.from('phd_groups').update({members:mem,...(lostMentor?{mentor_id:null}:{})}).eq('id',g.id));
+  }
+  for(let i=0;i<ids.length;i+=100){ const chunk=ids.slice(i,i+100);
+    await W(()=>sb.from('matches').delete().in('mentee_id',chunk)); await W(()=>sb.from('matches').delete().in('mentor_id',chunk));
+    await W(()=>sb.from('ann').delete().in('person_id',chunk));
+    await W(()=>sb.from('people').delete().in('id',chunk)); }
+  logAct('delete',{n:ids.length,names:ids.slice(0,20).map(id=>fullName(P(id)))});
 }
 /* ================= Excel export (full program, same file for everyone) ================= */
 function loadScript(src){ return new Promise((res,rej)=>{ const x=document.createElement('script'); x.src=src; x.onload=res; x.onerror=()=>rej(new Error('load')); document.head.appendChild(x); }); }
@@ -1895,7 +1918,17 @@ async function exportXlsx(){
     const tr=ws4.addRow(['סה״כ',...sum]); tr.font={bold:true}; band(ws4,tr,true);
     ws4.getColumn(4).numFmt='0%';
     ws4.addRow([]); ws4.addRow([`הקובץ נוצר ב־${new Date().toLocaleString('he-IL')} על ידי ${leaderFull(S.uid)||S.uid||''}`]).font={italic:true,color:{argb:'FF666666'}};
-    // 5. email template
+    // 5. all participants
+    const wsA=sheet('כל המשתתפות',[['שם פרטי',12],['שם משפחה',14],['מייל',26],['טלפון',14],['תפקיד',14],['מסלול',12],['שלב',14],['פקולטה',13],['בית ספר',18],['בית ספר נוסף',16],['מובילה',14],['סטטוס',10],['שיבוץ',30],['בנוח עם חונך (כחניכה)',14],['מסכימה לחנוך עם חונך',14],['הערות מהטופס',40],['הערת מובילות',30],['מזהה',12,1]]);
+    const yesNo=v=>v==='yes'?'כן':v==='no'?'לא':'';
+    [...S.people.values()].sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||(a.rank||0)-(b.rank||0)||fullName(a).localeCompare(fullName(b),'he')).forEach(p=>{
+      const a=A(p.id), mt=S.matches.get(p.id), mm=mt&&P(mt.mentor), gq=groupOf(p.id).length, pg=S.phdMissing?null:phdGroupOf(p.id), pmg=S.phdMissing?null:phdMentorGroup(p.id);
+      const plc=[mm&&`חניכה אצל ${fullName(mm)}${mt.status==='proposed'?' (הצעה)':''}`, gq&&`חונכת של ${gq} חניכות`, isCo(p.id)&&`חונכת שותפה עם ${fullName(P(IDX.coHost.get(p.id)))}`, pg&&`חניכה ב${phdLabel(pg)} (דוקטורנטיות)`, pmg&&`חונכת של ${phdLabel(pmg)} (דוקטורנטיות)`].filter(Boolean).join(' · ')||'עדיין לא שובצה';
+      const tr=trackOf(p);
+      const r=wsA.addRow([p.first||'',p.last||'',p.email||'',p.phone||'',[p.mentor&&'חונכת',p.mentee&&'חניכה'].filter(Boolean).join(' + ')||'לא צוין',tr==='phd'?'דוקטורנטיות':tr==='reg'?'רגיל':'לא נספרת',stageShort(p),SCHOOL_NAME[p.school]||'',p.dept||'',p.dept2||'',personLeader(p)?leaderFull(personLeader(p)):'',isActive(p)?'פעילה':'לא פעילה',plc,p.mentee?(p.okMale||''):'',p.mentor?(a.withMale!=null?yesNo(a.withMale):(p.mentorWithMale||'')):'',p.notes||'',a.leaderNote||'',p.id]);
+      if(!isActive(p)) r.font={color:{argb:'FF999999'}};
+    });
+    // 6. email template
     const t=tplNow();
     const ws5=wb.addWorksheet('נוסח המייל',{views:[{rightToLeft:true}]});
     ws5.getColumn(1).width=110; ws5.getColumn(1).alignment={wrapText:true,vertical:'top',horizontal:'right'};
@@ -1977,6 +2010,8 @@ document.addEventListener('click',async ev=>{
   if(d.aleader){ const [aid,em]=d.aleader.split('|'); const a=S.areas.get(aid); let ls=[...(a.leaders||[])]; ls=ls.includes(em)?ls.filter(x=>x!==em):[...ls,em]; await W(()=>sb.from('areas').update({leaders:ls}).eq('id',aid)).catch(()=>{}); return; }
   if(d.ssec){ S.settingsSec=d.ssec; render(); return; }
   if(d.psort){ S.progSort=d.psort; render(); return; }
+  if((d.hidelead||d.showlead)&&S.role==='admin'){ const cur=new Set((S.metaKV.progHidden||{}).emails||[]); if(d.hidelead) cur.add(d.hidelead); else cur.delete(d.showlead);
+    await W(()=>sb.from('meta').upsert({key:'progHidden',data:{emails:[...cur]}})).catch(()=>{}); return; }
   if(d.golead){ S.area=d.golead; try{localStorage.setItem('shibutz.lead',S.area);}catch(e){} S.tab='board'; S.mentorScope='area'; pushPresence(); render(); window.scrollTo(0,0); return; }
   if(d.split){ await splitArea(d.split).catch(()=>{}); return; }
   if(d.goarea){ S.area=d.goarea; try{localStorage.setItem('shibutz.lead',S.area);}catch(e){} S.tab='board'; S.listMode='open'; pushPresence(); render(); window.scrollTo(0,0); return; }
@@ -1994,7 +2029,12 @@ document.addEventListener('click',async ev=>{
     case 'closeSettings': S.settingsOpen=false; S.clearStep=0; render(); break;
     case 'closeSettingsBg': if(ev.target===t){ S.settingsOpen=false; S.clearStep=0; render(); } break;
     case 'ptClear': S.pt={...S.pt,q:'',role:'all',school:'',dept:'',stage:'',lead:'',match:'',status:''}; render(); break;
-    case 'ptSelNone': S.ptSel.clear(); render(); break;
+    case 'ptSelNone': S.ptSel.clear(); S.clearStep=0; render(); break;
+    case 'delOne': { if(S.role!=='admin'||!d.id) break; if(S.clearStep!=='del1'){ S.clearStep='del1'; render(); setTimeout(()=>{ if(S.clearStep==='del1'){ S.clearStep=0; render(); } },6000); break; }
+      S.clearStep=0; const nm=fullName(P(d.id)); try{ await deletePeople([d.id]); S.sel=null; toast(`${nm} נמחקה`); }catch(e){ toast('המחיקה נכשלה',true); } render(); break; }
+    case 'ptDelete': { if(S.role!=='admin') break; const ids=[...S.ptSel].filter(id=>S.people.has(id)); if(!ids.length) break;
+      if(S.clearStep!=='ptdel'){ S.clearStep='ptdel'; render(); setTimeout(()=>{ if(S.clearStep==='ptdel'){ S.clearStep=0; render(); } },6000); break; }
+      S.clearStep=0; try{ await deletePeople(ids); S.ptSel.clear(); toast(`נמחקו ${ids.length} משתתפות`); }catch(e){ toast('המחיקה נכשלה. ייתכן שאין לך הרשאה.',true); } render(); break; }
     case 'bulkLead': { const v=$('#bulkLead')?.value; if(!v){ toast('בחרי מובילה מהרשימה',true); break; } const ids=[...S.ptSel]; const lead=v==='__clear'?'':v; const now=new Date().toISOString(); const rows=ids.map(id=>{ const {by,at,...cur}=S.ann.get(id)||{}; return {person_id:id,data:{...cur,leader:lead},by_email:S.uid,at:now}; }); try{ for(let i=0;i<rows.length;i+=100) await W(()=>sb.from('ann').upsert(rows.slice(i,i+100))); toast(`${ids.length} משתתפות שויכו ל${lead?leaderFull(lead):'"ללא מובילה"'}`); logAct('bulklead',{n:ids.length,to:lead||null}); S.ptSel.clear(); render(); }catch(e){} break; }
     case 'phdCreate': { const ids=[...S.phdSel]; if(!ids.length||ids.length>3) break; if(ids.some(id=>phdGroupOf(id))){ toast('אחת המסומנות כבר בקבוצה',true); break; } const ord=Math.max(0,...[...S.phd.values()].map(g=>g.order||0))+1; await phdWrite(()=>sb.from('phd_groups').insert({faculty:S.phdFac,members:ids,ord,by_email:S.uid}),'הקבוצה נוצרה'); S.phdSel.clear(); logAct('phd',{what:'create',n:ids.length}); render(); break; }
     case 'phdAdd': { const g=S.phd.get(S.phdGroup); const ids=[...S.phdSel]; if(!g||g.members.length+ids.length>3) break; await phdWrite(()=>sb.from('phd_groups').update({members:[...g.members,...ids],by_email:S.uid,at:new Date().toISOString()}).eq('id',g.id),`נוספו ל${phdLabel(g)}`); S.phdSel.clear(); render(); break; }

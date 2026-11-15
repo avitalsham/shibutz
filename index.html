@@ -1114,7 +1114,6 @@ function vDetail(p){
       <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
       ${p.mentor?(()=>{ const f=p.mentorWithMale||''; const auto=/^כן|בטח|בשמחה|לא משנה/.test(f)?'yes':/^לא(?! משנה)/.test(f)?'no':''; const v=a.withMale??auto;
         return `<div><label for="withMale">מסכימה לחנוך עם חונך?</label><select id="withMale" data-ann="withMale" ${S.readOnly?'disabled':''}><option value="" ${!v?'selected':''}>לא ידוע</option><option value="yes" ${v==='yes'?'selected':''}>כן</option><option value="no" ${v==='no'?'selected':''}>לא</option></select><div class="muted" style="font-size:12px;margin-top:4px">${f?'בטופס: '+esc(f):'לא ענתה בטופס'}${a.withMale!=null&&a.withMale!==auto?' · עודכן ע״י מובילה':''}</div></div>`; })():''}
-      ${S.role==='admin'?`<div style="grid-column:1/-1;text-align:left"><button class="btn sm danger" data-act="delOne" data-id="${p.id}">${S.clearStep==='del1'?'לחצי שוב למחיקה לצמיתות':'🗑 מחיקת המשתתפת'}</button></div>`:''}
       <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
     </div>
   </div>`;
@@ -2030,8 +2029,6 @@ document.addEventListener('click',async ev=>{
     case 'closeSettingsBg': if(ev.target===t){ S.settingsOpen=false; S.clearStep=0; render(); } break;
     case 'ptClear': S.pt={...S.pt,q:'',role:'all',school:'',dept:'',stage:'',lead:'',match:'',status:''}; render(); break;
     case 'ptSelNone': S.ptSel.clear(); S.clearStep=0; render(); break;
-    case 'delOne': { if(S.role!=='admin'||!d.id) break; if(S.clearStep!=='del1'){ S.clearStep='del1'; render(); setTimeout(()=>{ if(S.clearStep==='del1'){ S.clearStep=0; render(); } },6000); break; }
-      S.clearStep=0; const nm=fullName(P(d.id)); try{ await deletePeople([d.id]); S.sel=null; toast(`${nm} נמחקה`); }catch(e){ toast('המחיקה נכשלה',true); } render(); break; }
     case 'ptDelete': { if(S.role!=='admin') break; const ids=[...S.ptSel].filter(id=>S.people.has(id)); if(!ids.length) break;
       if(S.clearStep!=='ptdel'){ S.clearStep='ptdel'; render(); setTimeout(()=>{ if(S.clearStep==='ptdel'){ S.clearStep=0; render(); } },6000); break; }
       S.clearStep=0; try{ await deletePeople(ids); S.ptSel.clear(); toast(`נמחקו ${ids.length} משתתפות`); }catch(e){ toast('המחיקה נכשלה. ייתכן שאין לך הרשאה.',true); } render(); break; }

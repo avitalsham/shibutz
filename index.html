@@ -708,7 +708,7 @@ const STAGE_ORDER=r=>r==null?-1:r;
 function stageGroup(p){ const r=p.rank; if(r==null) return 'שלב לא ידוע'; if(r>=50) return 'חברת סגל'; if(r>=40) return 'פוסט דוקטורט'; if(r>=30) return 'תואר שלישי'; if(r>=20) return 'תואר שני'; return 'תואר ראשון · שנה '+HEB_YEAR[r-10]; }
 const byStage=(a,b)=>STAGE_ORDER(b.rank)-STAGE_ORDER(a.rank);
 function roleFor(p,hint){ if(!p) return null; if(hint==='mentor'&&p.mentor) return 'mentor'; if(hint==='mentee'&&p.mentee) return 'mentee'; if(p.mentee&&!p.mentor) return 'mentee'; if(p.mentor&&!p.mentee) return 'mentor'; if(groupOf(p.id).length&&!S.matches.has(p.id)) return 'mentor'; return p.mentor&&!p.mentee?'mentor':(p.mentee?'mentee':null); }
-const ADMIN_TABS=['people','data'];
+const ADMIN_TABS=['data'];
 function rebuild(){
   for(const p of S.people.values()){ if(p._mentee0===undefined){ p._mentee0=!!p.mentee; p._mentor0=!!p.mentor; } const a=A(p.id); p.mentee=typeof a.roleMentee==='boolean'?a.roleMentee:p._mentee0; p.mentor=typeof a.roleMentor==='boolean'?a.roleMentor:p._mentor0; }
   IDX.byMentor=new Map();
@@ -1016,7 +1016,7 @@ function renderTabs(){
   const al=S.loaded.people?computeAlerts():[];
   const hard=al.filter(a=>a.sev==='hard').reduce((s,a)=>s+a.items.length,0);
   const warn=al.filter(a=>a.sev==='warn').reduce((s,a)=>s+a.items.length,0);
-  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['phd','דוקטורנטיות'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],...(S.role==='admin'?[['people','משתתפות'],['data','ייבוא וייצוא'],['team','מובילות']]:[['team','החשבון שלי']]),['compare','השוואה לשנה שעברה']];
+  const T=[['progress','התקדמות'],['board','השיבוצים שלי'],['phd','דוקטורנטיות'],['groups','הקבוצות שלי'],['alerts','טרם שובצה'],['people','משתתפות'],...(S.role==='admin'?[['data','ייבוא וייצוא'],['team','מובילות']]:[['team','החשבון שלי']]),['compare','השוואה לשנה שעברה']];
   $('#tabs').innerHTML=T.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='alerts'&&(hard||warn)?`<span class="badge${hard?'':' soft'}">${hard||warn}</span>`:''}</button>`).join('');
 }
 function renderPeers(){
@@ -1500,7 +1500,7 @@ function ptRows(){
 }
 function roleToggles(p){
   const a=A(p.id); const chg=k=>typeof a[k]==='boolean'&&a[k]!==p[k==='roleMentor'?'_mentor0':'_mentee0'];
-  const b=(k,on,l,cls)=>`<button class="rtog ${cls}" data-trole="${p.id}|${k}" aria-pressed="${on}" ${S.readOnly?'disabled':''} title="${on?'לחצי כדי להסיר':'לחצי כדי להוסיף'}${chg(k)?' · שונה ידנית (בטופס: '+((k==='roleMentor'?p._mentor0:p._mentee0)?'כן':'לא')+')':''}">${l}${chg(k)?'*':''}</button>`;
+  const b=(k,on,l,cls)=>`<button class="rtog ${cls}" data-trole="${p.id}|${k}" aria-pressed="${on}" ${S.readOnly||S.role!=='admin'?'disabled':''} title="${S.role!=='admin'?(on?'רשומה כ':'לא רשומה כ')+l+' · רק מנהלת יכולה לשנות':on?'לחצי כדי להסיר':'לחצי כדי להוסיף'}${chg(k)?' · שונה ידנית (בטופס: '+((k==='roleMentor'?p._mentor0:p._mentee0)?'כן':'לא')+')':''}">${l}${chg(k)?'*':''}</button>`;
   return b('roleMentor',p.mentor,'חונכת','m')+b('roleMentee',p.mentee,'חניכה','e');
 }
 function vAddPerson(){
@@ -1522,7 +1522,7 @@ function vAddPerson(){
     </div>
     <div class="row" style="margin-top:8px"><button class="btn primary" data-act="savePerson">שמירה</button><button class="btn" data-act="addPerson">ביטול</button></div></div>`;
 }
-async function savePerson(){
+async function savePerson(){ if(S.role!=="admin") return;
   const v=id=>($('#np-'+id)?.value||'').trim();
   const first=v('first'), last=v('last'), email=v('email').toLowerCase(), stage=v('stage'), school=v('school'), year=+v('year')||null;
   const mentee=$('#np-mentee')?.checked, mentor=$('#np-mentor')?.checked;
@@ -1560,9 +1560,9 @@ function vPeople(){
       <select id="pt-match" data-ptf="match">${opt('','שובצו ולא שובצו',F.match)}${opt('done','שובצו / יש קבוצה',F.match)}${opt('open','עוד לא שובצו',F.match)}</select>
       <select id="pt-status" data-ptf="status">${opt('','כל הסטטוסים',F.status)}${opt('active','פעילות',F.status)}${opt('inactive','לא פעילות',F.status)}</select>
       <button class="link" data-act="ptClear">ניקוי סינון</button>
-      ${S.readOnly?'':`<button class="btn sm primary" data-act="addPerson" style="margin-inline-start:auto">＋ הוספת משתתפת</button>`}
+      ${S.readOnly||S.role!=='admin'?'':`<button class="btn sm primary" data-act="addPerson" style="margin-inline-start:auto">＋ הוספת משתתפת</button>`}
     </div>
-    ${S.addOpen?vAddPerson():''}
+    ${S.addOpen&&S.role==='admin'?vAddPerson():''}
     <div class="ptbar" style="justify-content:space-between">
       <span class="muted"><b class="num" style="color:var(--ink)">${rows.length}</b> משתתפות מוצגות${selN?` · <b class="num" style="color:var(--ink)">${selN}</b> מסומנות`:''}</span>
       ${S.readOnly?'':`<span class="row">${selN?`<label for="bulkLead" class="muted">שיוך המסומנות ל:</label><select id="bulkLead">${opt('','—','x')}${leads.map(l=>opt(l.email,leaderFull(l.email),'x')).join('')}<option value="__clear">ללא מובילה</option></select><button class="btn sm primary" data-act="bulkLead">שיוך</button>${S.role==='admin'?`<button class="btn sm danger" data-act="ptDelete" title="מחיקה לצמיתות, כולל השיבוצים שלהן">${S.clearStep==='ptdel'?`לחצי שוב כדי למחוק ${selN} לצמיתות`:`🗑 מחיקת ${selN} המסומנות`}</button>`:''}<button class="link" data-act="ptSelNone">ביטול סימון</button>`:'<span class="muted" style="font-size:12px">אפשר לסמן כמה שורות ולשייך את כולן בבת אחת</span>'}</span>`}
@@ -1970,7 +1970,7 @@ document.addEventListener('click',async ev=>{
   if(d.mf){ S.mentorFilter=d.mf; render(); return; }
   if(d.cs){ S.candScope=d.cs; render(); return; }
   if(d.gotoAlert){ S.tab='alerts'; S.alertsOpen[d.gotoAlert]=true; render(); window.scrollTo(0,0); return; }
-  if(d.trole){ const [pid,k]=d.trole.split('|'); const p=P(pid); if(!p) return; const now=k==='roleMentor'?p.mentor:p.mentee; const orig=k==='roleMentor'?p._mentor0:p._mentee0; const nv=!now;
+  if(d.trole){ if(S.role!=='admin') return; const [pid,k]=d.trole.split('|'); const p=P(pid); if(!p) return; const now=k==='roleMentor'?p.mentor:p.mentee; const orig=k==='roleMentor'?p._mentor0:p._mentee0; const nv=!now;
     if(!nv&&k==='roleMentor'&&groupOf(pid).length){ toast(`ל${fullName(p)} יש חניכות בקבוצה. הסירי אותן קודם, ואז אפשר לבטל את התפקיד "חונכת".`,true); return; }
     if(!nv&&k==='roleMentee'&&S.matches.has(pid)){ toast(`${fullName(p)} משובצת כחניכה. בטלי קודם את השיבוץ, ואז אפשר לבטל את התפקיד "חניכה".`,true); return; }
     const {by,at,...cur}=S.ann.get(pid)||{}; const data={...cur}; if(nv===orig) delete data[k]; else data[k]=nv;
@@ -2046,7 +2046,7 @@ document.addEventListener('click',async ev=>{
     case 'tplReset': if(S.clearStep!=='tpl'){ S.clearStep='tpl'; toast('לחצי שוב כדי לחזור לנוסח המקורי. השינויים שלך יימחקו.'); break; } S.clearStep=0; await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('הוחזר הנוסח המקורי'); }).catch(()=>{}); render(); break;
     case 'coPick': S.coPick=S.sel; S.coQ=''; render(); setTimeout(()=>$('#coQ')?.focus(),0); break;
     case 'coPickClose': S.coPick=null; render(); break;
-    case 'addPerson': S.addOpen=!S.addOpen; render(); break;
+    case 'addPerson': if(S.role!=='admin') break; S.addOpen=!S.addOpen; render(); break;
     case 'savePerson': await savePerson(); break;
     case 'auto': autoSuggest(); break;
     case 'approveAll': { const ids=[...S.matches.entries()].filter(([eid,mt])=>mt.status==='proposed'&&inScope(P(eid)||{})).map(([eid])=>eid); if(ids.length) await approve(ids).catch(()=>{}); break; }

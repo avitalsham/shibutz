@@ -88,6 +88,7 @@ main{padding-block:16px 60px;padding-inline:16px;max-width:1560px;margin:0 auto}
 .chip.hard{background:var(--hard-soft);color:var(--hard)}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.info{background:var(--mentor-tint);color:var(--ink)}
 .chip.mentee{background:var(--accent-soft);color:var(--accent)}
 .chip.mentor{background:var(--mentor-soft);color:var(--mentor)}
 .chip.dashed{background:transparent;border:1px dashed currentColor}
@@ -380,6 +381,7 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.pyval{min-height:38px;display:flex;align-items:center}
 .subgrp{border-top:1px dashed var(--grp-line);margin-top:4px}
 .subgrp:first-of-type{border-top:0}
 .btn.danger{color:var(--hard);border-color:currentColor}
@@ -1141,6 +1143,10 @@ function vDetail(p){
       <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
       ${p.mentor?(()=>{ const f=p.mentorWithMale||''; const auto=/^כן|בטח|בשמחה|לא משנה/.test(f)?'yes':/^לא(?! משנה)/.test(f)?'no':''; const v=a.withMale??auto;
         return `<div><label for="withMale">מסכימה לחנוך עם חונך?</label><select id="withMale" data-ann="withMale" ${S.readOnly?'disabled':''}><option value="" ${!v?'selected':''}>לא ידוע</option><option value="yes" ${v==='yes'?'selected':''}>כן</option><option value="no" ${v==='no'?'selected':''}>לא</option></select><div class="muted" style="font-size:12px;margin-top:4px">${f?'בטופס: '+esc(f):'לא ענתה בטופס'}${a.withMale!=null&&a.withMale!==auto?' · עודכן ע״י מובילה':''}</div></div>`; })():''}
+      ${(()=>{ const py=prevYearOf(p); const r=py.row; const lbl=p.mentor?'חנכה בשנה שעברה?':'השתתפה בשנה שעברה?';
+        const val=r?(r.m&&r.n?'כן · חונכת וחניכה':r.m?'כן · כחונכת':'כן · כחניכה'):py.loaded?'לא נרשמה':'';
+        const cls=r?(r.m?'ok':'info'):'';
+        return `<div><label>${lbl}</label><div class="pyval">${val?`<span class="chip ${cls}">${esc(val)}</span>`:'<span class="muted">—</span>'}</div><div class="muted" style="font-size:12px;margin-top:4px">${py.loaded?`לפי קובץ ${esc(py.label)}`:'קובץ השנה שעברה עוד לא נטען'}${py.form?` · בטופס: ${esc(py.form)}`:''}</div></div>`; })()}
       <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
     </div>
   </div>`;
@@ -1400,6 +1406,13 @@ function vPhdGroupsList(){
 }
 function mentorItemDots(m){ const g=groupOf(m.id), cap=capOf(m); return `<span class="dots" title="${g.length}/${cap}">${Array.from({length:Math.max(cap,g.length)},(_,i)=>`<i class="${i<g.length?(i>=cap?'x':S.matches.get(g[i])?.status==='proposed'?'p':'f'):''}"></i>`).join('')}</span>`; }
 /* ================= השוואה לשנה שעברה ================= */
+// מה ידוע על הנרשמת מהשנה שעברה: לפי הקובץ שנטען בלשונית ההשוואה (מייל, או טלפון + שם) ולפי התשובה שלה בטופס
+function prevYearOf(p){
+  const pv=S.metaKV.prevYear; let row=null;
+  if(pv&&pv.rows){ const e=(p.email||'').toLowerCase(), t=normPh(p.phone), f=cmpNm(p.first), l=cmpNm(p.last);
+    row=pv.rows.find(r=>e&&r.e===e)||(t?pv.rows.find(r=>normPh(r.ph)===t&&((f&&cmpNm(r.f)===f)||(l&&cmpNm(r.l)===l))):null)||null; }
+  return {loaded:!!pv, label:pv?.label||'שנה שעברה', row, form:p.prev||''};
+}
 // זיהוי אותה נרשמת בין השנים: לפי מייל, או לפי מספר טלפון יחד עם שם פרטי או שם משפחה
 const normPh=v=>{ let d=String(v||'').replace(/\D/g,''); if(d.startsWith('972')) d='0'+d.slice(3); if(d&&!d.startsWith('0')) d='0'+d; return d.length>=9?d:''; };
 const cmpNm=x=>String(x||'').replace(/\s+/g,' ').trim();

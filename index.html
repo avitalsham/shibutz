@@ -151,7 +151,7 @@ h3{font-size:15px;margin:0 0 8px}
 .notes{background:var(--warn-soft);border-radius:6px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
 .notes mark{background:transparent;color:var(--hard);font-weight:600}
 .notes.done{background:var(--sunk)}
-.ann{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.ann{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .ann label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
 .toggle-chips{display:flex;gap:4px}
 .toggle-chips button{border:1px solid var(--line);background:var(--surface);border-radius:6px;min-width:34px;padding:3px 6px}
@@ -381,7 +381,9 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
-.pyval{min-height:38px;display:flex;align-items:center}
+.pyval{min-height:38px;display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
+.pyval .yes{color:var(--ok)}
+.ann .hint{font-size:12px;margin-top:4px}
 .subgrp{border-top:1px dashed var(--grp-line);margin-top:4px}
 .subgrp:first-of-type{border-top:0}
 .btn.danger{color:var(--hard);border-color:currentColor}
@@ -1128,25 +1130,29 @@ function vDetail(p){
       </div>
       <div class="row">${roleFor(p,S.selRole)==='mentor'&&!S.readOnly&&!isCo(p.id)&&!coOf(p.id)?`<button class="btn sm" data-act="coPick">＋ הוספת חונכת שותפה</button>`:''}${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
     </div>
-    <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen?'open':''}><summary>פרטים מהטופס</summary><dl class="facts">
+    <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen?'open':''}><summary>פרטים נוספים${a.status==='withdrawn'?' · <span class="chip warn">לא פעילה</span>':''}</summary><dl class="facts">
       ${fact('מייל',p.email)}${fact('טלפון',p.phone)}${fact('מסלול מחקר',p.track)}${fact('תזה',p.thesis)}${fact('מסלול משולב',p.combined)}${fact('חוג נוסף',p.extra)}
       ${fact('תארים קודמים',p.degrees)}${fact('עבודה',p.work)}${fact('השתתפות קודמת',p.prev)}${fact('אודיסאה / עתודה',p.program)}
       ${p.mentee?fact('חונכת מבוקשת',prefTxt(p.wantMentor,p.wantMentorSpec)):''}${p.mentor?fact('חניכות מבוקשות',prefTxt(p.wantMentees,p.wantMenteesSpec)):''}
       ${p.mentee?fact('בנוח עם חונך גבר',p.okMale):''}${p.mentor?fact('מוכנה לחנוך עם חונך',p.mentorWithMale):''}${p.dups>1?fact('מילאה את הטופס',p.dups+' פעמים'):''}
-    </dl></details>
+    </dl>
+    <div class="row" style="gap:8px;margin:8px 0 4px"><label for="status" style="font-size:12px;color:var(--muted)">סטטוס</label><select id="status" data-ann="status" style="width:auto" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div></details>
     ${p.notes?`<div class="notes${a.notesOk?' done':''}">${hl(p.notes)}</div>
       <label class="row" style="margin-top:6px"><input type="checkbox" id="notesOk" data-ann="notesOk" ${a.notesOk?'checked':''} ${S.readOnly?'disabled':''}> ההערות נקראו וטופלו</label>`:''}
     <div class="ann">
       ${p.mentor?`<div><label>מתרגלת את השנתונים</label><div class="toggle-chips">${[1,2,3,4].map(y=>`<button data-ta="${y}" aria-pressed="${ta.years.includes(y)&&ta.confirmed}" ${S.readOnly?'disabled':''}>${HEB_YEAR[y]}</button>`).join('')}</div>
-        <div class="muted" style="font-size:12px;margin-top:4px">${ta.confirmed?(ta.years.length?'מאומת: לא תשובץ לחניכות מהשנתונים האלה במחלקה שלה.':'מאומת: לא מתרגלת.'):(p.taAuto.length?`זוהה בהערות: שנה ${p.taAuto.map(y=>HEB_YEAR[y]).join(', ')}. לחצי לאישור.`:p.taFlag?'ההערות מזכירות תרגול. סמני שנתונים אם רלוונטי.':'סמני אם רלוונטי.')}${!ta.confirmed?` <button class="link" data-act="taNone">לא מתרגלת</button>`:''}</div></div>`:''}
-      ${p.mentor?`<div><label for="leadOf">מובילה אחראית</label><select id="leadOf" data-ann="leader" ${S.readOnly?'disabled':''}><option value="">ללא מובילה</option>${leaderOptions().map(l=>`<option value="${esc(l.email)}" ${isManualLeader(p)&&A(p.id).leader===l.email?'selected':''}>${esc(leaderFull(l.email))}</option>`).join('')}</select><div class="muted" style="font-size:12px;margin-top:4px">החניכות שלה באחריות אותה מובילה.</div></div>`:''}
-      <div><label for="status">סטטוס</label><select id="status" data-ann="status" ${S.readOnly?'disabled':''}><option value="active">פעילה</option><option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select></div>
+        <div class="muted hint" title="${ta.confirmed?(ta.years.length?'מאומת: לא תשובץ לחניכות מהשנתונים האלה במחלקה שלה.':'מאומת: לא מתרגלת.'):'סמני שנתונים אם רלוונטי'}">${ta.confirmed?(ta.years.length?'מאומת':'מאומת: לא מתרגלת'):(p.taAuto.length?`זוהה בהערות: ${p.taAuto.map(y=>HEB_YEAR[y]).join(', ')}`:p.taFlag?'ההערות מזכירות תרגול':'')}${!ta.confirmed?` <button class="link" data-act="taNone">לא מתרגלת</button>`:''}</div></div>`:''}
+      ${p.mentor?`<div><label for="leadOf">מובילה אחראית</label><select id="leadOf" data-ann="leader" title="החניכות שלה באחריות אותה מובילה" ${S.readOnly?'disabled':''}><option value="">ללא מובילה</option>${leaderOptions().map(l=>`<option value="${esc(l.email)}" ${isManualLeader(p)&&A(p.id).leader===l.email?'selected':''}>${esc(leaderFull(l.email))}</option>`).join('')}</select></div>`:''}
       ${p.mentor?(()=>{ const f=p.mentorWithMale||''; const auto=/^כן|בטח|בשמחה|לא משנה/.test(f)?'yes':/^לא(?! משנה)/.test(f)?'no':''; const v=a.withMale??auto;
-        return `<div><label for="withMale">מסכימה לחנוך עם חונך?</label><select id="withMale" data-ann="withMale" ${S.readOnly?'disabled':''}><option value="" ${!v?'selected':''}>לא ידוע</option><option value="yes" ${v==='yes'?'selected':''}>כן</option><option value="no" ${v==='no'?'selected':''}>לא</option></select><div class="muted" style="font-size:12px;margin-top:4px">${f?'בטופס: '+esc(f):'לא ענתה בטופס'}${a.withMale!=null&&a.withMale!==auto?' · עודכן ע״י מובילה':''}</div></div>`; })():''}
-      ${(()=>{ const py=prevYearOf(p); const r=py.row; const lbl=p.mentor?'חנכה בשנה שעברה?':'השתתפה בשנה שעברה?';
-        const val=r?(r.m&&r.n?'כן · חונכת וחניכה':r.m?'כן · כחונכת':'כן · כחניכה'):py.loaded?'לא נרשמה':'';
-        const cls=r?(r.m?'ok':'info'):'';
-        return `<div><label>${lbl}</label><div class="pyval">${val?`<span class="chip ${cls}">${esc(val)}</span>`:'<span class="muted">—</span>'}</div><div class="muted" style="font-size:12px;margin-top:4px">${py.loaded?`לפי קובץ ${esc(py.label)}`:'קובץ השנה שעברה עוד לא נטען'}${py.form?` · בטופס: ${esc(py.form)}`:''}</div></div>`; })()}
+        return `<div><label for="withMale">מסכימה לחנוך עם חונך?</label><select id="withMale" data-ann="withMale" title="${f?'בטופס: '+esc(f):'לא ענתה בטופס'}" ${S.readOnly?'disabled':''}><option value="" ${!v?'selected':''}>לא ידוע</option><option value="yes" ${v==='yes'?'selected':''}>כן</option><option value="no" ${v==='no'?'selected':''}>לא</option></select>${a.withMale!=null&&a.withMale!==auto?'<div class="muted hint">עודכן ע״י מובילה</div>':''}</div>`; })():''}
+      ${(()=>{ const py=prevYearOf(p); const r=py.row; const f=py.form||'';
+        // לפי הקובץ של השנה שעברה; אם הוא לא נטען, לפי התשובה בטופס
+        let n=null, m=null;
+        if(r){ n=!!r.n; m=!!r.m; } else if(f){ if(/^לא/.test(f)){ n=false; m=false; } else { n=/חניכ/.test(f); m=/חונכ/.test(f); if(!n&&!m){ n=null; m=null; } } }
+        const yn=v=>v==null?'<span class="muted">?</span>':v?'<b class="yes">כן</b>':'<span class="no">לא</span>';
+        const src=r?`לפי קובץ ${py.label}`:f?`לפי הטופס: ${f}`:py.loaded?`לא נמצאה בקובץ ${py.label}`:'אין מידע';
+        if(py.loaded&&!r&&!f){ n=false; m=false; }
+        return `<div><label>בשנה שעברה</label><div class="pyval" title="${esc(src)}">חניכה: ${yn(n)} <span class="muted">·</span> חונכת: ${yn(m)}</div></div>`; })()}
       <div style="grid-column:1/-1"><label for="lnote">הערת מובילות</label><textarea id="lnote" data-ann="leaderNote" placeholder="למשל: דיברתי איתה, מעדיפה חונכת מכימיה פיזיקלית" ${S.readOnly?'disabled':''}>${esc(a.leaderNote||'')}</textarea>${a.at?`<div class="muted" style="font-size:12px">עודכן ${ago(a.at)} ע״י ${esc(leaderName(a.by))}</div>`:''}</div>
     </div>
   </div>`;

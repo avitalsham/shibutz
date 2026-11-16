@@ -263,6 +263,10 @@ tbody tr:hover{background:var(--sunk)}
 .pt td{padding:6px 10px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 .pt select{padding:3px 6px;font-size:13px;max-width:150px}
 .rtog{border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:0 8px;font-size:12px;line-height:20px;margin-inline-end:3px}
+.rtog:not([disabled]){cursor:pointer}
+.rtog:not([disabled]):hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.rtog[aria-pressed=false]:not([disabled]):hover::before{content:'＋ '}
+.rtog[aria-pressed=true]:not([disabled]):hover::after{content:' ✕'}
 .rtog.m[aria-pressed=true]{background:var(--mentor-soft);color:var(--mentor);border:1px solid transparent}
 .rtog.e[aria-pressed=true]{background:var(--accent-soft);color:var(--accent);border:1px solid transparent}
 .ptnotes{max-width:320px;min-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
@@ -1614,6 +1618,7 @@ function vPeople(){
       <select id="pt-match" data-ptf="match">${opt('','שובצו ולא שובצו',F.match)}${opt('done','שובצו / יש קבוצה',F.match)}${opt('open','עוד לא שובצו',F.match)}</select>
       <select id="pt-status" data-ptf="status">${opt('','כל הסטטוסים',F.status)}${opt('active','פעילות',F.status)}${opt('inactive','לא פעילות',F.status)}</select>
       <button class="link" data-act="ptClear">ניקוי סינון</button>
+      ${S.role==='admin'&&!S.readOnly?'<span class="muted" style="font-size:12px">💡 בעמודת התפקיד: לחיצה על חונכת / חניכה מוסיפה או מבטלת את התפקיד.</span>':''}
       ${S.readOnly||S.role!=='admin'?'':`<button class="btn sm primary" data-act="addPerson" style="margin-inline-start:auto">＋ הוספת משתתפת</button>`}
     </div>
     ${S.addOpen&&S.role==='admin'?vAddPerson():''}
@@ -2032,7 +2037,7 @@ document.addEventListener('click',async ev=>{
     if(!nv&&k==='roleMentor'&&groupOf(pid).length){ toast(`ל${fullName(p)} יש חניכות בקבוצה. הסירי אותן קודם, ואז אפשר לבטל את התפקיד "חונכת".`,true); return; }
     if(!nv&&k==='roleMentee'&&S.matches.has(pid)){ toast(`${fullName(p)} משובצת כחניכה. בטלי קודם את השיבוץ, ואז אפשר לבטל את התפקיד "חניכה".`,true); return; }
     const {by,at,...cur}=S.ann.get(pid)||{}; const data={...cur}; if(nv===orig) delete data[k]; else data[k]=nv;
-    try{ await W(()=>sb.from('ann').upsert({person_id:pid,data,by_email:S.uid,at:new Date().toISOString()})); logAct('role',{m:pid,k,v:nv}); }catch(e){} return; }
+    try{ await W(()=>sb.from('ann').upsert({person_id:pid,data,by_email:S.uid,at:new Date().toISOString()})); logAct('role',{m:pid,k,v:nv}); toast(`${fullName(p)}: ${nv?'נוסף':'הוסר'} התפקיד ${k==='roleMentor'?'חונכת':'חניכה'}`); }catch(e){} return; }
   if(d.phdfac){ S.phdFac=d.phdfac; S.phdSel.clear(); S.phdGroup=null; render(); return; }
   if(d.phdms){ S.phdMScope=d.phdms; render(); return; }
   if(d.phdgrp){ S.phdGroup=S.phdGroup===d.phdgrp?null:d.phdgrp; render(); return; }

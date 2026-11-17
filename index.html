@@ -734,11 +734,13 @@ const noMentees=p=>!!p&&A(p.id).status==='nomentees';
 const isPhdMentor=p=>!!p&&p.mentor&&p.rank!=null&&p.rank>=40&&!noMentees(p);
 const regMentee=p=>!!p&&p.mentee&&!isPhdMentee(p);
 const regMentor=p=>!!p&&p.mentor&&!noMentees(p)&&!(p.rank!=null&&p.rank>=40);
+// חברת סגל / פוסט־דוקטורנטית ששובצה לה קבוצה רגילה בשיבוץ חריג: מתנהגת כמו חונכת רגילה לגבי הקבוצה הזאת
+const regLike=p=>regMentor(p)||(!!p&&p.mentor&&p.rank!=null&&p.rank>=40&&groupOf(p.id).length>0);
 const inFac=(p,f)=>p.school===f||(p.school==='both'&&(f==='exact'||f==='eng'));
 function phdGroupOf(pid){ for(const g of S.phd.values()) if((g.members||[]).includes(pid)) return g; return null; }
 function phdMentorGroup(mid){ for(const g of S.phd.values()) if(g.mentor===mid) return g; return null; }
 function phdLabel(g){ if(!g) return ''; const list=[...S.phd.values()].filter(x=>x.faculty===g.faculty).sort((a,b)=>(a.order||0)-(b.order||0)||String(a.id).localeCompare(String(b.id))); return 'קבוצה '+(list.findIndex(x=>x.id===g.id)+1); }
-const mentorInScope=m=>!!m&&regMentor(m)&&(S.area==='__all'||leaderOf(m)===leadTarget());
+const mentorInScope=m=>!!m&&regLike(m)&&(S.area==='__all'||leaderOf(m)===leadTarget());
 function leaderOptions(){ return [...S.leaders.values()].filter(l=>l.role!=='viewer').sort((a,b)=>leaderFull(a.email).localeCompare(leaderFull(b.email),'he')); }
 const groupOf=mid=>IDX.byMentor.get(mid)||[];
 const coOf=mid=>{ const c=A(mid).coMentor; return c&&S.people.has(c)?c:null; };
@@ -778,6 +780,7 @@ function evaluate(e,m,opts={}){
   if(!e||!m) return {hard:['נרשמת חסרה'],warn,info,good,score:0,ok:false};
   if(e.id===m.id) hard.push('אותה נרשמת');
   if(!m.mentor) hard.push('לא נרשמה כחונכת');
+  if(m.rank!=null&&m.rank>=40&&!(e.rank!=null&&e.rank>=30)) hard.push(m.rank>=50?'חברת סגל: רק בשיבוץ חריג':'פוסט־דוקטורנטית: רק בשיבוץ חריג');
   if(!e.mentee) hard.push('לא נרשמה כחניכה');
   if(!isActive(m)) hard.push('החונכת סומנה כלא פעילה');
   if(!isActive(e)) hard.push('החניכה סומנה כלא פעילה');
@@ -1104,7 +1107,7 @@ function vBoard(){
   const openN=scopedMentees.filter(p=>!S.matches.has(p.id)).length;
   const propN=scopedMentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
   const mq=S.mentorQ.trim();
-  let mentors=[...S.people.values()].filter(p=>regMentor(p)&&(S.mentorScope==='all'||mentorInScope(p))&&match(p,mq));
+  let mentors=[...S.people.values()].filter(p=>regLike(p)&&(S.mentorScope==='all'||mentorInScope(p))&&match(p,mq));
   const freeSeats=mentors.filter(isActive).reduce((s,m)=>s+Math.max(0,capOf(m)-groupOf(m.id).length),0);
   if(S.mentorFilter==='free') mentors=mentors.filter(m=>isActive(m)&&groupOf(m.id).length<capOf(m));
   else if(S.mentorFilter==='empty') mentors=mentors.filter(m=>isActive(m)&&!groupOf(m.id).length);
@@ -1189,7 +1192,7 @@ function vMenteeBlock(e){
       <div class="row" style="margin-top:4px">${chips(ev)}</div></div>
       <div class="row">${mt.status==='proposed'?`<button class="btn sm primary" data-approve="${e.id}" ${S.readOnly?'disabled':''}>אישור</button>`:''}<button class="btn sm" data-unassign="${e.id}" ${S.readOnly?'disabled':''}>ביטול שיבוץ</button></div></div>`;
   } else h+=`<p class="muted" style="margin:0">עדיין לא שובצה.</p>`;
-  const pool=[...S.people.values()].filter(m=>regMentor(m)&&m.id!==e.id&&(S.suggScope==='all'||inScope(m)));
+  const pool=[...S.people.values()].filter(m=>(regMentor(m)||isPhdMentor(m))&&m.id!==e.id&&(S.suggScope==='all'||inScope(m)||isPhdMentor(m)));
   const evs=pool.map(m=>({m,ev:evaluate(e,m)}));
   const ok=evs.filter(x=>x.ev.ok&&x.m.id!==mt?.mentor).sort((a,b)=>b.ev.score-a.ev.score);
   const bad=evs.filter(x=>!x.ev.ok&&x.m.id!==mt?.mentor&&isActive(x.m)).sort((a,b)=>a.ev.hard.length-b.ev.hard.length||b.ev.score-a.ev.score);
@@ -1326,7 +1329,7 @@ function buildEmail(mid,grp){
   const m=P(mid); const co=coOf(mid)?P(coOf(mid)):null;
   const pg=phdMentorGroup(mid);
   const ms=(pg?pg.members:nGroups(m)===2?groupOfG(mid,grp||1):groupOf(mid)).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
-  const kind=tplKindOf(m); const t=tplNow(kind);
+  const kind=pg?tplKindOf(m):'regular'; const t=tplNow(kind);
   const name=co?`${m.first||''} ו${co.first||''}`:(m.first||'');
   const cols=kind==='regular'?['שם פרטי','שם משפחה','מספר טלפון','אימייל','שנת לימודים']:['שם','שלב בתואר','בית ספר','טלפון','מייל'];
   const rowsP=ms.map(e=>kind==='regular'?[e.first||'',e.last||'',e.phone||'',e.email||'',stageShort(e)]:[fullName(e),stageShort(e),deptsOf(e).join(' + ')||SCHOOL_NAME[e.school]||'',e.phone||'',e.email||'']);
@@ -1409,7 +1412,7 @@ function vGroups(){
   const mentees=scoped.filter(p=>regMentee(p)&&isActive(p));
   const fin=mentees.filter(p=>S.matches.get(p.id)?.status==='final').length;
   const prop=mentees.filter(p=>S.matches.get(p.id)?.status==='proposed').length;
-  let mentors=[...S.people.values()].filter(m=>regMentor(m)&&(groupOf(m.id).length?mentorInScope(m):(S.showAllMentorsInGroups&&mentorInScope(m)&&isActive(m))));
+  let mentors=[...S.people.values()].filter(m=>regLike(m)&&(groupOf(m.id).length?mentorInScope(m):(S.showAllMentorsInGroups&&mentorInScope(m)&&isActive(m))));
   mentors.sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
   const allG=mentors.flatMap(m=>nGroups(m)===2?[groupOfG(m.id,1).length,groupOfG(m.id,2).length]:[groupOf(m.id).length]); const sizes=[1,2,3,4,5,6].map(n=>allG.filter(x=>x===n).length);
   const stat=(v,l)=>`<div class="panel stat"><b>${v}</b><span>${l}</span></div>`;
@@ -1706,7 +1709,7 @@ function trackOf(p){
   if(!p) return null;
   const mt=S.matches.get(p.id);
   if(mt&&P(mt.mentor)) return 'reg';
-  if(regMentor(p)&&(isCo(p.id)||groupOf(p.id).length)) return 'reg';
+  if(regLike(p)&&(isCo(p.id)||groupOf(p.id).length)) return 'reg';
   if(!S.phdMissing&&(phdGroupOf(p.id)||phdMentorGroup(p.id))) return 'phd';
   if(!isActive(p)) return null;
   if(!S.phdMissing&&isPhdMentor(p)) return 'phd';
@@ -1724,7 +1727,7 @@ function partAgg(){
     if(mt&&P(mt.mentor)){ const m=P(mt.mentor); const ok=sentOf(m.id,nGroups(m)===2?(mt.grp||1):1); add(leaderOf(m),x=>{x.total++;x.placed++;x.mentees++; if(ok) x.mailed++;}); continue; }
     if(regMentor(p)&&isCo(p.id)){ const h=P(IDX.coHost.get(p.id)); const n=h?groupOf(h.id).length:0; add(h?leaderOf(h):leaderOf(p),x=>{x.total++;x.mentors++; if(n){x.placed++; if(A(h.id).emailSent) x.mailed++;}}); continue; }
     if(!isActive(p)) continue;
-    if(regMentor(p)){ const n=groupOf(p.id).length; const two=nGroups(p)===2; const ng=two?[1,2].filter(k=>groupOfG(p.id,k).length).length:(n?1:0); const mailedAll=ng&&(two?[1,2].filter(k=>groupOfG(p.id,k).length).every(k=>sentOf(p.id,k)):sentOf(p.id,1));
+    if(regLike(p)){ const n=groupOf(p.id).length; const two=nGroups(p)===2; const ng=two?[1,2].filter(k=>groupOfG(p.id,k).length).length:(n?1:0); const mailedAll=ng&&(two?[1,2].filter(k=>groupOfG(p.id,k).length).every(k=>sentOf(p.id,k)):sentOf(p.id,1));
       add(leaderOf(p),x=>{x.total++;x.mentors++;x.seats+=Math.max(0,capOf(p)-n); if(n){x.placed++;x.groups+=ng; if(mailedAll) x.mailed++;}}); continue; }
     if(regMentee(p)) add(leaderOf(p),x=>{x.total++;x.mentees++;});
   }

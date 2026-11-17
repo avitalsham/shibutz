@@ -1230,7 +1230,7 @@ function vMentorBlock(m){
   if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">${two?'שתי הקבוצות מלאות':'הקבוצה מלאה'} (${g.length}/${cap}). כדי לצרף חניכה אחרת, הסירי קודם חניכה${two?'':' מהקבוצה, או פתחי לחונכת קבוצה שנייה'}.</p></div>`;
   const pool=[...S.people.values()].filter(e=>regMentee(e)&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||sameDept(e,m)||(()=>{ const A1=areasOf(m); return A1.size?[...areasOf(e)].some(x=>A1.has(x)):!deptsOf(e).length; })()));
   const coP=co?P(co):null;
-  const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok&&(!coP||evaluate(x.e,coP,{ignoreCap:true}).ok)).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
+  const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok&&(!coP||evaluate(x.e,coP,{ignoreCap:true,asCo:true}).ok)).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
   h+=`</div><div class="panel block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">חניכות פנויות שמתאימות ל${esc(m.first||'')} (${cand.length})</p>
     <div class="seg"><button data-cs="area" aria-pressed="${S.candScope!=='all'}">מהמחלקות שלה</button><button data-cs="all" aria-pressed="${S.candScope==='all'}">מכל התוכנית</button></div></div>`;
   let last=null;

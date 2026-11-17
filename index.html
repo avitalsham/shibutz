@@ -385,6 +385,8 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.deptedit{margin:10px 0 4px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.deptedit select{width:auto;min-width:150px}
 .pyval{min-height:38px;display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 .pyval .yes{color:var(--ok)}
 .ann .hint{font-size:12px;margin-top:4px}
@@ -684,7 +686,7 @@ async function rpcAssign(args,grp){
   if(r.error&&/p_grp|assign_match\(|function .*does not exist|schema cache/i.test(r.error.message||'')){ if((grp||1)!==1) return {data:null,error:{message:'NEED_UPDATE_07'}}; r=await sb.rpc('assign_match',args); }
   return r;
 }
-const deptsOf=p=>[p.dept,p.dept2].filter(Boolean);
+const deptsOf=p=>[p.dept,p.dept2,p.dept3].filter(Boolean);
 const sameDept=(a,b)=>{const B=deptsOf(b);return deptsOf(a).some(x=>B.includes(x));};
 const schoolsOf=p=>p.school==='both'?['exact','eng']:p.school?[p.school]:[];
 const SCHOOL_NAME={exact:'מדעים מדויקים',eng:'הנדסה',both:'משולב',mgmt:'ניהול'};
@@ -699,7 +701,8 @@ function ladder(p,m){
 }
 function taOf(p){const a=A(p.id); if(a.taSet) return {years:a.ta||[],confirmed:true}; return {years:p.taAuto||[],confirmed:false};}
 const notesPending=p=>p.notes&&!A(p.id).notesOk;
-const areaOfPerson=p=>p?(IDX.deptArea.get(p.dept)||IDX.deptArea.get(p.dept2)||null):null;
+const areaOfPerson=p=>p?(deptsOf(p).map(d=>IDX.deptArea.get(d)).find(Boolean)||null):null;
+const areasOf=p=>new Set(deptsOf(p).map(d=>IDX.deptArea.get(d)).filter(Boolean));
 const normName=s=>String(s||'').toLowerCase().replace(/["'׳״.,()\-_]/g,' ').replace(/\s+/g,' ').trim();
 function resolveLeader(v){
   if(!v) return null; const raw=String(v).trim(), low=raw.toLowerCase();
@@ -742,7 +745,11 @@ const byStage=(a,b)=>STAGE_ORDER(b.rank)-STAGE_ORDER(a.rank);
 function roleFor(p,hint){ if(!p) return null; if(hint==='mentor'&&p.mentor) return 'mentor'; if(hint==='mentee'&&p.mentee) return 'mentee'; if(p.mentee&&!p.mentor) return 'mentee'; if(p.mentor&&!p.mentee) return 'mentor'; if(groupOf(p.id).length&&!S.matches.has(p.id)) return 'mentor'; return p.mentor&&!p.mentee?'mentor':(p.mentee?'mentee':null); }
 const ADMIN_TABS=['data'];
 function rebuild(){
-  for(const p of S.people.values()){ if(p._mentee0===undefined){ p._mentee0=!!p.mentee; p._mentor0=!!p.mentor; } const a=A(p.id); p.mentee=typeof a.roleMentee==='boolean'?a.roleMentee:p._mentee0; p.mentor=typeof a.roleMentor==='boolean'?a.roleMentor:p._mentor0; }
+  for(const p of S.people.values()){ if(p._mentee0===undefined){ p._mentee0=!!p.mentee; p._mentor0=!!p.mentor; } const a=A(p.id); p.mentee=typeof a.roleMentee==='boolean'?a.roleMentee:p._mentee0; p.mentor=typeof a.roleMentor==='boolean'?a.roleMentor:p._mentor0;
+    // בתי ספר שמובילה קבעה ידנית (עד 3), למשל לתואר משולב
+    if(p._dept0===undefined){ p._dept0=p.dept||''; p._dept20=p.dept2||''; p._school0=p.school||''; }
+    if(Array.isArray(a.depts)&&a.depts.length){ const d=a.depts.slice(0,3); p.dept=d[0]||''; p.dept2=d[1]||''; p.dept3=d[2]||''; const sc=[...new Set(d.map(x=>DEPT_SCHOOL[x]).filter(Boolean))]; p.school=sc.length===1?sc[0]:sc.length>1?'both':p._school0; p.deptManual=true; }
+    else { p.dept=p._dept0; p.dept2=p._dept20; p.dept3=''; p.school=p._school0; p.deptManual=false; } }
   IDX.byMentor=new Map();
   for(const [eid,m] of S.matches){ if(!m.mentor) continue; if(!IDX.byMentor.has(m.mentor)) IDX.byMentor.set(m.mentor,[]); IDX.byMentor.get(m.mentor).push(eid); }
   IDX.deptArea=new Map();
@@ -757,7 +764,7 @@ function rebuild(){
   for(const p of S.people.values()){ const k=(p.first+' '+p.last).replace(/\s+/g,' ').trim(); if(!k) continue; if(!byName.has(k)) byName.set(k,[]); byName.get(k).push(p.id); }
   for(const [k,ids] of byName) if(ids.length>1) IDX.dupNames.set(k,ids);
 }
-function knownDepts(){ const s=new Set(); for(const p of S.people.values()){ if(p.dept) s.add(p.dept); if(p.dept2) s.add(p.dept2);} return [...s].sort((a,b)=>a.localeCompare(b,'he')); }
+function knownDepts(){ const s=new Set(Object.keys(DEPT_SCHOOL)); for(const p of S.people.values()){ for(const d of [p._dept0??p.dept,p._dept20??p.dept2]) if(d&&d!=='משולב – אחר') s.add(d); } return [...s].sort((a,b)=>a.localeCompare(b,'he')); }
 function textMatchesDept(t,p){ if(!t) return false; return deptsOf(p).some(d=>(DEPT_KW[d]||[d]).some(k=>t.includes(k))); }
 function tokens(s){return new Set(String(s||'').replace(/[,.()\-\/]/g,' ').split(/\s+/).filter(w=>w.length>2&&!['של','עם','וגם','בעיקר'].includes(w)));}
 
@@ -1130,10 +1137,12 @@ function vDetail(p){
   let h=`<div class="panel card${roleFor(p,S.selRole)==='mentor'?' card-mentor':''}">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div><p class="pname">${esc(fullName(p))}</p>
-        <div class="row" style="margin-top:4px">${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(p.dept||'מחלקה חסרה')}${p.dept2?' + '+esc(p.dept2):''}</span>${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
+        <div class="row" style="margin-top:4px">${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(deptsOf(p).join(' + ')||'מחלקה חסרה')}</span>${p.deptManual?'<span class="chip" title="נקבע ידנית ע״י מובילה">ידני</span>':''}${S.readOnly?'':`<button class="link" data-act="deptEdit" style="font-size:12px">${deptsOf(p).length?'✎ שינוי בתי ספר':'＋ הגדרת בתי ספר'}</button>`}${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
       </div>
       <div class="row">${roleFor(p,S.selRole)==='mentor'&&!S.readOnly&&!isCo(p.id)&&!coOf(p.id)?`<button class="btn sm" data-act="coPick">＋ הוספת חונכת שותפה</button>`:''}${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
     </div>
+    ${S.deptEditFor===p.id?(()=>{ const cur=deptsOf(p); const opts=knownDepts(); const sel=(i)=>`<select id="dEd${i}"><option value="">${i?'— בלי —':'בחרי בית ספר'}</option>${opts.map(o=>`<option ${cur[i]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+      return `<div class="deptedit"><b>בתי הספר של ${esc(p.first||'')}</b> <span class="muted" style="font-size:12px">עד 3. החניכות המתאימות יוצגו מבתי הספר האלה, והפקולטה תיקבע לפיהם.</span><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${sel(0)}${sel(1)}${sel(2)}<button class="btn sm primary" data-act="deptSave">שמירה</button>${p.deptManual?`<button class="btn sm" data-act="deptReset" title="חזרה לבית הספר מהטופס${p._dept0?': '+esc([p._dept0,p._dept20].filter(Boolean).join(' + ')):''}">חזרה לטופס</button>`:''}<button class="link" data-act="deptCancel">ביטול</button></div></div>`; })():''}
     <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen?'open':''}><summary>פרטים נוספים${a.status==='withdrawn'?' · <span class="chip warn">לא פעילה</span>':''}</summary><dl class="facts">
       ${fact('מייל',p.email)}${fact('טלפון',p.phone)}${fact('מסלול מחקר',p.track)}${fact('תזה',p.thesis)}${fact('מסלול משולב',p.combined)}${fact('חוג נוסף',p.extra)}
       ${fact('תארים קודמים',p.degrees)}${fact('עבודה',p.work)}${fact('השתתפות קודמת',p.prev)}${fact('אודיסאה / עתודה',p.program)}
@@ -1219,7 +1228,7 @@ function vMentorBlock(m){
   else h+=g.length?g.map(gRow).join(''):'<p class="muted" style="margin:0">אין עדיין חניכות בקבוצה.</p>';
   if(!isActive(m)) return h+'<p class="muted">החונכת סומנה כלא פעילה.</p></div>';
   if(g.length>=cap) return h+`<p class="muted" style="margin-top:12px">${two?'שתי הקבוצות מלאות':'הקבוצה מלאה'} (${g.length}/${cap}). כדי לצרף חניכה אחרת, הסירי קודם חניכה${two?'':' מהקבוצה, או פתחי לחונכת קבוצה שנייה'}.</p></div>`;
-  const pool=[...S.people.values()].filter(e=>regMentee(e)&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||areaOfPerson(e)===areaOfPerson(m)||sameDept(e,m)));
+  const pool=[...S.people.values()].filter(e=>regMentee(e)&&e.id!==m.id&&isActive(e)&&!S.matches.has(e.id)&&(S.candScope==='all'||sameDept(e,m)||(()=>{ const A1=areasOf(m); return A1.size?[...areasOf(e)].some(x=>A1.has(x)):!deptsOf(e).length; })()));
   const coP=co?P(co):null;
   const cand=pool.map(e=>({e,ev:evaluate(e,m)})).filter(x=>x.ev.ok&&(!coP||evaluate(x.e,coP,{ignoreCap:true}).ok)).sort((a,b)=>byStage(a.e,b.e)||b.ev.score-a.ev.score);
   h+=`</div><div class="panel block"><div class="row" style="justify-content:space-between"><p class="sec-title" style="margin:0">חניכות פנויות שמתאימות ל${esc(m.first||'')} (${cand.length})</p>
@@ -1529,7 +1538,7 @@ const PT_COLS=[
   {k:'role',l:'תפקיד',get:p=>(p.mentor?'חונכת':'')+(p.mentee?' חניכה':'')},
   {k:'stage',l:'שלב',get:p=>p.rank==null?-1:p.rank},
   {k:'school',l:'בית ספר',get:p=>SCHOOL_NAME[p.school]||''},
-  {k:'dept',l:'מחלקה',get:p=>(p.dept||'')+(p.dept2?' + '+p.dept2:'')},
+  {k:'dept',l:'מחלקה',get:p=>deptsOf(p).join(' + ')},
   {k:'track',l:'מסלול מחקר',get:p=>p.track||''},
   {k:'lead',l:'מובילה אחראית',get:p=>leaderFull(personLeader(p))||'תתתת'},
   {k:'match',l:'שיבוץ',get:p=>p.mentor?groupOf(p.id).length:(S.matches.has(p.id)?fullName(P(S.matches.get(p.id).mentor)):'')},
@@ -1546,7 +1555,7 @@ function ptRows(){
   if(q) rows=rows.filter(p=>[fullName(p),p.email,p.dept,p.dept2,p.track,p.notes,p.phone].some(x=>(x||'').includes(q)));
   if(F.role==='mentee') rows=rows.filter(p=>p.mentee); else if(F.role==='mentor') rows=rows.filter(p=>p.mentor); else if(F.role==='both') rows=rows.filter(p=>p.mentor&&p.mentee);
   if(F.school) rows=rows.filter(p=>p.school===F.school);
-  if(F.dept) rows=rows.filter(p=>p.dept===F.dept||p.dept2===F.dept);
+  if(F.dept) rows=rows.filter(p=>deptsOf(p).includes(F.dept));
   if(F.stage) rows=rows.filter(p=>stageGroup(p)===F.stage);
   if(F.lead==='__none') rows=rows.filter(p=>!personLeader(p)); else if(F.lead) rows=rows.filter(p=>personLeader(p)===F.lead);
   if(F.match==='done') rows=rows.filter(p=>p.mentor?groupOf(p.id).length>0:S.matches.has(p.id));
@@ -1631,7 +1640,7 @@ function vPeople(){
       return `<tr class="${S.ptSel.has(p.id)?'on':''}">${S.readOnly?'':`<td><input type="checkbox" data-ptsel="${p.id}" ${S.ptSel.has(p.id)?'checked':''} aria-label="סימון ${esc(fullName(p))}"></td>`}
         <td><button class="link" data-goto="${p.id}" data-role="${p.mentor?'mentor':'mentee'}" style="font-weight:600;text-decoration:none;color:var(--ink)">${esc(fullName(p))}</button>${p.manual?' <span class="muted" title="נוספה ידנית" style="font-size:11px">(ידני)</span>':''}</td>
         <td style="white-space:nowrap">${roleToggles(p)}</td>
-        <td style="white-space:nowrap">${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(p.dept)}${p.dept2?' + '+esc(p.dept2):''}</td><td title="${esc(p.track)}">${esc(p.track)}</td>
+        <td style="white-space:nowrap">${esc(stageShort(p))}</td><td>${esc(SCHOOL_NAME[p.school]||'')}</td><td>${esc(deptsOf(p).join(' + '))}${p.deptManual?' <span class="muted" title="נקבע ידנית">✎</span>':''}</td><td title="${esc(p.track)}">${esc(p.track)}</td>
         <td>${leadSel(p)}</td>
         <td>${p.mentor?`<span class="num">${g.length}/${capOf(p)}</span>`:''}${p.mentee&&mt?`${p.mentor?'<br>':''}← ${esc(fullName(P(mt.mentor)))}${mt.status==='proposed'?' <span class="muted">(הצעה)</span>':''}`:(p.mentee?`${p.mentor?'<br>':''}<span class="muted">פנויה</span>`:'')}</td>
         <td dir="ltr" style="text-align:right">${esc(p.email)}</td><td dir="ltr" style="text-align:right;white-space:nowrap">${esc(p.phone)}</td><td title="${esc(p.prev)}">${esc(p.prev)}</td><td>${esc(p.program)}</td>
@@ -1858,6 +1867,7 @@ function logText(l){
     case 'auto': return `יצרה ${l.n} הצעות שיבוץ אוטומטיות`;
     case 'import': return `ייבאה ${l.n} נרשמות${l.replace?' (החלפה מלאה)':''}`;
     case 'clear': return 'מחקה את כל הנתונים';
+    case 'depts': return l.d?`קבעה ל${n(l.m)} בתי ספר: ${esc(l.d.join(' + '))}`:`החזירה את בית הספר של ${n(l.m)} לפי הטופס`;
     case 'groups': return `${l.n===2?'פתחה קבוצה שנייה ל':'סגרה את קבוצה ב של '}${n(l.m)}`;
     case 'delete': return `מחקה ${l.n===1?'את '+esc((l.names||[])[0]||'משתתפת'):l.n+' משתתפות'}`;
     case 'split': return `חילקה ${l.n} חונכות בתחום ${esc(l.area||'')}`;
@@ -2129,6 +2139,11 @@ document.addEventListener('click',async ev=>{
     case 'cancelImport': S.importPreview=null; render(); break;
     case 'exportCsv': exportCsv(); break;
     case 'exportXlsx': exportXlsx(); break;
+    case 'deptEdit': S.deptEditFor=S.sel; render(); break;
+    case 'deptCancel': S.deptEditFor=null; render(); break;
+    case 'deptSave': case 'deptReset': { const pid=S.deptEditFor; if(!pid) break; let dl=null;
+      if(d.act==='deptSave'){ dl=[0,1,2].map(i=>$('#dEd'+i)?.value||'').filter(Boolean); dl=[...new Set(dl)]; if(!dl.length){ toast('בחרי לפחות בית ספר אחד',true); break; } }
+      await setAnn(pid,{depts:dl}).catch(()=>{}); S.deptEditFor=null; logAct('depts',{m:pid,d:dl}); toast(dl?`בתי הספר נשמרו: ${dl.join(' + ')}`:'חזרה לבית הספר מהטופס'); break; }
     case 'cmpMissing': cmpExportMissing(d.dept||''); break;
     case 'gapXlsx': { const pv=S.importPreview; if(!pv) break; const inFile=new Set(pv.people.map(p=>p.id)); const w=XLSX.utils.book_new();
       const a=XLSX.utils.aoa_to_sheet([['שורה באקסל','שם','מייל','טלפון','תפקיד בשורה','למה'],...(pv.lost||[]).map(l=>[l.row,l.name,l.email,l.phone,l.role||'',l.why])]); a['!cols']=[10,20,28,14,14,50].map(wch=>({wch})); XLSX.utils.book_append_sheet(w,a,'לא נספרו בנפרד');

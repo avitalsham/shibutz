@@ -1281,9 +1281,22 @@ function vPhd(){
   return h;
 }
 async function phdWrite(fn,ok){ try{ await W(fn); if(ok) toast(ok); }catch(e){} }
-const DEFAULT_TPL={subject:"תכנית 'מדויקות' - פרטי השיבוצים",body:"שלום {שם_החונכת}, ברכות על הצטרפותך כחונכת לתוכנית 'מדויקות'.\n\nאז, מה בעצם קורה עכשיו?\nאת מקבלת קבוצת חניכה, מגיעה למפגש הכנה לחונכות, יוצרת קשר עם החניכות ומתחילה את התוכנית!\nאת הולכת לחנוך {כמות_החניכות} סטודנטיות לתואר {תואר_החניכות}. הנה פרטי החניכות:\n\n{טבלת_החניכות}\n\nחשוב להשיב במייל חוזר למייל זה שאכן קיבלת את השיבוצים לתוכנית.\n\nמפגש הדרכה לחונכות:\nקיימים שני מועדים למפגש ההכנה, בהם נספק פרטים נוספים על התוכנית, נשתף את מערכי החניכה ונקיים הדגמה. יהיה אוכל טוב וגם מתנות של התוכנית. משך המפגש יהיה שעה.\nאנו מזמינות אותך לבחור מועד אחד נוח ולסמן בקישור את המועד אליו תגיעי:\n• יום שני (16.12.24) בשעה 12:00. בניין וולפסון הנדסה 206\n• יום שלישי (17.12.24) בשעה 12:00. בניין ציק פויינט כיתה 480\nשימו לב, נוכחותך במפגש ההכנה לחונכות לשנה הנוכחית חשוב במיוחד, גם אם הינך חונכת ותיקה.\n\nבכל שאלה והתייעצות, את מוזמנת לפנות למובילה מבית הספר שלך. רשימת המובילות והמיילים נמצא בלינק מובילות - פרטי קשר. כל הפרטים לגבי השיבוצים ישלחו בהמשך.\n\nבנוסף לשיבוצים, ריכזנו לך כאן את הנקודות המשמעותיות שצריך לזכור לקראת השנה.\n• עלייך לדווח על מפגשי החניכה (קישור) באתר מדויקות על מנת שתוענק לך מלגה. המלגה תינתן לשתי פעימות: 1000 ₪ בסיום סמסטר א' ו-1000 ₪ בסיום סמסטר ב'.\n• עלייך להעביר שני מפגשים בסמסטר א' ועוד שלושה מפגשים בסמסטר ב' ולהיות זמינה לארבע שעות קבלה במהלך השנה (במידת הצורך).\n   ◦ במידה ותחנכי סטודנטיות בשנה א׳ בתואר ראשון, עלייך להעביר מפגש קבוצתי ומפגש אישי אחד בכל סמסטר.\n   ◦ במקרים של קבוצות גדולות בשנה א' (4+ חניכות), יש לשקול מעבר למפגשים קבוצתיים בלבד.\n• את התוכנית מלווה המעבדה לקידום קריירה. נבקש למלא את השאלון, גם את וגם החניכות טרם מהמפגש הראשון על מנת להבין את השפעות התוכנית. קישור לשאלון המחקר.\n• חשוב מאוד ליידע את רכזת חונכות בר גבסו (bargabso@mail.tau.ac.il) על כל קושי שעולה במפגשים (בתיאום מפגשים, חניכות שלא מגיבות, במציאת מקום או כל קושי לוגיסטי אחר), כך שתוכל לתת מענה.\n• זכרי כי אין זה מתפקידך להיות מורה פרטית ולתת עזרה אקדמית בקורסים.\n\nמאחלות לכולנו שתהיה לנו שנה מדהימה יחד,\nצוות 'מדויקות'."};
+const DEFAULT_TPL={subject:"תכנית 'מדויקות' - פרטי השיבוצים"};
+const A_SITE='https://www.meduyakot.sites.tau.ac.il/';
+const A_PREP='https://www.meduyakot.sites.tau.ac.il/copy-of-%D7%9E%D7%A4%D7%92%D7%A9-%D7%94%D7%9B%D7%A0%D7%94-%D7%9C%D7%97%D7%95%D7%A0%D7%9B%D7%95%D7%AA';
+const A_WA='https://chat.whatsapp.com/JzMyPlML7qhHeQl6aPxVHu?mode=hqrc';
+const lnk=(u,t)=>`<a href="${u}">${t}</a>`;
+// שלוש תבניות: חונכות במסלול הרגיל, פוסט־דוקטורנטיות, חברות סגל
+const TPL_KINDS={
+  regular:{key:'emailTemplate',label:'חונכות',html:
+`שלום {שם_החונכת},<br>ברכות על הצטרפותך כחונכת לתוכנית 'מדויקות'.<br><br><b>אז, מה בעצם קורה עכשיו?</b><br>את הולכת לחנוך {כמות_החניכות} סטודנטיות לתואר {תואר_החניכות}. הנה פרטי החניכות:<br>{טבלת_החניכות}<br>יש מפגש הכנה לחונכות (פרטים והרשמה מטה). לאחר מכן, בבקשה תיצרי עם החניכות.<br>כל המידע שאת צריכה נמצא באתר ${lnk(A_SITE,'מדויקות')} תחת לשונית "מידע לחונכות". סיסמת כניסה: Mentor<br><br><b>חשוב להשיב במייל חוזר למייל זה שאכן קיבלת את השיבוצים לתוכנית.</b><br><br><b>מפגש הדרכה לחונכות:</b><br>קיימים שני מועדים למפגש ההכנה, בהם נספק פרטים נוספים על התוכנית, נשתף את מערכי החניכה ונקיים הדגמה. יהיה אוכל טוב וגם מתנות של התוכנית. משך המפגש כשעה. יש להגיע לאחד מהמועדים:<ul><li>יום שני (23.11.26) בשעה 12:00. בניין אורנשטיין, כיתה 103.</li><li>יום רביעי (25.11.26) בשעה 12:00. בניין וולפסון הנדסה כיתה 206</li></ul>שימו לב, יש להירשם בקישור ${lnk(A_PREP,'הזה')} למפגש חניכה האתר התוכנית, נוכחותך במפגש ההכנה לחונכות לשנה הנוכחית חשוב במיוחד, גם אם הינך חונכת ותיקה.<br>בנוסף, מוזמנת להצטרף בקישור ${lnk(A_WA,'הזה')} לקבוצת הואצאפ של כל החונכות בתוכנית.<br>בכל שאלה והתייעצות, את מוזמנת לפנות אלי.<br>בהצלחה!<br><br>{שם_המובילה}`},
+  postdoc:{key:'emailTemplatePostdoc',label:'פוסט־דוקטורנטיות',html:`מאיה אחראית על שליחת המייל`},
+  faculty:{key:'emailTemplateFaculty',label:'חברות סגל',html:
+`שלום {שם_החונכת},<br>ברוכה הבאה (או השבה) לתוכנית 'מדויקות', ותודה על נכונותך לחנוך!<br><br><b>החניכות שלך:</b><br>את הולכת לחנוך {כמות_החניכות} דוקטורנטיות. הנה הפרטים שלהן:<br>{טבלת_החניכות}<br>נבקש ממך ליצור איתן קשר. אנחנו ממליצות לפתוח קבוצת וואטסאפ ולתאם כבר עכשיו את המפגש הראשון והשני.<br><br><b>מפגש הכנה לחברות הסגל:</b><br>יום שלישי (2.12) בשעה 13:00, בניין קפלון, קומה 3, חדר 319.<br>במפגש נציג את מבנה התוכנית ונשמע מחברות סגל שהשתתפו בשנה שעברה מה עבד ומה כדאי לשפר. נשמח מאוד לראותך.<br><b>חשוב להשיב במייל חוזר שקיבלת את המייל, ולציין אם תגיעי למפגש ההכנה.</b><br><br><b>מה צריך לדעת:</b><ul><li><b>מטרת התוכנית:</b> לחזק ולקדם נשים בפקולטות למדעים מדויקים ולהנדסה, דרך קהילה תומכת שעוזרת לסטודנטיות להתפתח ולהשתלב במחקר ובתעשייה.</li><li><b>כמה מפגשים:</b> מפגש אחד בסמסטר א' ומפגש אחד בסמסטר ב'.</li><li><b>דיווח:</b> בסוף כל מפגש, בקשי מאחת החניכות למלא את טופס "דיווח מפגש חניכה" באתר ${lnk(A_SITE,'מדויקות')} (סיסמה: Mentor). זה לוקח כמה דקות.</li><li><b>חומרים:</b> מצורפת רשימת נושאים שמתאימים לדוקטורנטיות בשלבים שונים, וגם פעילויות ו-ice breakers למי שרוצה מפגש מובנה יותר. מערכי החניכה הכלליים נמצאים באתר (סיסמה: Mentor).</li><li><b>טיפ:</b> לפני המפגש, שלחי לחניכות את הנושאים שבחרת ושאלי אותן על מה הן רוצות לדבר.</li><li><b>קשיים:</b> אם חניכה לא מגיעה למפגשים לאורך זמן, או שעולה קושי אחר, עדכני אותנו ואנחנו ניצור איתה קשר.</li></ul>בכל שאלה אפשר לפנות אלינו בתשובה למייל הזה.<br>אנחנו מתרגשות להתחיל, ושמחות שאת איתנו!<br>{שם_המובילה}<br>צוות 'מדויקות'`}
+};
+const tplKindOf=m=>m&&m.rank>=50?'faculty':m&&m.rank>=40?'postdoc':'regular';
 const plainToHtml=t=>esc(t).replace(/\n/g,'<br>');
-const tplNow=()=>{ const t=S.metaKV.emailTemplate||{}; return {subject:t.subject||DEFAULT_TPL.subject,html:sanitizeHtml(t.html||(t.body?plainToHtml(t.body):plainToHtml(DEFAULT_TPL.body)))}; };
+const tplNow=(kind='regular')=>{ const K=TPL_KINDS[kind]||TPL_KINDS.regular; const t=S.metaKV[K.key]||{}; return {kind,subject:t.subject||DEFAULT_TPL.subject,html:sanitizeHtml(t.html||(t.body?plainToHtml(t.body):K.html))}; };
 const SAFE_TAGS=new Set(['B','STRONG','I','EM','U','S','SPAN','FONT','A','BR','DIV','P','UL','OL','LI','H3','H4','BLOCKQUOTE']);
 function sanitizeHtml(html){
   const doc=new DOMParser().parseFromString('<div>'+String(html||'')+'</div>','text/html');
@@ -1309,10 +1322,10 @@ function buildEmail(mid,grp){
   const m=P(mid); const co=coOf(mid)?P(coOf(mid)):null;
   const pg=phdMentorGroup(mid);
   const ms=(pg?pg.members:nGroups(m)===2?groupOfG(mid,grp||1):groupOf(mid)).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
-  const t=tplNow();
+  const kind=tplKindOf(m); const t=tplNow(kind);
   const name=co?`${m.first||''} ו${co.first||''}`:(m.first||'');
-  const cols=['שנת לימודים','אימייל','מספר טלפון','שם משפחה','שם פרטי'];
-  const rowsP=ms.map(e=>[stageShort(e),e.email||'',e.phone||'',e.last||'',e.first||'']);
+  const cols=kind==='regular'?['שם פרטי','שם משפחה','מספר טלפון','אימייל','שנת לימודים']:['שם','שלב בתואר','בית ספר','טלפון','מייל'];
+  const rowsP=ms.map(e=>kind==='regular'?[e.first||'',e.last||'',e.phone||'',e.email||'',stageShort(e)]:[fullName(e),stageShort(e),deptsOf(e).join(' + ')||SCHOOL_NAME[e.school]||'',e.phone||'',e.email||'']);
   const tablePlain=[cols.join('\t'),...rowsP.map(r=>r.join('\t'))].join('\n');
   const td='border:1px solid #999;padding:4px 8px;text-align:right';
   const tableHtml=`<table dir="rtl" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;width:100%"><tr>${cols.map(c=>`<th style="${td};background:#eee">${esc(c)}</th>`).join('')}</tr>${rowsP.map(r=>`<tr>${r.map(c=>`<td style="${td}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
@@ -1324,7 +1337,7 @@ function buildEmail(mid,grp){
   const plain=htmlToText(bodyH.replace(/\{טבלת_החניכות\}/g,TOK)).replace(TOK,'\n'+tablePlain+'\n');
   const html=`<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${bodyH.replace(/\{טבלת_החניכות\}/g,tableHtml)}</div>`;
   const to=[m.email,co&&co.email].filter(Boolean).join(', ');
-  return {to,subject:fill(t.subject),plain,html,n:ms.length};
+  return {to,subject:fill(t.subject),plain,html,n:ms.length,kind};
 }
 async function copyRich(html,plain){
   try{ if(window.ClipboardItem&&navigator.clipboard.write){ await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([plain],{type:'text/plain'})})]); return true; } }catch(e){}
@@ -1335,7 +1348,7 @@ function vEmail(){
   const two=nGroups(m)===2&&!phdMentorGroup(mid);
   const em=buildEmail(mid,grp); const sent=sentOf(mid,two?grp:1);
   return `<div class="overlay center-modal" data-act="emailCloseBg"><div class="panel modal" role="dialog" aria-label="תבנית מייל">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">מייל לחונכת · ${esc(fullName(m))}${two?` · קבוצה ${GL(grp)}`:''}</h2><button class="btn" data-act="emailClose">סגירה</button></div>
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">מייל לחונכת · ${esc(fullName(m))}${two?` · קבוצה ${GL(grp)}`:''} <span class="chip" title="לפי השלב של החונכת">תבנית: ${TPL_KINDS[em.kind].label}</span></h2><button class="btn" data-act="emailClose">סגירה</button></div>
     ${em.n?'':'<p class="chip warn" style="white-space:normal">אין עדיין חניכות בקבוצה. המייל ייצא עם טבלה ריקה.</p>'}
     <div class="mf"><span class="muted">אל</span><b dir="ltr">${esc(em.to||'אין מייל לחונכת')}</b><button class="btn sm" data-act="copyTo">העתקה</button></div>
     <div class="mf"><span class="muted">נושא</span><b>${esc(em.subject)}</b><button class="btn sm" data-act="copySubj">העתקה</button></div>
@@ -1350,8 +1363,8 @@ function vEmail(){
 const TAGS=['שם_החונכת','כמות_החניכות','תואר_החניכות','טבלת_החניכות','שם_המובילה','מייל_המובילה'];
 const SWATCHES=['#111111','#0B6E63','#1D4ED8','#B42318','#A15C07','#7C3AED'];
 function vEmailTpl(){
-  const t=tplNow(); const ro=S.readOnly;
-  return `<div><h3 style="margin:0">תבנית המייל לחונכות</h3><p class="muted" style="margin:4px 0 8px">הנוסח שנשלח לכל חונכת מלשונית "הקבוצות שלי". התגיות בסוגריים המסולסלים מתמלאות לבד בפרטים של כל חונכת. לחיצה על תגית מוסיפה אותה במקום הסמן.</p>
+  const kind=S.tplKind||'regular'; const t=tplNow(kind); const ro=S.readOnly;
+  return `<div><div class="seg" style="margin-bottom:10px">${Object.entries(TPL_KINDS).map(([k,v])=>`<button data-tplkind="${k}" aria-pressed="${k===kind}">${v.label}</button>`).join('')}</div><h3 style="margin:0">תבנית המייל ל${TPL_KINDS[kind].label}</h3><p class="muted" style="margin:4px 0 8px">הנוסח שנשלח לכל חונכת מלשונית "הקבוצות שלי". התגיות בסוגריים המסולסלים מתמלאות לבד בפרטים של כל חונכת. לחיצה על תגית מוסיפה אותה במקום הסמן.</p>
     <label class="muted" for="tplSubj" style="font-size:12px">נושא</label><input id="tplSubj" type="text" value="${esc(S.tplSubjDraft??t.subject)}" style="width:100%;margin-bottom:10px" ${ro?'disabled':''}>
     <span class="muted" style="font-size:12px">גוף המייל</span>
     ${ro?'':`<div class="rtbar" role="toolbar" aria-label="עיצוב טקסט">
@@ -1918,7 +1931,7 @@ async function doImport(){
 }
 async function doClear(){
   S.busy='מוחקת…'; S.clearStep=0; render();
-  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,prevYear,prevYearLink,progHidden)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
+  try{ if(!S.phdMissing) await deleteAll('phd_groups'); for(const c of ['matches','ann','people','activity']) await deleteAll(c); await W(()=>sb.from('meta').delete().not('key','in','(emailTemplate,emailTemplatePostdoc,emailTemplateFaculty,prevYear,prevYearLink,progHidden)')); logAct('clear',{}); toast('כל הנתונים נמחקו'); }catch(e){}
   S.busy=''; S.sel=null; render();
 }
 function exportRows(){
@@ -1999,15 +2012,14 @@ async function exportXlsx(){
       const r=wsA.addRow([p.first||'',p.last||'',p.email||'',p.phone||'',[p.mentor&&'חונכת',p.mentee&&'חניכה'].filter(Boolean).join(' + ')||'לא צוין',tr==='phd'?'דוקטורנטיות':tr==='reg'?'רגיל':'לא נספרת',stageShort(p),SCHOOL_NAME[p.school]||'',p.dept||'',p.dept2||'',personLeader(p)?leaderFull(personLeader(p)):'',isActive(p)?'פעילה':'לא פעילה',plc,p.mentee?(p.okMale||''):'',p.mentor?(a.withMale!=null?yesNo(a.withMale):(p.mentorWithMale||'')):'',p.notes||'',a.leaderNote||'',p.id]);
       if(!isActive(p)) r.font={color:{argb:'FF999999'}};
     });
-    // 6. email template
-    const t=tplNow();
+    // 6. email templates
     const ws5=wb.addWorksheet('נוסח המייל',{views:[{rightToLeft:true}]});
     ws5.getColumn(1).width=110; ws5.getColumn(1).alignment={wrapText:true,vertical:'top',horizontal:'right'};
-    ws5.addRow(['הנוסח הכללי של המייל לחונכות, כפי שהוא שמור במערכת. התגיות בסוגריים מסולסלים מתמלאות אוטומטית לכל חונכת.']).font={italic:true,color:{argb:'FF666666'}};
-    ws5.addRow([]);
-    const sr=ws5.addRow(['נושא: '+t.subject]); sr.font={bold:true,size:13};
-    ws5.addRow([]);
-    htmlToText(t.html).split('\n').forEach(line=>ws5.addRow([line]));
+    ws5.addRow(['הנוסחים של המייל לחונכות, כפי שהם שמורים במערכת. התגיות בסוגריים מסולסלים מתמלאות אוטומטית לכל חונכת.']).font={italic:true,color:{argb:'FF666666'}};
+    for(const [k,K] of Object.entries(TPL_KINDS)){ const t=tplNow(k);
+      ws5.addRow([]); const hr=ws5.addRow(['תבנית: '+K.label]); hr.font={bold:true,size:14,color:{argb:'FF1F5F8B'}};
+      ws5.addRow(['נושא: '+t.subject]).font={bold:true};
+      htmlToText(t.html).split('\n').forEach(line=>ws5.addRow([line])); }
     ws5.addRow([]);
     ws5.addRow(['התגיות:']).font={bold:true};
     [['{שם_החונכת}','השם הפרטי של החונכת (ושל החונכת השותפה, אם יש)'],['{כמות_החניכות}','מספר החניכות בקבוצה'],['{תואר_החניכות}','התואר של החניכות (ראשון / שני …)'],['{טבלת_החניכות}','טבלה עם פרטי החניכות'],['{שם_המובילה}','שם המובילה האחראית'],['{מייל_המובילה}','המייל של המובילה האחראית']].forEach(([a,b])=>ws5.addRow([a+'  ←  '+b]));
@@ -2038,6 +2050,7 @@ document.addEventListener('click',async ev=>{
   const t=ev.target.closest('button,[data-sel],[data-goto],tr[data-goto],[data-act],[data-phdgrp]'); if(!t) return;
   const d=t.dataset;
   if(d.cmprole){ S.cmpRole=d.cmprole; render(); return; }
+  if(d.tplkind){ if(S.tplDraft!=null&&S.clearStep!=='tk'+d.tplkind){ S.clearStep='tk'+d.tplkind; toast('יש שינויים שלא נשמרו. לחצי שוב כדי לעבור (השינויים יימחקו), או שמרי קודם.'); return; } S.clearStep=0; S.tplKind=d.tplkind; S.tplDraft=null; S.tplSubjDraft=null; render(); return; }
   if(d.candtog!=null){ const c=candClosed(); if(c.has(d.candtog)) c.delete(d.candtog); else c.add(d.candtog); try{ localStorage.setItem('shibutz.candClosed',JSON.stringify([...c])); }catch(e){} render(); return; }
   if(d.tab){ if(S.role!=='admin'&&ADMIN_TABS.includes(d.tab)){ toast('הלשונית הזאת זמינה למנהלת בלבד'); return; } S.tab=d.tab; try{localStorage.setItem('shibutz.tab',S.tab);}catch(e){} render(); window.scrollTo(0,0); return; }
   if(d.mf){ S.mentorFilter=d.mf; render(); return; }
@@ -2120,8 +2133,8 @@ document.addEventListener('click',async ev=>{
     case 'copyBody': { const em=buildEmail(S.emailFor); toast(await copyRich(em.html,em.plain)?'גוף המייל הועתק, כולל הטבלה. אפשר להדביק במייל.':'ההעתקה נחסמה. סמני את הטקסט בתצוגה והעתיקי ידנית.',!0&&false); break; }
     case 'emailSent': { const [mid,gs]=String(S.emailFor).split('|'); await setAnn(mid,{[sentKey(+gs||1)]:Date.now()}).catch(()=>{}); logAct('email',{m:mid}); break; }
     case 'emailUnsent': { const [mid,gs]=String(S.emailFor).split('|'); await setAnn(mid,{[sentKey(+gs||1)]:null}).catch(()=>{}); break; }
-    case 'tplSave': { const subject=($('#tplSubj')?.value||'').trim(), html=sanitizeHtml($('#tplEditor')?.innerHTML||''); await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{subject,html}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('התבנית נשמרה'); render(); }).catch(()=>{}); break; }
-    case 'tplReset': if(S.clearStep!=='tpl'){ S.clearStep='tpl'; toast('לחצי שוב כדי לחזור לנוסח המקורי. השינויים שלך יימחקו.'); break; } S.clearStep=0; await W(()=>sb.from('meta').upsert({key:'emailTemplate',data:{}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('הוחזר הנוסח המקורי'); }).catch(()=>{}); render(); break;
+    case 'tplSave': { const subject=($('#tplSubj')?.value||'').trim(), html=sanitizeHtml($('#tplEditor')?.innerHTML||''); await W(()=>sb.from('meta').upsert({key:TPL_KINDS[S.tplKind||'regular'].key,data:{subject,html}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('התבנית נשמרה'); render(); }).catch(()=>{}); break; }
+    case 'tplReset': if(S.clearStep!=='tpl'){ S.clearStep='tpl'; toast('לחצי שוב כדי לחזור לנוסח המקורי. השינויים שלך יימחקו.'); break; } S.clearStep=0; await W(()=>sb.from('meta').upsert({key:TPL_KINDS[S.tplKind||'regular'].key,data:{}})).then(()=>{ S.tplDraft=null; S.tplSubjDraft=null; toast('הוחזר הנוסח המקורי'); }).catch(()=>{}); render(); break;
     case 'coPick': S.coPick=S.sel; S.coQ=''; render(); setTimeout(()=>$('#coQ')?.focus(),0); break;
     case 'coPickClose': S.coPick=null; render(); break;
     case 'addPerson': if(S.role!=='admin') break; S.addOpen=!S.addOpen; render(); break;

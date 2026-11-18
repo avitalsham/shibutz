@@ -976,12 +976,14 @@ async function assign(eid,mid,{expected,status='final',override='',force=false,g
     render(); return;
   }
   S.pending=null; S.overrideFor=null;
+  MAP.matches.set({mentee_id:eid,mentor_id:mid,status,override:override||'',by_email:S.uid,at:new Date().toISOString(),grp}); rerenderSoon();
   toast(`${fullName(e)} שובצה אל ${fullName(m)}${two?` · קבוצה ${GL(grp)}`:''}`);
 }
 async function unassign(eid){
   if(S.readOnly) return;
   const cur=S.matches.get(eid);
   await W(()=>sb.from('matches').delete().eq('mentee_id',eid));
+  MAP.matches.del(eid); rerenderSoon();
   toast(`השיבוץ של ${fullName(P(eid))} בוטל`);
   logAct('unassign',{e:eid,m:cur?cur.mentor:null});
 }
@@ -994,7 +996,10 @@ async function approve(eids){
 async function setAnn(pid,patch){
   if(S.readOnly) return;
   const {by,at,...cur}=S.ann.get(pid)||{};
-  await W(()=>sb.from('ann').upsert({person_id:pid,data:{...cur,...patch},by_email:S.uid,at:new Date().toISOString()}));
+  const data={...cur,...patch}; const now=new Date().toISOString();
+  await W(()=>sb.from('ann').upsert({person_id:pid,data,by_email:S.uid,at:now}));
+  // מעדכנים מיד גם במסך, בלי לחכות לעדכון בזמן אמת (שלפעמים מתעכב או לא מגיע אחרי שהמחשב נרדם)
+  MAP.ann.set({person_id:pid,data,by_email:S.uid,at:now}); rerenderSoon();
 }
 async function splitArea(aid){
   if(S.readOnly) return;
@@ -2110,7 +2115,7 @@ document.addEventListener('click',async ev=>{
     await setAnn(mid,{groups:+n===2?2:null}).catch(()=>{}); toast(+n===2?`ל${fullName(m)} יש עכשיו שתי קבוצות`:`קבוצה ב של ${fullName(m)} נסגרה`); logAct('groups',{m:mid,n:+n}); return; }
   if(d.movegrp){ if(S.readOnly) return; const [eid,gs]=d.movegrp.split('|'); const mt=S.matches.get(eid); if(!mt) return; const g=+gs;
     if(groupOfG(mt.mentor,g).length>=MAXG){ toast(`קבוצה ${GL(g)} כבר מלאה`,true); return; } t.disabled=true;
-    try{ await W(()=>sb.from('matches').update({grp:g}).eq('mentee_id',eid)); toast(`${fullName(P(eid))} הועברה לקבוצה ${GL(g)}`); }catch(e){ toast('כדי להעביר בין קבוצות צריך להריץ קודם את update-07-two-groups.sql ב־Supabase',true); } return; }
+    try{ await W(()=>sb.from('matches').update({grp:g}).eq('mentee_id',eid)); const cm=S.matches.get(eid); if(cm){ cm.grp=g; rerenderSoon(); } toast(`${fullName(P(eid))} הועברה לקבוצה ${GL(g)}`); }catch(e){ toast('כדי להעביר בין קבוצות צריך להריץ קודם את update-07-two-groups.sql ב־Supabase',true); } return; }
   if(d.override){ S.overrideFor=d.override; render(); setTimeout(()=>$('#ovr')?.focus(),0); return; }
   if(d.unassign){ t.disabled=true; await unassign(d.unassign).catch(()=>{}); return; }
   if(d.approve){ t.disabled=true; await approve([d.approve]).catch(()=>{}); return; }

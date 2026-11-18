@@ -963,7 +963,7 @@ const leaderFull=id=>!id?'':String(id).startsWith('file:')?String(id).slice(5)+'
 const leaderName=id=>!id?'':(id===S.uid?'את':leaderFull(id));
 function ago(t){ if(!t) return ''; const s=Math.round((Date.now()-t)/1000); if(s<60) return 'עכשיו'; if(s<3600) return `לפני ${Math.round(s/60)} דק׳`; if(s<86400) return `לפני ${Math.round(s/3600)} שע׳`; return new Date(t).toLocaleDateString('he-IL'); }
 function colorOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return `hsl(${h%360} 45% 42%)`; }
-const APP_VERSION='18.11 · 14:40';
+const APP_VERSION='18.11 · 22:30';
 function renderMe(){
   const el=$('#me'); if(!el) return;
   if(!S.uid){ el.innerHTML=''; return; }
@@ -1060,8 +1060,11 @@ function render(){
   const active=document.activeElement; const aid=active&&active.id; let ss=null,se=null; try{ss=active.selectionStart;se=active.selectionEnd;}catch(e){}
   const keepVal=active&&(active.tagName==='TEXTAREA'||(active.tagName==='INPUT'&&active.type==='text'))?active.value:null;
   const scrolls={}; m.querySelectorAll('[data-keep-scroll]').forEach(el=>scrolls[el.dataset.keepScroll]=el.scrollTop);
+  // טפסים שעדיין לא נשמרו (למשל הוספת משתתפת) שומרים על מה שהוקלד גם כשהמסך מתעדכן
+  const kept={}; m.querySelectorAll('[data-keepform] input[id],[data-keepform] select[id],[data-keepform] textarea[id]').forEach(el=>{ kept[el.id]=el.type==='checkbox'?{c:el.checked}:{v:el.value}; });
   m.innerHTML=banners()+(S.loaded.people?({progress:vProgress,board:vBoard,phd:vPhd,groups:vGroups,alerts:vAlerts,compare:vCompare,people:vPeople,data:vData,team:vTeam}[S.tab]||vProgress)():'<div class="empty"><b>טוען…</b></div>')+(S.settingsOpen&&S.loaded.people?vSettings():'')+(S.emailFor&&S.loaded.people?vEmail():'');
   m.querySelectorAll('[data-keep-scroll]').forEach(el=>{ if(scrolls[el.dataset.keepScroll]!=null) el.scrollTop=scrolls[el.dataset.keepScroll]; });
+  for(const [id,k] of Object.entries(kept)){ const el=document.getElementById(id); if(!el) continue; if('c' in k) el.checked=k.c; else el.value=k.v; }
   if(aid){ const el=document.getElementById(aid); if(el){ if(keepVal!=null) el.value=keepVal; el.focus(); try{ if(ss!=null) el.setSelectionRange(ss,se);}catch(e){} } }
   $('#season').textContent=S.meta?(S.meta.demo?'נתוני הדגמה':`${S.people.size} נרשמות`):'';
 }
@@ -1171,7 +1174,7 @@ function vDetail(p){
     </dl>
     <div class="row" style="gap:8px;margin:8px 0 4px"><label for="status" style="font-size:12px;color:var(--muted)">סטטוס</label><select id="status" data-ann="status" style="width:auto" ${S.readOnly?'disabled':''}><option value="active">פעילה</option>${p.mentor?`<option value="nomentees" ${a.status==='nomentees'?'selected':''}>חונכת בלי חניכות השנה</option>`:''}${p.mentee?`<option value="nogroup" ${a.status==='nogroup'?'selected':''}>לא נמצאה קבוצת חניכה</option>`:''}<option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select>${S.readOnly||S.deptEditFor===p.id?'':`<button class="link" data-act="deptEdit" style="font-size:12px;margin-inline-start:12px">שינוי בתי ספר</button>`}</div>
     ${S.deptEditFor===p.id?(()=>{ const cur=deptsOf(p); const opts=knownDepts(); const sel=(i)=>`<select id="dEd${i}"><option value="">${i?'— בלי —':'בחרי בית ספר'}</option>${opts.map(o=>`<option ${cur[i]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
-      return `<div class="deptedit"><b>בתי הספר של ${esc(p.first||'')}</b> <span class="muted" style="font-size:12px">עד 3. החניכות המתאימות יוצגו מבתי הספר האלה, והפקולטה תיקבע לפיהם.</span><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${sel(0)}${sel(1)}${sel(2)}<button class="btn sm primary" data-act="deptSave">שמירה</button>${p.deptManual?`<button class="btn sm" data-act="deptReset" title="חזרה לבית הספר מהטופס${p._dept0?': '+esc([p._dept0,p._dept20].filter(Boolean).join(' + ')):''}">חזרה לטופס</button>`:''}<button class="link" data-act="deptCancel">ביטול</button></div></div>`; })():''}</details>
+      return `<div class="deptedit" data-keepform><b>בתי הספר של ${esc(p.first||'')}</b> <span class="muted" style="font-size:12px">עד 3. החניכות המתאימות יוצגו מבתי הספר האלה, והפקולטה תיקבע לפיהם.</span><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${sel(0)}${sel(1)}${sel(2)}<button class="btn sm primary" data-act="deptSave">שמירה</button>${p.deptManual?`<button class="btn sm" data-act="deptReset" title="חזרה לבית הספר מהטופס${p._dept0?': '+esc([p._dept0,p._dept20].filter(Boolean).join(' + ')):''}">חזרה לטופס</button>`:''}<button class="link" data-act="deptCancel">ביטול</button></div></div>`; })():''}</details>
     ${p.notes?`<div class="notes${a.notesOk?' done':''}">${hl(p.notes)}</div>
       <label class="row" style="margin-top:6px"><input type="checkbox" id="notesOk" data-ann="notesOk" ${a.notesOk?'checked':''} ${S.readOnly?'disabled':''}> ההערות נקראו וטופלו</label>`:''}
     <div class="ann">
@@ -1623,7 +1626,7 @@ function roleToggles(p){
 function vAddPerson(){
   const depts=knownDepts();
   const o=(v,l)=>`<option value="${esc(v)}">${esc(l)}</option>`;
-  return `<div class="panel card" style="margin-bottom:12px;background:var(--sunk)"><h3>הוספת משתתפת</h3>
+  return `<div class="panel card" data-keepform style="margin-bottom:12px;background:var(--sunk)"><h3>הוספת משתתפת</h3>
     <div class="addgrid">
       <label>שם פרטי *<input id="np-first" type="text"></label>
       <label>שם משפחה *<input id="np-last" type="text"></label>

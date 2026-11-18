@@ -728,11 +728,13 @@ function inScope(p){
   return false;
 }
 const PHD_FAC={exact:'מדעים מדויקים',eng:'הנדסה',mgmt:'ניהול'};
-const isPhdMentee=p=>!!p&&p.mentee&&p.rank!=null&&p.rank>=30;
+// סטטוס "לא נמצאה קבוצת חניכה": החניכה לא תשובץ, ומופיעה ברשימה נפרדת
+const noGroup=p=>!!p&&A(p.id).status==='nogroup';
+const isPhdMentee=p=>!!p&&p.mentee&&!noGroup(p)&&p.rank!=null&&p.rank>=30;
 // סטטוס "חונכת בלי חניכות השנה": לא תשובץ כחונכת, ומופיעה ברשימה נפרדת (אם נרשמה גם כחניכה, זה לא משפיע על כך)
 const noMentees=p=>!!p&&A(p.id).status==='nomentees';
 const isPhdMentor=p=>!!p&&p.mentor&&p.rank!=null&&p.rank>=40&&!noMentees(p);
-const regMentee=p=>!!p&&p.mentee&&!isPhdMentee(p);
+const regMentee=p=>!!p&&p.mentee&&!noGroup(p)&&!(p.rank!=null&&p.rank>=30);
 const regMentor=p=>!!p&&p.mentor&&!noMentees(p)&&!(p.rank!=null&&p.rank>=40);
 // חברת סגל / פוסט־דוקטורנטית ששובצה לה קבוצה רגילה בשיבוץ חריג: מתנהגת כמו חונכת רגילה לגבי הקבוצה הזאת
 const regLike=p=>regMentor(p)||(!!p&&p.mentor&&p.rank!=null&&p.rank>=40&&groupOf(p.id).length>0);
@@ -1153,13 +1155,13 @@ function vDetail(p){
       </div>
       <div class="row">${roleFor(p,S.selRole)==='mentor'&&!S.readOnly&&!isCo(p.id)&&!coOf(p.id)?`<button class="btn sm" data-act="coPick">＋ הוספת חונכת שותפה</button>`:''}${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
     </div>
-    <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen||S.deptEditFor===p.id?'open':''}><summary>פרטים נוספים${a.status==='withdrawn'?' · <span class="chip warn">לא פעילה</span>':a.status==='nomentees'?' · <span class="chip">חונכת בלי חניכות השנה</span>':''}</summary><dl class="facts">
+    <details class="facts-wrap" ${roleFor(p,S.selRole)!=='mentor'||S.factsOpen||S.deptEditFor===p.id?'open':''}><summary>פרטים נוספים${a.status==='withdrawn'?' · <span class="chip warn">לא פעילה</span>':a.status==='nomentees'?' · <span class="chip">חונכת בלי חניכות השנה</span>':a.status==='nogroup'?' · <span class="chip">לא נמצאה קבוצת חניכה</span>':''}</summary><dl class="facts">
       ${fact('מייל',p.email)}${fact('טלפון',p.phone)}${fact('מסלול מחקר',p.track)}${fact('תזה',p.thesis)}${fact('מסלול משולב',p.combined)}${fact('חוג נוסף',p.extra)}
       ${fact('תארים קודמים',p.degrees)}${fact('עבודה',p.work)}${fact('השתתפות קודמת',p.prev)}${fact('אודיסאה / עתודה',p.program)}
       ${p.mentee?fact('חונכת מבוקשת',prefTxt(p.wantMentor,p.wantMentorSpec)):''}${p.mentor?fact('חניכות מבוקשות',prefTxt(p.wantMentees,p.wantMenteesSpec)):''}
       ${p.mentee?fact('בנוח עם חונך גבר',p.okMale):''}${p.mentor?fact('מוכנה לחנוך עם חונך',p.mentorWithMale):''}${p.dups>1?fact('מילאה את הטופס',p.dups+' פעמים'):''}
     </dl>
-    <div class="row" style="gap:8px;margin:8px 0 4px"><label for="status" style="font-size:12px;color:var(--muted)">סטטוס</label><select id="status" data-ann="status" style="width:auto" ${S.readOnly?'disabled':''}><option value="active">פעילה</option>${p.mentor?`<option value="nomentees" ${a.status==='nomentees'?'selected':''}>חונכת בלי חניכות השנה</option>`:''}<option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select>${S.readOnly||S.deptEditFor===p.id?'':`<button class="link" data-act="deptEdit" style="font-size:12px;margin-inline-start:12px">שינוי בתי ספר</button>`}</div>
+    <div class="row" style="gap:8px;margin:8px 0 4px"><label for="status" style="font-size:12px;color:var(--muted)">סטטוס</label><select id="status" data-ann="status" style="width:auto" ${S.readOnly?'disabled':''}><option value="active">פעילה</option>${p.mentor?`<option value="nomentees" ${a.status==='nomentees'?'selected':''}>חונכת בלי חניכות השנה</option>`:''}${p.mentee?`<option value="nogroup" ${a.status==='nogroup'?'selected':''}>לא נמצאה קבוצת חניכה</option>`:''}<option value="withdrawn" ${a.status==='withdrawn'?'selected':''}>לא פעילה (פרשה / כפולה)</option></select>${S.readOnly||S.deptEditFor===p.id?'':`<button class="link" data-act="deptEdit" style="font-size:12px;margin-inline-start:12px">שינוי בתי ספר</button>`}</div>
     ${S.deptEditFor===p.id?(()=>{ const cur=deptsOf(p); const opts=knownDepts(); const sel=(i)=>`<select id="dEd${i}"><option value="">${i?'— בלי —':'בחרי בית ספר'}</option>${opts.map(o=>`<option ${cur[i]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
       return `<div class="deptedit"><b>בתי הספר של ${esc(p.first||'')}</b> <span class="muted" style="font-size:12px">עד 3. החניכות המתאימות יוצגו מבתי הספר האלה, והפקולטה תיקבע לפיהם.</span><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${sel(0)}${sel(1)}${sel(2)}<button class="btn sm primary" data-act="deptSave">שמירה</button>${p.deptManual?`<button class="btn sm" data-act="deptReset" title="חזרה לבית הספר מהטופס${p._dept0?': '+esc([p._dept0,p._dept20].filter(Boolean).join(' + ')):''}">חזרה לטופס</button>`:''}<button class="link" data-act="deptCancel">ביטול</button></div></div>`; })():''}</details>
     ${p.notes?`<div class="notes${a.notesOk?' done':''}">${hl(p.notes)}</div>
@@ -1548,14 +1550,19 @@ function vCompare(){
   if(admin) h+=`<div class="panel" style="padding:14px 16px;margin-top:12px"><p class="muted" style="margin:0 0 8px">נתוני ${lbl} נטענו ${new Date(pv.at).toLocaleDateString('he-IL')}. אפשר להחליף אותם בקובץ אחר:</p>${up}</div>`;
   return h;
 }
-const noMenteesList=()=>[...S.people.values()].filter(p=>noMentees(p)&&isActive(p));
-function vNoMentees(){
-  const L=noMenteesList().sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
-  if(!L.length) return '';
-  return `<div class="panel acard" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><h3 style="margin:0"><span class="sev info"></span>חונכות בלי חניכות השנה <span class="badge soft">${L.length}</span></h3><div class="row"><button class="btn sm" data-act="nmCopy" title="להדבקה בשדה 'עותק מוסתר' (BCC)">העתקת כל המיילים</button><button class="btn sm" data-act="nmXlsx">⬇ אקסל</button></div></div>
-    <p class="muted" style="margin:6px 0">כל התוכנית. חונכות שסומנו בסטטוס "חונכת בלי חניכות השנה", למשל כי אין חניכות שמתאימות לתנאים או שאין מספיק חניכות.</p>
-    <table class="gaptbl"><thead><tr><th>שם</th><th>שלב</th><th>בית ספר</th><th>מייל</th><th>טלפון</th><th>מובילה</th><th>הערת מובילות</th></tr></thead><tbody>${L.map(p=>`<tr><td><button class="link" data-goto="${p.id}" data-role="mentor">${esc(fullName(p))}</button></td><td>${esc(stageShort(p))}</td><td>${esc(deptsOf(p).join(' + '))}</td><td dir="ltr">${esc(p.email||'')}</td><td class="num">${esc(p.phone||'')}</td><td>${esc(leaderFull(leaderOf(p))||'')}</td><td>${esc(A(p.id).leaderNote||'')}</td></tr>`).join('')}</tbody></table></div>`;
+const STAT_LISTS={
+  nomentees:{test:noMentees,title:'חונכות בלי חניכות השנה',desc:'חונכות שסומנו בסטטוס "חונכת בלי חניכות השנה", למשל כי אין חניכות שמתאימות לתנאים או שאין מספיק חניכות.',role:'mentor',file:'chonchot-bli-chanichot.xlsx',sheet:'בלי חניכות השנה'},
+  nogroup:{test:noGroup,title:'חניכות שלא נמצאה להן קבוצה',desc:'חניכות שסומנו בסטטוס "לא נמצאה קבוצת חניכה".',role:'mentee',file:'chanichot-bli-kvutza.xlsx',sheet:'לא נמצאה קבוצה'}
+};
+const statList=k=>[...S.people.values()].filter(p=>STAT_LISTS[k].test(p)&&isActive(p)).sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','he')||fullName(a).localeCompare(fullName(b),'he'));
+const noMenteesList=()=>statList('nomentees');
+function vStatList(k){
+  const K=STAT_LISTS[k], L=statList(k); if(!L.length) return '';
+  return `<div class="panel acard" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><h3 style="margin:0"><span class="sev info"></span>${K.title} <span class="badge soft">${L.length}</span></h3><div class="row"><button class="btn sm" data-act="slCopy" data-k="${k}" title="להדבקה בשדה 'עותק מוסתר' (BCC)">העתקת כל המיילים</button><button class="btn sm" data-act="slXlsx" data-k="${k}">⬇ אקסל</button></div></div>
+    <p class="muted" style="margin:6px 0">כל התוכנית. ${K.desc}</p>
+    <table class="gaptbl"><thead><tr><th>שם</th><th>שלב</th><th>בית ספר</th><th>מייל</th><th>טלפון</th><th>מובילה</th><th>הערת מובילות</th></tr></thead><tbody>${L.map(p=>`<tr><td><button class="link" data-goto="${p.id}" data-role="${K.role}">${esc(fullName(p))}</button></td><td>${esc(stageShort(p))}</td><td>${esc(deptsOf(p).join(' + '))}</td><td dir="ltr">${esc(p.email||'')}</td><td class="num">${esc(p.phone||'')}</td><td>${esc(leaderFull(personLeader(p)||leaderOf(p))||'')}</td><td>${esc(A(p.id).leaderNote||'')}</td></tr>`).join('')}</tbody></table></div>`;
 }
+function vNoMentees(){ return vStatList('nomentees')+vStatList('nogroup'); }
 function vAlerts(){
   if(!S.people.size) return vEmptyPeople();
   const nm=vNoMentees();
@@ -1581,7 +1588,7 @@ const PT_COLS=[
   {k:'phone',l:'טלפון',get:p=>p.phone||''},
   {k:'prev',l:'השתתפות קודמת',get:p=>p.prev||''},
   {k:'program',l:'אודיסאה/עתודה',get:p=>p.program||''},
-  {k:'status',l:'סטטוס',get:p=>(isActive(p)?(noMentees(p)?'חונכת בלי חניכות השנה':'פעילה'):'לא פעילה')},
+  {k:'status',l:'סטטוס',get:p=>(isActive(p)?(noMentees(p)?'חונכת בלי חניכות השנה':noGroup(p)?'לא נמצאה קבוצת חניכה':'פעילה'):'לא פעילה')},
   {k:'notes',l:'הערות',get:p=>p.notes||''}
 ];
 function ptRows(){
@@ -1595,7 +1602,7 @@ function ptRows(){
   if(F.lead==='__none') rows=rows.filter(p=>!personLeader(p)); else if(F.lead) rows=rows.filter(p=>personLeader(p)===F.lead);
   if(F.match==='done') rows=rows.filter(p=>p.mentor?groupOf(p.id).length>0:S.matches.has(p.id));
   else if(F.match==='open') rows=rows.filter(p=>p.mentor?groupOf(p.id).length===0:!S.matches.has(p.id));
-  if(F.status==='active') rows=rows.filter(isActive); else if(F.status==='inactive') rows=rows.filter(p=>!isActive(p)); else if(F.status==='nomentees') rows=rows.filter(noMentees);
+  if(F.status==='active') rows=rows.filter(isActive); else if(F.status==='inactive') rows=rows.filter(p=>!isActive(p)); else if(F.status==='nomentees') rows=rows.filter(noMentees); else if(F.status==='nogroup') rows=rows.filter(noGroup);
   const col=PT_COLS.find(c=>c.k===F.sort)||PT_COLS[4];
   rows.sort((a,b)=>{ const x=col.get(a), y=col.get(b); const r=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'he'); return r*F.dir||fullName(a).localeCompare(fullName(b),'he'); });
   return rows;
@@ -1660,7 +1667,7 @@ function vPeople(){
       <select id="pt-stage" data-ptf="stage">${opt('','כל השלבים',F.stage)}${stages.map(g=>opt(g,g,F.stage)).join('')}</select>
       <select id="pt-lead" data-ptf="lead">${opt('','כל המובילות',F.lead)}${opt('__none','ללא מובילה',F.lead)}${leads.map(l=>opt(l.email,leaderFull(l.email),F.lead)).join('')}</select>
       <select id="pt-match" data-ptf="match">${opt('','שובצו ולא שובצו',F.match)}${opt('done','שובצו / יש קבוצה',F.match)}${opt('open','עוד לא שובצו',F.match)}</select>
-      <select id="pt-status" data-ptf="status">${opt('','כל הסטטוסים',F.status)}${opt('active','פעילות',F.status)}${opt('inactive','לא פעילות',F.status)}${opt('nomentees','חונכות בלי חניכות השנה',F.status)}</select>
+      <select id="pt-status" data-ptf="status">${opt('','כל הסטטוסים',F.status)}${opt('active','פעילות',F.status)}${opt('inactive','לא פעילות',F.status)}${opt('nomentees','חונכות בלי חניכות השנה',F.status)}${opt('nogroup','חניכות שלא נמצאה להן קבוצה',F.status)}</select>
       <button class="link" data-act="ptClear">ניקוי סינון</button>
       ${S.role==='admin'&&!S.readOnly?'<span class="muted" style="font-size:12px">💡 בעמודת התפקיד: לחיצה על חונכת / חניכה מוסיפה או מבטלת את התפקיד.</span>':''}
       ${S.readOnly||S.role!=='admin'?'':`<button class="btn sm primary" data-act="addPerson" style="margin-inline-start:auto">＋ הוספת משתתפת</button>`}
@@ -1755,16 +1762,17 @@ function phdAgg(){
 }
 // מי מהנרשמות בטופס לא נספרת בדף ההתקדמות, ולמה
 function notCounted(){
-  const c={inactive:0,fac:0,phd:0,norole:0,nomentees:0};
+  const c={inactive:0,fac:0,phd:0,norole:0,nomentees:0,nogroup:0};
   for(const p of S.people.values()){
     if(trackOf(p)) continue;
-    if(noMentees(p)&&isActive(p)) c.nomentees++;
+    if(noGroup(p)&&isActive(p)) c.nogroup++;
+    else if(noMentees(p)&&isActive(p)) c.nomentees++;
     else if(!isActive(p)) c.inactive++;
     else if(isPhdMentor(p)) c.fac++;
     else if(isPhdMentee(p)) c.phd++;
     else c.norole++;
   }
-  c.total=c.inactive+c.fac+c.phd+c.norole+c.nomentees; return c;
+  c.total=c.inactive+c.fac+c.phd+c.norole+c.nomentees+c.nogroup; return c;
 }
 function vProgress(){
   if(!S.people.size) return vEmptyPeople();
@@ -1798,7 +1806,7 @@ function vProgress(){
     <div class="phero-ring">${ring}</div>
     <div class="phero-main">
       <div class="phero-title"><b class="num">${o.placed}</b> מתוך <b class="num">${o.total}</b> משתתפות כבר בקבוצה</div>
-      ${(nc=>nc.total?`<div class="muted" style="font-size:12px;margin-top:2px">${S.people.size} נרשמו בטופס. ${nc.total===1?'אחת לא נספרת':nc.total+' לא נספרות'} כאן: ${[nc.inactive&&`${nc.inactive} סומנו כלא פעילות`,nc.nomentees&&`${nc.nomentees} חונכות בלי חניכות השנה`,nc.fac&&`${nc.fac} חברות סגל / פוסט־דוקטורט שעדיין לא מלוות קבוצת דוקטורנטיות`,nc.phd&&`${nc.phd} דוקטורנטיות`,nc.norole&&`${nc.norole} בלי תפקיד מזוהה`].filter(Boolean).join(' · ')}</div>`:'')(notCounted())}
+      ${(nc=>nc.total?`<div class="muted" style="font-size:12px;margin-top:2px">${S.people.size} נרשמו בטופס. ${nc.total===1?'אחת לא נספרת':nc.total+' לא נספרות'} כאן: ${[nc.inactive&&`${nc.inactive} סומנו כלא פעילות`,nc.nomentees&&`${nc.nomentees} חונכות בלי חניכות השנה`,nc.nogroup&&`${nc.nogroup} חניכות שלא נמצאה להן קבוצה`,nc.fac&&`${nc.fac} חברות סגל / פוסט־דוקטורט שעדיין לא מלוות קבוצת דוקטורנטיות`,nc.phd&&`${nc.phd} דוקטורנטיות`,nc.norole&&`${nc.norole} בלי תפקיד מזוהה`].filter(Boolean).join(' · ')}</div>`:'')(notCounted())}
       <div class="cheer">${cheer}</div>
       ${msBar}${legend}
     </div>
@@ -2014,6 +2022,7 @@ async function exportXlsx(){
     all.filter(p=>regMentor(p)&&!isCo(p.id)&&!groupOf(p.id).length).forEach(p=>rowsU.push(['חונכת בלי חניכות',p]));
     if(!S.phdMissing) all.filter(p=>isPhdMentee(p)&&!phdGroupOf(p.id)).forEach(p=>rowsU.push(['דוקטורנטית בלי קבוצה',p]));
     all.filter(noMentees).forEach(p=>rowsU.push(['חונכת בלי חניכות השנה (סומן)',p]));
+    all.filter(noGroup).forEach(p=>rowsU.push(['לא נמצאה קבוצת חניכה (סומן)',p]));
     rowsU.sort((a,b)=>a[0].localeCompare(b[0],'he')||L(a[1]).localeCompare(L(b[1]),'he')||(a[1].rank||0)-(b[1].rank||0));
     for(const [k,p] of rowsU) ws3.addRow([k,L(p),fullName(p),st(p),p.dept||'',SCHOOL_NAME[p.school]||'',p.email||'',p.phone||'',p.id]);
     // 4. summary
@@ -2033,7 +2042,7 @@ async function exportXlsx(){
       const a=A(p.id), mt=S.matches.get(p.id), mm=mt&&P(mt.mentor), gq=groupOf(p.id).length, pg=S.phdMissing?null:phdGroupOf(p.id), pmg=S.phdMissing?null:phdMentorGroup(p.id);
       const plc=[mm&&`חניכה אצל ${fullName(mm)}${mt.status==='proposed'?' (הצעה)':''}`, gq&&`חונכת של ${gq} חניכות`, isCo(p.id)&&`חונכת שותפה עם ${fullName(P(IDX.coHost.get(p.id)))}`, pg&&`חניכה ב${phdLabel(pg)} (דוקטורנטיות)`, pmg&&`חונכת של ${phdLabel(pmg)} (דוקטורנטיות)`].filter(Boolean).join(' · ')||'עדיין לא שובצה';
       const tr=trackOf(p);
-      const r=wsA.addRow([p.first||'',p.last||'',p.email||'',p.phone||'',[p.mentor&&'חונכת',p.mentee&&'חניכה'].filter(Boolean).join(' + ')||'לא צוין',tr==='phd'?'דוקטורנטיות':tr==='reg'?'רגיל':'לא נספרת',stageShort(p),SCHOOL_NAME[p.school]||'',p.dept||'',p.dept2||'',personLeader(p)?leaderFull(personLeader(p)):'',(isActive(p)?(noMentees(p)?'חונכת בלי חניכות השנה':'פעילה'):'לא פעילה'),plc,p.mentee?(p.okMale||''):'',p.mentor?(a.withMale!=null?yesNo(a.withMale):(p.mentorWithMale||'')):'',p.notes||'',a.leaderNote||'',p.id]);
+      const r=wsA.addRow([p.first||'',p.last||'',p.email||'',p.phone||'',[p.mentor&&'חונכת',p.mentee&&'חניכה'].filter(Boolean).join(' + ')||'לא צוין',tr==='phd'?'דוקטורנטיות':tr==='reg'?'רגיל':'לא נספרת',stageShort(p),SCHOOL_NAME[p.school]||'',p.dept||'',p.dept2||'',personLeader(p)?leaderFull(personLeader(p)):'',(isActive(p)?(noMentees(p)?'חונכת בלי חניכות השנה':noGroup(p)?'לא נמצאה קבוצת חניכה':'פעילה'):'לא פעילה'),plc,p.mentee?(p.okMale||''):'',p.mentor?(a.withMale!=null?yesNo(a.withMale):(p.mentorWithMale||'')):'',p.notes||'',a.leaderNote||'',p.id]);
       if(!isActive(p)) r.font={color:{argb:'FF999999'}};
     });
     // 6. email templates
@@ -2181,8 +2190,8 @@ document.addEventListener('click',async ev=>{
     case 'deptSave': case 'deptReset': { const pid=S.deptEditFor; if(!pid) break; let dl=null;
       if(d.act==='deptSave'){ dl=[0,1,2].map(i=>$('#dEd'+i)?.value||'').filter(Boolean); dl=[...new Set(dl)]; if(!dl.length){ toast('בחרי לפחות בית ספר אחד',true); break; } }
       await setAnn(pid,{depts:dl}).catch(()=>{}); S.deptEditFor=null; logAct('depts',{m:pid,d:dl}); toast(dl?`בתי הספר נשמרו: ${dl.join(' + ')}`:'חזרה לבית הספר מהטופס'); break; }
-    case 'nmCopy': { const em=noMenteesList().map(p=>p.email).filter(Boolean).join(', '); try{ await navigator.clipboard.writeText(em); toast(`הועתקו ${noMenteesList().filter(p=>p.email).length} כתובות מייל`); }catch(e){ toast('ההעתקה נכשלה',true); } break; }
-    case 'nmXlsx': { const w=XLSX.utils.book_new(); const sh=XLSX.utils.aoa_to_sheet([['שם פרטי','שם משפחה','מייל','טלפון','שלב','בית ספר','מובילה','הערת מובילות'],...noMenteesList().map(p=>[p.first||'',p.last||'',p.email||'',p.phone||'',stageShort(p),deptsOf(p).join(' + '),leaderFull(leaderOf(p))||'',A(p.id).leaderNote||''])]); sh['!cols']=[12,14,28,14,12,18,14,40].map(wch=>({wch})); XLSX.utils.book_append_sheet(w,sh,'בלי חניכות השנה'); w.Workbook={Views:[{RTL:true}]}; XLSX.writeFile(w,'chonchot-bli-chanichot.xlsx'); break; }
+    case 'slCopy': { const L=statList(d.k||'nomentees'); const em=L.map(p=>p.email).filter(Boolean); try{ await navigator.clipboard.writeText(em.join(', ')); toast(`הועתקו ${em.length} כתובות מייל`); }catch(e){ toast('ההעתקה נכשלה',true); } break; }
+    case 'slXlsx': { const K=STAT_LISTS[d.k||'nomentees']; const w=XLSX.utils.book_new(); const sh=XLSX.utils.aoa_to_sheet([['שם פרטי','שם משפחה','מייל','טלפון','שלב','בית ספר','מובילה','הערת מובילות'],...statList(d.k||'nomentees').map(p=>[p.first||'',p.last||'',p.email||'',p.phone||'',stageShort(p),deptsOf(p).join(' + '),leaderFull(personLeader(p)||leaderOf(p))||'',A(p.id).leaderNote||''])]); sh['!cols']=[12,14,28,14,12,18,14,40].map(wch=>({wch})); XLSX.utils.book_append_sheet(w,sh,K.sheet); w.Workbook={Views:[{RTL:true}]}; XLSX.writeFile(w,K.file); break; }
     case 'cmpMissing': cmpExportMissing(d.dept||''); break;
     case 'gapXlsx': { const pv=S.importPreview; if(!pv) break; const inFile=new Set(pv.people.map(p=>p.id)); const w=XLSX.utils.book_new();
       const a=XLSX.utils.aoa_to_sheet([['שורה באקסל','שם','מייל','טלפון','תפקיד בשורה','למה'],...(pv.lost||[]).map(l=>[l.row,l.name,l.email,l.phone,l.role||'',l.why])]); a['!cols']=[10,20,28,14,14,50].map(wch=>({wch})); XLSX.utils.book_append_sheet(w,a,'לא נספרו בנפרד');
@@ -2233,6 +2242,7 @@ document.addEventListener('change',async ev=>{
   if(t.id==='replaceAll'&&S.importPreview){ S.importPreview.replace=t.checked; return; }
   if(t.dataset.ann&&S.sel){
     const k=t.dataset.ann; let v=t.type==='checkbox'?t.checked:t.value; if(k==='capacity') v=+v;
+    if(k==='status'&&v==='nogroup'){ const id=S.sel; if(S.matches.has(id)||(!S.phdMissing&&phdGroupOf(id))){ toast('היא כבר משובצת לקבוצה. מבטלים קודם את השיבוץ, ואז אפשר לסמן "לא נמצאה קבוצת חניכה".',true); t.value=A(id).status||'active'; return; } }
     if(k==='status'&&v==='nomentees'){ const id=S.sel; if(groupOf(id).length||isCo(id)||coOf(id)||(!S.phdMissing&&phdMentorGroup(id))){ toast('יש לה כבר קבוצה או חונכת שותפה. מסירים אותן קודם, ואז אפשר לסמן "בלי חניכות השנה".',true); t.value=A(id).status||'active'; return; } }
     await setAnn(S.sel,{[k]:v}).catch(()=>{}); if(k==='leader') logAct('lead',{m:S.sel,to:v||null}); return;
   }

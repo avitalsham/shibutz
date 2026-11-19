@@ -963,7 +963,7 @@ const leaderFull=id=>!id?'':String(id).startsWith('file:')?String(id).slice(5)+'
 const leaderName=id=>!id?'':(id===S.uid?'את':leaderFull(id));
 function ago(t){ if(!t) return ''; const s=Math.round((Date.now()-t)/1000); if(s<60) return 'עכשיו'; if(s<3600) return `לפני ${Math.round(s/60)} דק׳`; if(s<86400) return `לפני ${Math.round(s/3600)} שע׳`; return new Date(t).toLocaleDateString('he-IL'); }
 function colorOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return `hsl(${h%360} 45% 42%)`; }
-const APP_VERSION='19.11 · 13:05';
+const APP_VERSION='19.11 · 16:50';
 function renderMe(){
   const el=$('#me'); if(!el) return;
   if(!S.uid){ el.innerHTML=''; return; }
@@ -1350,8 +1350,8 @@ function buildEmail(mid,grp){
   const ms=(pg?pg.members:nGroups(m)===2?groupOfG(mid,grp||1):groupOf(mid)).map(P).filter(Boolean).sort((a,b)=>(a.rank||0)-(b.rank||0)||(a.last||'').localeCompare(b.last||'','he'));
   const kind=pg?tplKindOf(m):'regular'; const t=tplNow(kind);
   const name=co?`${m.first||''} ו${co.first||''}`:(m.first||'');
-  const cols=kind==='regular'?['שם פרטי','שם משפחה','מספר טלפון','אימייל','שנת לימודים']:['שם','שלב בתואר','בית ספר','טלפון','מייל'];
-  const rowsP=ms.map(e=>kind==='regular'?[e.first||'',e.last||'',e.phone||'',e.email||'',stageShort(e)]:[fullName(e),stageShort(e),deptsOf(e).join(' + ')||SCHOOL_NAME[e.school]||'',e.phone||'',e.email||'']);
+  const cols=kind==='regular'?['שם פרטי','שם משפחה','מספר טלפון','אימייל','שנת לימודים','בית ספר']:['שם','שלב בתואר','בית ספר','טלפון','מייל'];
+  const rowsP=ms.map(e=>kind==='regular'?[e.first||'',e.last||'',e.phone||'',e.email||'',stageShort(e),deptsOf(e).join(' + ')||SCHOOL_NAME[e.school]||'']:[fullName(e),stageShort(e),deptsOf(e).join(' + ')||SCHOOL_NAME[e.school]||'',e.phone||'',e.email||'']);
   const tablePlain=[cols.join('\t'),...rowsP.map(r=>r.join('\t'))].join('\n');
   const td='border:1px solid #999;padding:4px 8px;text-align:right';
   const tableHtml=`<table dir="rtl" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;width:100%"><tr>${cols.map(c=>`<th style="${td};background:#eee">${esc(c)}</th>`).join('')}</tr>${rowsP.map(r=>`<tr>${r.map(c=>`<td style="${td}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;

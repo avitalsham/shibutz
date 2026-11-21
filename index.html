@@ -385,6 +385,10 @@ tbody tr:hover{background:var(--sunk)}
 .cbars i{display:block;height:6px;border-radius:3px;min-width:2px}
 .cb-p{background:var(--open)}.cb-c{background:#4F8FE0}
 .wide-span{grid-column:1/-1}
+.roleswitch{display:inline-flex;gap:4px;align-items:center}
+.roleswitch .chip{cursor:pointer;border:1px solid transparent;opacity:.55;font:inherit;font-size:12px}
+.roleswitch .chip.on{opacity:1;border-color:currentColor;font-weight:700}
+.roleswitch .chip:hover{opacity:1}
 .phdnote{display:flex;gap:10px;align-items:flex-start;background:#FFF4D6;border:1px solid #F2C14E;border-inline-start:5px solid #E0A100;border-radius:10px;padding:12px 14px;margin:0 0 12px;font-size:15px;color:#3D2E00}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .phdnote{background:#3A2F12;border-color:#8A6A12;color:#F7E3A8}}
 .deptedit{margin:10px 0 4px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
@@ -963,7 +967,7 @@ const leaderFull=id=>!id?'':String(id).startsWith('file:')?String(id).slice(5)+'
 const leaderName=id=>!id?'':(id===S.uid?'את':leaderFull(id));
 function ago(t){ if(!t) return ''; const s=Math.round((Date.now()-t)/1000); if(s<60) return 'עכשיו'; if(s<3600) return `לפני ${Math.round(s/60)} דק׳`; if(s<86400) return `לפני ${Math.round(s/3600)} שע׳`; return new Date(t).toLocaleDateString('he-IL'); }
 function colorOf(id){ let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return `hsl(${h%360} 45% 42%)`; }
-const APP_VERSION='19.11 · 16:50';
+const APP_VERSION='21.11 · 19:20';
 function renderMe(){
   const el=$('#me'); if(!el) return;
   if(!S.uid){ el.innerHTML=''; return; }
@@ -1162,7 +1166,7 @@ function vDetail(p){
   let h=`<div class="panel card${roleFor(p,S.selRole)==='mentor'?' card-mentor':''}">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div><p class="pname">${esc(fullName(p))}</p>
-        <div class="row" style="margin-top:4px">${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(deptsOf(p).join(' + ')||'מחלקה חסרה')}</span>${p.deptManual?'<span class="chip" title="נקבע ידנית ע״י מובילה">ידני</span>':''}${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
+        <div class="row" style="margin-top:4px">${p.mentee&&p.mentor?(()=>{ const r=roleFor(p,S.selRole); return `<span class="roleswitch" role="group" aria-label="הצגה בתור"><button class="chip mentee${r==='mentee'?' on':''}" data-sel="${p.id}" data-role="mentee" aria-pressed="${r==='mentee'}" title="הצגת הכרטיס שלה כחניכה: חונכות מתאימות ו'לא מתאימות' לשיבוץ חריג">חניכה</button><button class="chip mentor${r==='mentor'?' on':''}" data-sel="${p.id}" data-role="mentor" aria-pressed="${r==='mentor'}" title="הצגת הכרטיס שלה כחונכת: הקבוצה שלה וחניכות מתאימות">חונכת</button></span>`; })():`${p.mentee?'<span class="chip mentee">חניכה</span>':''}${p.mentor?'<span class="chip mentor">חונכת</span>':''}`}${ladder(p,!p.mentee)}<span class="muted">${esc(SCHOOL_NAME[p.school]||'בית ספר חסר')} · ${esc(deptsOf(p).join(' + ')||'מחלקה חסרה')}</span>${p.deptManual?'<span class="chip" title="נקבע ידנית ע״י מובילה">ידני</span>':''}${area?`<span class="chip">${esc(area.name)}</span>`:''}</div>
       </div>
       <div class="row">${roleFor(p,S.selRole)==='mentor'&&!S.readOnly&&!isCo(p.id)&&!coOf(p.id)?`<button class="btn sm" data-act="coPick">＋ הוספת חונכת שותפה</button>`:''}${watchers.length?`<span class="watchers">${watchers.map(w=>esc(leaderName(w.by||w.presence?.uid))).join(', ')} צופה גם כאן</span>`:''}</div>
     </div>
